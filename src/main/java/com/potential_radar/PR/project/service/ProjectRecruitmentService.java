@@ -14,6 +14,7 @@ public class ProjectRecruitmentService {
     private final ProjectRecruitmentRepository projectRecruitmentRepository;
     private final ProjectTechStackRepository projectTechStackRepository;
 
+    //구인글 생성
     @Transactional
     public Long createProject(ProjectRecruitmentRequest request) {
         ProjectRecruitment project = ProjectRecruitment.builder()
@@ -44,6 +45,7 @@ public class ProjectRecruitmentService {
         return project.getProjectId();
     }
 
+    //구인글 조회
     @Transactional
     public ProjectRecruitmentResponse getProject(Long id) {
         ProjectRecruitment pr = projectRecruitmentRepository.findById(id)
@@ -70,6 +72,48 @@ public class ProjectRecruitmentService {
                 .viewCount(pr.getViewCount())
                 .techStacks(techStackDTOs)
                 .build();
+    }
+
+    // 구인글 수정
+    @Transactional
+    public void updateProject(Long id, ProjectRecruitmentRequest request) {
+        ProjectRecruitment project = projectRecruitmentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("구인글 없음"));
+
+        // 필드 업데이트
+        project.setTitle(request.getTitle());
+        project.setDescription(request.getDescription());
+        project.setRecruitDeadline(request.getRecruitDeadline());
+        project.setStartDate(request.getStartDate());
+        project.setEndDate(request.getEndDate());
+        project.setFileUrl(request.getFileUrl());
+
+        if (request.getStatus() != null) {
+            project.setStatus(ProjectStatus.valueOf(request.getStatus()));
+        }
+
+        // 기술스택 업데이트 (기존 스택 모두 삭제 후 새로 추가)
+        project.getTechStacks().clear();
+        List<ProjectTechStack> newStacks = new ArrayList<>();
+        if (request.getTechStacks() != null) {
+            for (ProjectTechStackDTO tsDto : request.getTechStacks()) {
+                ProjectTechStack techStack = ProjectTechStack.builder()
+                        .project(project)
+                        .techStackName(tsDto.getTechStackName())
+                        .recruitCount(tsDto.getRecruitCount())
+                        .build();
+                newStacks.add(techStack);
+            }
+        }
+        project.getTechStacks().addAll(newStacks);
+    }
+
+    // 구인글 삭제
+    @Transactional
+    public void deleteProject(Long id) {
+        ProjectRecruitment project = projectRecruitmentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("구인글 없음"));
+        projectRecruitmentRepository.delete(project);
     }
 
 }

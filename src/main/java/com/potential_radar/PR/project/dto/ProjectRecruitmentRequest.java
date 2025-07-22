@@ -12,5 +12,6 @@ public class ProjectRecruitmentRequest {
     private LocalDate startDate;
     private LocalDate endDate;
     private String fileUrl;
+    private String status;
     private List<ProjectTechStackDTO> techStacks;
 }

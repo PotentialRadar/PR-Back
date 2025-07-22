@@ -33,6 +33,23 @@ public class ProjectRecruitmentController {
         return ResponseEntity.ok(response);
     }
 
+    // 구인글 수정
+    @PutMapping("/{id}")
+    public ResponseEntity<Void> updateProject(
+            @PathVariable Long id,
+            @RequestBody ProjectRecruitmentRequest request
+    ) {
+        projectRecruitmentService.updateProject(id, request);
+        return ResponseEntity.ok().build();
+    }
+
+    // 구인글 삭제
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteProject(@PathVariable Long id) {
+        projectRecruitmentService.deleteProject(id);
+        return ResponseEntity.ok().build();
+    }
+
     // 파일 업로드
     @PostMapping("/upload-file")
     public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {

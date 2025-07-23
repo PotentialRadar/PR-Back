@@ -1,5 +1,6 @@
 package com.potential_radar.PR.project.service;
 
+import com.potential_radar.PR.common.excetpion.NotFoundException;
 import com.potential_radar.PR.project.domain.*;
 import com.potential_radar.PR.project.dto.*;
 import com.potential_radar.PR.project.repository.*;
@@ -49,7 +50,7 @@ public class ProjectRecruitmentService {
     @Transactional
     public ProjectRecruitmentResponse getProject(Long id) {
         ProjectRecruitment pr = projectRecruitmentRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("구인글 없음"));
+                .orElseThrow(() -> new NotFoundException("해당 구인글이 존재하지 않습니다."));
         pr.setViewCount(pr.getViewCount() == null ? 1 : pr.getViewCount() + 1);
         List<ProjectTechStackDTO> techStackDTOs = new ArrayList<>();
         for (ProjectTechStack ts : pr.getTechStacks()) {
@@ -78,7 +79,7 @@ public class ProjectRecruitmentService {
     @Transactional
     public void updateProject(Long id, ProjectRecruitmentRequest request) {
         ProjectRecruitment project = projectRecruitmentRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("구인글 없음"));
+                .orElseThrow(() -> new NotFoundException("해당 구인글이 존재하지 않습니다."));
 
         // 필드 업데이트
         project.setTitle(request.getTitle());
@@ -112,7 +113,7 @@ public class ProjectRecruitmentService {
     @Transactional
     public void deleteProject(Long id) {
         ProjectRecruitment project = projectRecruitmentRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("구인글 없음"));
+                .orElseThrow(() -> new NotFoundException("해당 구인글이 존재하지 않습니다."));
         projectRecruitmentRepository.delete(project);
     }
 

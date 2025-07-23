@@ -16,7 +16,7 @@ import java.util.List;
 @ToString
 @NoArgsConstructor
 @Entity
-@Table(name = "\"User\"") // PostgreSQL 예약어이므로 큰따옴표로 감싸기
+@Table(name = "users")
 public class User implements UserDetails {
 
     @Id

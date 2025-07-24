@@ -1,5 +1,6 @@
 package com.potential_radar.PR.project.domain;
 
+import com.potential_radar.PR.user.model.User;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
@@ -14,6 +15,10 @@ public class ProjectRecruitment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long projectId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "team_leader_id")
+    private User teamLeader;
 
     @Column(nullable = false)
     private String title;

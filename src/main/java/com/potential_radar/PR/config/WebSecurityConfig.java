@@ -43,6 +43,7 @@ public class WebSecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/login", "/api/signup", "/api/token")
                        .permitAll()
+                        .requestMatchers("/api/projects/**").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(tokenAuthenticationFilter(), org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class) // ✅ JWT 필터 등록
                 .logout(logout -> logout

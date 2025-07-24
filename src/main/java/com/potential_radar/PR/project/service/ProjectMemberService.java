@@ -17,7 +17,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ProjectMemberService {
 
-    private final ProjectMemberRespository projectMemberRepository;
+    private final ProjectMemberRepository projectMemberRepository;
     private final ProjectRecruitmentRepository projectRecruitmentRepository;
     private final UserRepository userRepository;
 

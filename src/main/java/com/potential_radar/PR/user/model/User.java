@@ -1,13 +1,15 @@
 package com.potential_radar.PR.user.model;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.math.BigDecimal;
-import java.security.Provider;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -26,6 +28,7 @@ public class User implements UserDetails {
     @Column(nullable = false, unique = true)
     private String email;
 
+    @Column(nullable = true)
     private String password; // 소셜로그인 null 가능
 
     @Column(nullable = false)
@@ -34,7 +37,7 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String nickname;
 
-    @Lob //대용량 데이터(텍스트/바이너리) 매핑
+    @Column(length = 500)
     private String profileImage;
 
     @Column(nullable = false)
@@ -60,6 +63,7 @@ public class User implements UserDetails {
     @PrePersist
     protected void onCreate() {
         this.createdAt=  this.updatedAt = LocalDateTime.now();
+        if(this.reputationScore == null){this.reputationScore = BigDecimal.ZERO;}
     }
 
     @PreUpdate
@@ -86,7 +90,7 @@ public class User implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("user"));
+        return List.of(new SimpleGrantedAuthority("ROLE_USER"));
     }
 
     @Override

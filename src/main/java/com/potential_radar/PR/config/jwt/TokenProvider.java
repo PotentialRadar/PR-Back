@@ -1,11 +1,9 @@
 package com.potential_radar.PR.config.jwt;
 
 import com.potential_radar.PR.user.model.User;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Header;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -18,11 +16,14 @@ import java.util.Set;
 
 @RequiredArgsConstructor
 @Service
+@Slf4j
 public class TokenProvider {
     private final JwtProperties jwtProperties;
 
     public String generateToken(User user, Duration expiredAt) {
         Date now = new Date();
+        log.debug("👉 secretKey: {}", jwtProperties.getSecretKey());
+
         return makeToken(new Date(now.getTime()+ expiredAt.toMillis()), user);
     }
 
@@ -50,7 +51,17 @@ public class TokenProvider {
                     .parseClaimsJws(token);
 
             return true;
-        }catch (Exception e) {
+        }catch (ExpiredJwtException e) {
+            // 만료된 토큰 로깅
+            log.warn("⚠️ Token expired : {}",e.getMessage());
+            return false;
+        }catch(JwtException e) {
+            // JWT 관련 예외 로깅
+            log.warn("❌ Token invalid : {}",e.getMessage());
+            return false;
+        }catch(Exception e) {
+            // 예상치 못한 예외 로깅
+            log.error("🔥 Unexpected error during token validation : {}",e.getMessage());
             return false;
         }
     }
@@ -58,9 +69,10 @@ public class TokenProvider {
     // 토큰 기반으로 인증 정보를 가져오는 메서드
     public Authentication getAuthentication(String token) {
         Claims claims = getClaims(token);
+        // 토큰에서 권한 정보를 추출하거나 사용자별 권한 조회
         Set<SimpleGrantedAuthority> authorities = Collections.singleton(new SimpleGrantedAuthority("ROLE_USER"));
 
-        return new UsernamePasswordAuthenticationToken(new org.springframework.security.core.userdetails.User(claims.getSubject(),"",authorities), token, authorities);
+        return new UsernamePasswordAuthenticationToken(new org.springframework.security.core.userdetails.User(claims.getSubject(),"",authorities), null, authorities);
     }
 
     // 토큰 기반으로 유저 ID를 가져오는 메서드
@@ -71,9 +83,14 @@ public class TokenProvider {
 
 
     private Claims getClaims(String token) {
-        return Jwts.parser()
-                .setSigningKey(jwtProperties.getSecretKey())
-                .parseClaimsJws(token)
-                .getBody();
+        try{
+            return Jwts.parser()
+                    .setSigningKey(jwtProperties.getSecretKey())
+                    .parseClaimsJws(token)
+                    .getBody();
+        }catch (JwtException e) {
+            throw new IllegalArgumentException("Invalid JWT token",e);
+
+        }
     }
 }

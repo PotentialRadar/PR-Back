@@ -15,6 +15,8 @@ public interface UserService {
 
     User findById(Long userId);
 
+    User findByEmail(String email);
+
     LoginResponse login(UserLoginRequest request);
 
 }

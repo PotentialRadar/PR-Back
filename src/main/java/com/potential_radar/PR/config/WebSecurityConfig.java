@@ -1,5 +1,8 @@
 package com.potential_radar.PR.config;
 
+import com.potential_radar.PR.config.jwt.TokenAuthenticationFilter;
+import com.potential_radar.PR.config.jwt.TokenProvider;
+import jakarta.servlet.Filter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,6 +21,7 @@ import org.springframework.security.web.SecurityFilterChain;
 public class WebSecurityConfig {
 
     private final UserDetailsService userService;
+    private final TokenProvider tokenProvider;
 
 //    // 스프링 시큐리티 기능 비활성화
 //    @Bean
@@ -26,20 +30,21 @@ public class WebSecurityConfig {
 //                .requestMatchers(new AntPathRequestMatcher("/static/**"));
 //    }
 
+    @Bean
+    public TokenAuthenticationFilter tokenAuthenticationFilter() {
+        return new TokenAuthenticationFilter(tokenProvider);
+    }
+
     // 특정 HTTP 요청에 대한 웹 기반 보안 구성
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf->csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/login", "/api/signup", "/user")
+                        .requestMatchers("/api/login", "/api/signup", "/api/token")
                        .permitAll()
                         .anyRequest().authenticated())
-                .formLogin(formLogin -> formLogin
-                        .loginPage("/login")
-                        .defaultSuccessUrl("/articles",true) //로그인 성공 시 /articles로 이동.
-                        .permitAll()
-                )
+                .addFilterBefore(tokenAuthenticationFilter(), org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class) // ✅ JWT 필터 등록
                 .logout(logout -> logout
                         .logoutSuccessUrl("/login")
                         .invalidateHttpSession(true) //세션 무효화 처리로 보안성 강화.

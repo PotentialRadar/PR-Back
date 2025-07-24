@@ -3,6 +3,7 @@ package com.potential_radar.PR.user.controller;
 import com.potential_radar.PR.user.dto.CreateAccessTokenRequest;
 import com.potential_radar.PR.user.dto.CreateAccessTokenResponse;
 import com.potential_radar.PR.user.service.TokenService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,9 +18,15 @@ public class TokenApiController {
 
 
     @PostMapping("/api/token")
-    public ResponseEntity<CreateAccessTokenResponse> createNewAccessToken(@RequestBody CreateAccessTokenRequest request){
-        String newAccessToken = tokenService.createNewAccessToken(request.getRefreshToken());
+    public ResponseEntity<CreateAccessTokenResponse> createNewAccessToken(@Valid @RequestBody CreateAccessTokenRequest request){
+        try{
+            String newAccessToken = tokenService.createNewAccessToken(request.getRefreshToken());
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(new CreateAccessTokenResponse(newAccessToken));
+            return ResponseEntity.status(HttpStatus.CREATED).body(new CreateAccessTokenResponse(newAccessToken));
+        }catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 }

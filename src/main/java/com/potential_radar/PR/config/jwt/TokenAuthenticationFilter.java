@@ -5,11 +5,14 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.logging.Logger;
 
 /**
  * 📌 역할:
@@ -22,6 +25,8 @@ import java.io.IOException;
  *
  * 서버로 오는 모든 요청이 이 필터를 통과하면서 작동합니다 (SecurityFilterChain에 등록하면 됨)
  */
+
+@Slf4j
 @RequiredArgsConstructor
 public class TokenAuthenticationFilter extends OncePerRequestFilter {
 
@@ -38,9 +43,19 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
         // 가져온 값에서 접두사 제거
         String token = getAccessToken(authorizationHeader);
         // 가져온 토큰이 유효한지 확인하고, 유효한 때는 인증 정보 설정
+
         if(tokenProvider.validToken(token)) {
-            Authentication authentication = tokenProvider.getAuthentication(token);
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+            try{ Authentication authentication = tokenProvider.getAuthentication(token);
+//            SecurityContextHolder.getContext().setAuthentication(authentication);
+                if(authentication != null) {
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    log.debug("✅ JWT 인증성공 :{}", authentication.getName());
+                }
+            }catch(Exception e) {
+                log.warn("⚠️ JWT 인증 중 오류 발생 :{}",e.getMessage());
+            }
+        } else if (token != null) {
+            log.warn("❌ 유효하지 않은 JWT 토큰");
         }
         filterChain.doFilter(request, response);
     }

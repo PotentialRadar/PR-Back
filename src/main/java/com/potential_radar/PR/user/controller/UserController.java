@@ -7,16 +7,19 @@ import com.potential_radar.PR.user.model.User;
 import com.potential_radar.PR.user.service.TokenService;
 import com.potential_radar.PR.user.service.UserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api")
+@Slf4j
 public class UserController {
 
     private final UserService userService;
@@ -25,13 +28,14 @@ public class UserController {
     @PostMapping("/login")
     public ResponseEntity<Object> login(@RequestBody UserLoginRequest loginRequest) {
         try{
-           LoginResponse tokens= userService.login(loginRequest);
 
-           return ResponseEntity.status(HttpStatus.OK).body(tokens);
+            LoginResponse tokens= userService.login(loginRequest);
+            return ResponseEntity.status(HttpStatus.OK).body(tokens);
 
         }catch (IllegalArgumentException e){
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         }catch (Exception e){
+            log.error("🔥 로그인 처리 중 서버 오류", e); // 전체 스택 트레이스 보기
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("로그인 처리 중 오류가 발생했습니다");
         }
     }
@@ -51,11 +55,13 @@ public class UserController {
 
 
    @PostMapping("/logout")
-    public ResponseEntity<?> logout(@AuthenticationPrincipal User user) {
+    public ResponseEntity<Object> logout(Principal principal) {
         try {
-            if (user == null) {
+            if (principal == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("인증되지 않은 사용자입니다.");
             }
+            String email = principal.getName();
+            User user = userService.findByEmail(email);
             tokenService.deleteRefreshToken(user.getUserId());
             return ResponseEntity.ok("로그아웃 성공");
 

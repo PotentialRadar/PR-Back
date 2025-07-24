@@ -34,6 +34,7 @@ public class WebSecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/login", "/api/signup", "/user")
                        .permitAll()
+                        .requestMatchers("/api/projects/**").permitAll()
                         .anyRequest().authenticated())
                 .formLogin(formLogin -> formLogin
                         .loginPage("/login")

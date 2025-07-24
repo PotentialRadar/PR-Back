@@ -4,6 +4,7 @@ import com.potential_radar.PR.common.excetpion.NotFoundException;
 import com.potential_radar.PR.project.domain.*;
 import com.potential_radar.PR.project.dto.*;
 import com.potential_radar.PR.project.repository.*;
+import com.potential_radar.PR.user.model.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,9 +18,10 @@ public class ProjectRecruitmentService {
 
     //구인글 생성
     @Transactional
-    public Long createProject(ProjectRecruitmentRequest request) {
+    public Long createProject(ProjectRecruitmentRequest request, User teamLeader) {
         ProjectRecruitment project = ProjectRecruitment.builder()
                 .title(request.getTitle())
+                .teamLeader(teamLeader)
                 .description(request.getDescription())
                 .recruitDeadline(request.getRecruitDeadline())
                 .startDate(request.getStartDate())

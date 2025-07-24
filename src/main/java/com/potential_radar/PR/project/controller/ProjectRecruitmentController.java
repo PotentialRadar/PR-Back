@@ -1,9 +1,12 @@
 package com.potential_radar.PR.project.controller;
 
 import com.potential_radar.PR.common.S3.S3Uploader;
+import com.potential_radar.PR.common.excetpion.NotFoundException;
 import com.potential_radar.PR.project.dto.ProjectRecruitmentRequest;
 import com.potential_radar.PR.project.dto.ProjectRecruitmentResponse;
 import com.potential_radar.PR.project.service.ProjectRecruitmentService;
+import com.potential_radar.PR.user.model.User;
+import com.potential_radar.PR.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -15,11 +18,14 @@ import org.springframework.web.multipart.MultipartFile;
 public class ProjectRecruitmentController {
     private final ProjectRecruitmentService projectRecruitmentService;
     private final S3Uploader s3Uploader;
+    private final UserRepository userRepository;
 
     // 구인글 등록
     @PostMapping
-    public ResponseEntity<Long> createProject(@RequestBody ProjectRecruitmentRequest request) {
-        Long id = projectRecruitmentService.createProject(request);
+    public ResponseEntity<Long> createProject(@RequestBody ProjectRecruitmentRequest request, @RequestParam("userId") Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("해당 유저가 존재하지 않습니다."));
+        Long id = projectRecruitmentService.createProject(request, user);
         return ResponseEntity.ok(id);
     }
 

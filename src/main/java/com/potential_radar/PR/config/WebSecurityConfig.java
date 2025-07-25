@@ -2,7 +2,8 @@ package com.potential_radar.PR.config;
 
 import com.potential_radar.PR.config.jwt.TokenAuthenticationFilter;
 import com.potential_radar.PR.config.jwt.TokenProvider;
-import jakarta.servlet.Filter;
+import com.potential_radar.PR.config.oauth.OAuth2AuthenticationSuccessHandler;
+import com.potential_radar.PR.user.service.CustomOAuth2UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,6 +23,8 @@ public class WebSecurityConfig {
 
     private final UserDetailsService userService;
     private final TokenProvider tokenProvider;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2AuthenticationSuccessHandler oAuth2SuccessHandler;
 
 //    // 스프링 시큐리티 기능 비활성화
 //    @Bean
@@ -41,9 +44,17 @@ public class WebSecurityConfig {
         http
                 .csrf(csrf->csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/login", "/api/signup", "/api/token")
+                        .requestMatchers("/api/login", "/api/signup", "/api/token",
+                                "/oauth2/**", "/login/oauth2/**", "/api/login/**")
                        .permitAll()
                         .anyRequest().authenticated())
+                .oauth2Login(oauth -> oauth
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .userService(customOAuth2UserService)
+                        )
+                        .successHandler(oAuth2SuccessHandler) // ✅ 추가
+                        .failureUrl("/api/login/fail")
+                )
                 .addFilterBefore(tokenAuthenticationFilter(), org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class) // ✅ JWT 필터 등록
                 .logout(logout -> logout
                         .logoutSuccessUrl("/login")

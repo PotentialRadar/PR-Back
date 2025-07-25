@@ -14,6 +14,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class ProjectRecruitmentService {
     private final ProjectRecruitmentRepository projectRecruitmentRepository;
+    private final ProjectMemberRepository projectMemberRepository;
     private final ProjectTechStackRepository projectTechStackRepository;
 
     //구인글 생성
@@ -63,6 +64,16 @@ public class ProjectRecruitmentService {
                             .build()
             );
         }
+        // 전체 지원자 수
+        int appliedCount = projectMemberRepository.countByProject_ProjectId(pr.getProjectId());
+
+        // 승인된 지원자 수
+        int acceptedCount = projectMemberRepository.countByProject_ProjectIdAndStatus(
+                pr.getProjectId(), ProjectMember.MemberStatus.ACCEPTED);
+
+        // 남은 자리 (모집인원 - 승인된 지원자)
+        int remainingCount = pr.getRecruitCount() - acceptedCount;
+
         return ProjectRecruitmentResponse.builder()
                 .projectId(pr.getProjectId())
                 .title(pr.getTitle())
@@ -73,6 +84,10 @@ public class ProjectRecruitmentService {
                 .fileUrl(pr.getFileUrl())
                 .status(pr.getStatus().name())
                 .viewCount(pr.getViewCount())
+                .recruitCount(pr.getRecruitCount())
+                .appliedCount(appliedCount)
+                .acceptedCount(acceptedCount)
+                .remainingCount(remainingCount)
                 .techStacks(techStackDTOs)
                 .build();
     }

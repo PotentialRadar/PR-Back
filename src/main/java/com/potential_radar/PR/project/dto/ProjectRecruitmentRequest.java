@@ -14,4 +14,5 @@ public class ProjectRecruitmentRequest {
     private String fileUrl;
     private String status;
     private List<ProjectTechStackDTO> techStacks;
+    private Integer recruitCount;   //총 모집인원
 }

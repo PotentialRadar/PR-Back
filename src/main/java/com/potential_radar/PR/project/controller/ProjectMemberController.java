@@ -5,6 +5,7 @@ import com.potential_radar.PR.project.domain.ProjectMember;
 import com.potential_radar.PR.project.domain.ProjectRecruitment;
 import com.potential_radar.PR.project.dto.ProjectApplyRequest;
 import com.potential_radar.PR.project.dto.ProjectMemberResponseDTO;
+import com.potential_radar.PR.project.dto.ProjectMemberStatusUpdateRequest;
 import com.potential_radar.PR.project.repository.ProjectRecruitmentRepository;
 import com.potential_radar.PR.project.service.ProjectMemberService;
 import lombok.RequiredArgsConstructor;
@@ -42,11 +43,24 @@ public class ProjectMemberController {
         // 2. 팀리더 검사 (userId가 teamLeader의 userId와 같은지)
         if (!project.getTeamLeader().getUserId().equals(userId)) {
             // 403 Forbidden
-            return ResponseEntity.status(403).body(null); // 또는 커스텀 예외 던져도 됨
+            throw new IllegalArgumentException("팀장만 지원자 목록을 볼 수 있습니다."); // 또는 커스텀 예외 던져도 됨
         }
 
         // 3. 지원자 목록 조회
         List<ProjectMemberResponseDTO> response = projectMemberService.getProjectMembers(projectId);
         return ResponseEntity.ok(response);
     }
+
+    //지원자 승인/거절 업데이트
+    @PatchMapping("/{projectId}/members/{memberId}/status")
+    public ResponseEntity<String> updateMemberStatus(
+            @PathVariable Long projectId,
+            @PathVariable Long memberId,
+            @RequestParam Long userId,      // 팀장 ID
+            @RequestBody ProjectMemberStatusUpdateRequest request
+    ) {
+        projectMemberService.updateMemberStatus(projectId, memberId, userId, request.getStatus());
+        return ResponseEntity.ok("지원자 상태가 변경되었습니다.");
+    }
+
 }

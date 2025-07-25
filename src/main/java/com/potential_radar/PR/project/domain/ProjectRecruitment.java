@@ -47,4 +47,7 @@ public class ProjectRecruitment {
     // 연관관계(기술스택)
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProjectTechStack> techStacks = new ArrayList<>();
+
+    @Column(nullable = false)
+    private Integer recruitCount;
 }

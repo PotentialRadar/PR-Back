@@ -6,17 +6,19 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Random;
+import java.security.SecureRandom;
 
 @Service
 @RequiredArgsConstructor
 public class EmailAuthService {
     private final EmailVerificationRepository emailVerificationRepository;
-    private final JavaMailSender mailSender; //Could not autowire. No beans of 'JavaMailSender' type found.
+    private final JavaMailSender mailSender;
 
+    @Transactional
     public void sendVerificationCode(String email) {
-        String code = String.format("%06d", new Random().nextInt(999999));
+        String code = String.format("%06d", new SecureRandom().nextInt(1000000));
 
         emailVerificationRepository.deleteByEmail(email);
         emailVerificationRepository.save(new EmailVerification(email, code));

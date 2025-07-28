@@ -4,6 +4,7 @@ import com.potential_radar.PR.user.dto.EmailRequest;
 import com.potential_radar.PR.user.dto.EmailVerificationRequest;
 import com.potential_radar.PR.user.service.EmailAuthService;
 import com.potential_radar.PR.user.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,13 +20,13 @@ public class AuthController {
     private final EmailAuthService emailAuthService;
 
     @PostMapping("/send-code")
-    public ResponseEntity<Void> sendVerificationCode(@RequestBody EmailRequest request) {
+    public ResponseEntity<Void> sendVerificationCode(@Valid @RequestBody EmailRequest request) {
         emailAuthService.sendVerificationCode(request.getEmail());
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/verify-code")
-    public ResponseEntity<Map<String, Boolean>> verifyCode(@RequestBody EmailVerificationRequest request) {
+    public ResponseEntity<Map<String, Boolean>> verifyCode(@Valid @RequestBody EmailVerificationRequest request) {
         boolean result = emailAuthService.verifyCode(request.getEmail(), request.getCode());
         return ResponseEntity.ok(Map.of("success", result));
     }

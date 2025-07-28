@@ -45,7 +45,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     private OAuth2UserInfo getOAuth2UserInfo(String provider , Map<String, Object> attributes){
         if("google".equals(provider)) return new Google2UserInfo(attributes);
         if("kakao".equals(provider)) return new Kakao2UserInfo(attributes);
-        throw new IllegalArgumentException("지원하지 않는 Provider");
+        throw new OAuth2AuthenticationException("지원하지 않는 Provider: " + provider);
     }
 
     private User saveOrUpdate(OAuth2UserInfo userInfo) {

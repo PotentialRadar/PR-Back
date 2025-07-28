@@ -6,8 +6,10 @@ import com.potential_radar.PR.user.dto.UserSignupRequest;
 import com.potential_radar.PR.user.model.User;
 import com.potential_radar.PR.user.service.TokenService;
 import com.potential_radar.PR.user.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -41,7 +43,7 @@ public class UserController {
     }
 
    @PostMapping("/signup")
-    public ResponseEntity<Object> signup(@RequestBody UserSignupRequest request) {
+    public ResponseEntity<Object> signup(@Valid @RequestBody UserSignupRequest request) {
        try{
            User newUser = userService.register(request);
            return ResponseEntity.ok().body(Map.of("message", "회원가입 성공",

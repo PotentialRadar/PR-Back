@@ -86,4 +86,11 @@ public class UserServiceImpl implements UserService {
         // 5. 응답 반환
         return new LoginResponse(accessToken, refreshToken);
     }
+
+    @Override
+    public boolean existsByNickName(String nickname) {
+        return userRepository.existsByNickname(nickname);
+    }
+
+
 }

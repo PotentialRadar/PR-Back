@@ -22,8 +22,12 @@ public record UserSignupRequest(
 
         @NotBlank(message = "비밀번호는 필수입니다.")
         @Size(min = 8, max = 20, message = "비밀번호는 8-20자 사이여야 합니다.")
-        @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]", message = "비밀번호는 대소문자, 숫자, 특수문자를 각각 하나 이상 포함해야 합니다.")
+        @Pattern(
+                regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,20}$",
+                message = "비밀번호는 8~20자이며 대소문자, 숫자, 특수문자를 각각 하나 이상 포함해야 합니다."
+        )
         String password,
+
 
         @NotBlank(message = "이름은 필수입니다.")
         @Size(max = 50, message = "이름은 50자를 초과할 수 없습니다.")

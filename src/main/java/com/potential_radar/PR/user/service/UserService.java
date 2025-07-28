@@ -19,4 +19,6 @@ public interface UserService {
 
     LoginResponse login(UserLoginRequest request);
 
+    boolean existsByNickName(String nickname);
+
 }

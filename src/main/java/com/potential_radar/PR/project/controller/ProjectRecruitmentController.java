@@ -2,6 +2,7 @@ package com.potential_radar.PR.project.controller;
 
 import com.potential_radar.PR.common.S3.S3Uploader;
 import com.potential_radar.PR.common.excetpion.NotFoundException;
+import com.potential_radar.PR.project.dto.ProjectListResponse;
 import com.potential_radar.PR.project.dto.ProjectRecruitmentRequest;
 import com.potential_radar.PR.project.dto.ProjectRecruitmentResponse;
 import com.potential_radar.PR.project.service.ProjectRecruitmentService;
@@ -12,6 +13,8 @@ import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
@@ -19,6 +22,13 @@ public class ProjectRecruitmentController {
     private final ProjectRecruitmentService projectRecruitmentService;
     private final S3Uploader s3Uploader;
     private final UserRepository userRepository;
+
+    // 전체 프로젝트 리스트 조회
+    @GetMapping
+    public ResponseEntity<List<ProjectListResponse>> getProjectList() {
+        List<ProjectListResponse> projects = projectRecruitmentService.getProjectList();
+        return ResponseEntity.ok(projects);
+    }
 
     // 구인글 등록
     @PostMapping

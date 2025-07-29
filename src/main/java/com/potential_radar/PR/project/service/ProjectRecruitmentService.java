@@ -17,6 +17,37 @@ public class ProjectRecruitmentService {
     private final ProjectMemberRepository projectMemberRepository;
     private final ProjectTechStackRepository projectTechStackRepository;
 
+    // 전체 프로젝트 리스트 반환
+    @Transactional(readOnly = true)
+    public List<ProjectListResponse> getProjectList() {
+        List<ProjectRecruitment> projects = projectRecruitmentRepository.findAll();
+        List<ProjectListResponse> result = new ArrayList<>();
+
+        for (ProjectRecruitment pr : projects) {
+            // 지원자 수 구하기
+            int appliedCount = projectMemberRepository.countByProject_ProjectId(pr.getProjectId());
+
+            // 기술스택 String 리스트로 가공
+            List<String> techStackNames = pr.getTechStacks().stream()
+                    .map(ProjectTechStack::getTechStackName)
+                    .toList();
+
+            result.add(ProjectListResponse.builder()
+                    .projectId(pr.getProjectId())
+                    .title(pr.getTitle())
+                    .description(pr.getDescription())
+                    .status(pr.getStatus().name())    // 예: "RECRUITING"
+                    .recruitCount(pr.getRecruitCount())
+                    .appliedCount(appliedCount)
+                    .recruitDeadline(pr.getRecruitDeadline())
+                    .techStacks(techStackNames)
+                    .build()
+            );
+        }
+
+        return result;
+    }
+
     //구인글 생성
     @Transactional
     public Long createProject(ProjectRecruitmentRequest request, User teamLeader) {
@@ -29,6 +60,7 @@ public class ProjectRecruitmentService {
                 .endDate(request.getEndDate())
                 .fileUrl(request.getFileUrl())
                 .status(ProjectStatus.RECRUITING)
+                .recruitCount(request.getRecruitCount())
                 .build();
 
         // 기술스택 연관 저장

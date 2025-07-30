@@ -2,28 +2,20 @@ package com.potential_radar.PR.config.jwt;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.logging.Logger;
 
 /**
  * 📌 역할:
- *
- * 클라이언트가 보낸 HTTP 요청에 JWT가 포함되어 있으면 자동으로 인증 처리함
- *
- * JWT가 유효하면 → SecurityContextHolder에 인증 정보 저장 → 이후 Spring Security가 인증된 사용자로 인식
- *
- * 📦 언제 작동되냐면:
- *
- * 서버로 오는 모든 요청이 이 필터를 통과하면서 작동합니다 (SecurityFilterChain에 등록하면 됨)
+ * JWT가 유효하면 SecurityContextHolder에 인증 정보 저장
  */
 
 @Slf4j
@@ -31,39 +23,52 @@ import java.util.logging.Logger;
 public class TokenAuthenticationFilter extends OncePerRequestFilter {
 
     private final TokenProvider tokenProvider;
-    private final static String HEADER_AUTHORIZATION = "Authorization";
-    private final static String TOKEN_PREFIX = "Bearer ";
+    private static final String HEADER_AUTHORIZATION = "Authorization";
+    private static final String TOKEN_PREFIX = "Bearer ";
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        // 요청 헤더의 Authrization 키의 값 조회
-        String authorizationHeader = request.getHeader(HEADER_AUTHORIZATION);
-        // 가져온 값에서 접두사 제거
-        String token = getAccessToken(authorizationHeader);
-        // 가져온 토큰이 유효한지 확인하고, 유효한 때는 인증 정보 설정
 
-        if(token != null && tokenProvider.validToken(token)) {
-            try{ Authentication authentication = tokenProvider.getAuthentication(token);
-//            SecurityContextHolder.getContext().setAuthentication(authentication);
-                if(authentication != null) {
+        String token = resolveToken(request); // ✅ 헤더 or 쿠키에서 토큰 추출
+
+        if (token != null && tokenProvider.validToken(token)) {
+            try {
+                Authentication authentication = tokenProvider.getAuthentication(token);
+                if (authentication != null) {
                     SecurityContextHolder.getContext().setAuthentication(authentication);
-                    log.debug("✅ JWT 인증성공 :{}", authentication.getName());
+                    log.debug("✅ JWT 인증 성공: {}", authentication.getName());
                 }
-            }catch(Exception e) {
-                log.warn("⚠️ JWT 인증 중 오류 발생 :{}",e.getMessage());
+            } catch (Exception e) {
+                log.warn("⚠️ JWT 인증 중 예외 발생: {}", e.getMessage());
             }
         } else if (token != null) {
             log.warn("❌ 유효하지 않은 JWT 토큰");
         }
+
         filterChain.doFilter(request, response);
     }
 
-    private String getAccessToken(String authorizationHeader) {
-        if(authorizationHeader != null && authorizationHeader.startsWith(TOKEN_PREFIX)) {
+    /**
+     * 요청에서 JWT 토큰 추출 (헤더 우선 → 쿠키 보조)
+     */
+    private String resolveToken(HttpServletRequest request) {
+        // 1. Authorization 헤더
+        String authorizationHeader = request.getHeader(HEADER_AUTHORIZATION);
+        if (authorizationHeader != null && authorizationHeader.startsWith(TOKEN_PREFIX)) {
             return authorizationHeader.substring(TOKEN_PREFIX.length());
         }
+
+        // 2. Cookie
+        if (request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if ("auth-token".equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+
         return null;
     }
 }

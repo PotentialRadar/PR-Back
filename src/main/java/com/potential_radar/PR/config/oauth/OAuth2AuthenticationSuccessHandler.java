@@ -66,13 +66,14 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         // 토큰을 HttpOnly 쿠키로 설정
         Cookie tokenCookie = new Cookie("auth-token", jwt);
                 tokenCookie.setHttpOnly(true);
-                tokenCookie.setSecure(true); // HTTPS에서만 사용
+                tokenCookie.setSecure(false); // HTTPS에서만 사용  ✅ 개발 중에는 false
                 tokenCookie.setPath("/");
                 tokenCookie.setMaxAge(7200); // 2시간
                 response.addCookie(tokenCookie);
 
         // 설정에서 가져온 안전한 리다이렉트 URL 사용
-        response.sendRedirect(frontendCallbackUrl);
+        String redirectWithToken = frontendCallbackUrl + "?token=" + jwt;
+        response.sendRedirect(redirectWithToken);
 
         // ✅ 방법 2: SPA용 JSON 응답
 //        response.setContentType("application/json;charset=UTF-8");

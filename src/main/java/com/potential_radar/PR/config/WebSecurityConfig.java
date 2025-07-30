@@ -61,6 +61,7 @@ public class WebSecurityConfig {
                         .successHandler(oAuth2SuccessHandler) // ✅ 추가
                         .failureUrl("/api/login/fail")
                 )
+
                 .addFilterBefore(tokenAuthenticationFilter(), org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class) // ✅ JWT 필터 등록
                 .logout(logout -> logout
                         .logoutSuccessUrl("/login")
@@ -93,10 +94,13 @@ public class WebSecurityConfig {
     @Bean
     public CorsConfigurationSource configurationSource(){
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+
+        // 🔁 여기만 변경
+        configuration.setAllowedOriginPatterns(List.of("http://localhost:5173")); // or "*"
+
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
-        configuration.setAllowCredentials(true); // 💡 JWT + 쿠키 등 인증 정보 전달 시 필요
+        configuration.setAllowCredentials(true); // ✅ 쿠키 전달 위해 반드시 필요
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

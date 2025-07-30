@@ -6,11 +6,11 @@ import com.potential_radar.PR.user.dto.UserSignupRequest;
 import com.potential_radar.PR.user.model.User;
 import com.potential_radar.PR.user.service.TokenService;
 import com.potential_radar.PR.user.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
@@ -40,21 +40,21 @@ public class UserController {
         }
     }
 
-   @PostMapping("/signup")
-    public ResponseEntity<Object> signup(@RequestBody UserSignupRequest request) {
-       try{
-           User newUser = userService.register(request);
-           return ResponseEntity.ok().body(Map.of("message", "회원가입 성공",
-                   "userId", newUser.getUserId()));
-       }catch (IllegalArgumentException e){
-           return ResponseEntity.badRequest().body(e.getMessage());
-       }catch (Exception e){
-           return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("회원가입 처리 중 오류가 발생했습니다");
-       }
-   }
+    @PostMapping("/signup")
+    public ResponseEntity<Object> signup(@Valid @RequestBody UserSignupRequest request) {
+        try{
+            User newUser = userService.register(request);
+            return ResponseEntity.ok().body(Map.of("message", "회원가입 성공",
+                    "userId", newUser.getUserId()));
+        }catch (IllegalArgumentException e){
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }catch (Exception e){
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("회원가입 처리 중 오류가 발생했습니다");
+        }
+    }
 
 
-   @PostMapping("/logout")
+    @PostMapping("/logout")
     public ResponseEntity<Object> logout(Principal principal) {
         try {
             if (principal == null) {
@@ -68,9 +68,9 @@ public class UserController {
         }catch (Exception e){
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("로그아웃 처리 중 오류가 발생했습니다");
         }
-   }
+    }
 
-   // 모든 인증이 필요한 요청에선 Authorization: Bearer {AccessToken} 헤더 사용
+    // 모든 인증이 필요한 요청에선 Authorization: Bearer {AccessToken} 헤더 사용
 
 
 }

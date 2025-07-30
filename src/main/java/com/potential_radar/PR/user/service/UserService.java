@@ -6,6 +6,8 @@ import com.potential_radar.PR.user.dto.UserSignupRequest;
 import com.potential_radar.PR.user.model.User;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 
 public interface UserService {
 
@@ -15,8 +17,10 @@ public interface UserService {
 
     User findById(Long userId);
 
-    User findByEmail(String email);
+    public User findByEmail(String email);
 
     LoginResponse login(UserLoginRequest request);
+
+    boolean existsByNickName(String nickname);
 
 }

@@ -88,8 +88,8 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public boolean existsByNickName(String nickname) {
-        return userRepository.existsByNickname(nickname);
+    public boolean existsByNickName(String nickName) {
+        return userRepository.existsByNickname(nickName);
     }
 
 

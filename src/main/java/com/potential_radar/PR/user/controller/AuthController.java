@@ -8,6 +8,8 @@ import com.potential_radar.PR.user.model.User;
 import com.potential_radar.PR.user.service.EmailAuthService;
 import com.potential_radar.PR.user.service.UserService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -37,8 +39,7 @@ public class AuthController {
     }
 
     @GetMapping("/check-nickname")
-    public ResponseEntity<Map<String, Boolean>> checkNickname(@RequestParam String nickname) {
-        boolean duplicate = userService.existsByNickName(nickname);
+    public ResponseEntity<Map<String, Boolean>> checkNickname(@RequestParam @NotBlank @Size(min = 2, max = 20) String nickname) {        boolean duplicate = userService.existsByNickName(nickname);
         return ResponseEntity.ok(Map.of("duplicate", duplicate));
 
     }

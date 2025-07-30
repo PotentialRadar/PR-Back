@@ -29,7 +29,7 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.emptyList(); // 역할(권한)이 있다면 Role 리스트 반환
+        return user.getAuthorities(); // User 엔티티의 권한을 그대로 사용
     }
 
     @Override

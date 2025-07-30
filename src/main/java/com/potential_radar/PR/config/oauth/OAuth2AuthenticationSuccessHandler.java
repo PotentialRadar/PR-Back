@@ -69,7 +69,8 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
                 tokenCookie.setSecure(false); // HTTPS에서만 사용  ✅ 개발 중에는 false
                 tokenCookie.setPath("/");
                 tokenCookie.setMaxAge(7200); // 2시간
-                response.addCookie(tokenCookie);
+                tokenCookie.setAttribute("SameSite", "Strict");    // SameSite=Strict 설정으로 CSRF 방지
+             response.addCookie(tokenCookie);
 
         // 설정에서 가져온 안전한 리다이렉트 URL 사용
         String redirectWithToken = frontendCallbackUrl + "?token=" + jwt;

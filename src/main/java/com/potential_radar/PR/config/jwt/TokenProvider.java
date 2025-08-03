@@ -1,6 +1,8 @@
 package com.potential_radar.PR.config.jwt;
 
+import com.potential_radar.PR.config.oauth.CustomUserDetails;
 import com.potential_radar.PR.user.model.User;
+import com.potential_radar.PR.user.repository.UserRepository;
 import io.jsonwebtoken.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +21,8 @@ import java.util.Set;
 @Slf4j
 public class TokenProvider {
     private final JwtProperties jwtProperties;
+    private final UserRepository userRepository;
+
 
     public String generateToken(User user, Duration expiredAt) {
         Date now = new Date();
@@ -67,10 +71,20 @@ public class TokenProvider {
     // 토큰 기반으로 인증 정보를 가져오는 메서드
     public Authentication getAuthentication(String token) {
         Claims claims = getClaims(token);
-        // 토큰에서 권한 정보를 추출하거나 사용자별 권한 조회
-        Set<SimpleGrantedAuthority> authorities = Collections.singleton(new SimpleGrantedAuthority("ROLE_USER"));
+        String email = claims.getSubject();
 
-        return new UsernamePasswordAuthenticationToken(new org.springframework.security.core.userdetails.User(claims.getSubject(),"",authorities), null, authorities);
+        // ✅ DB에서 사용자 조회
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("유저를 찾을 수 없습니다."));
+
+        // ✅ CustomUserDetails 생성
+        CustomUserDetails userDetails = new CustomUserDetails(user);
+
+        return new UsernamePasswordAuthenticationToken(
+                userDetails,
+                null,
+                userDetails.getAuthorities()
+        );
     }
 
     // 토큰 기반으로 유저 ID를 가져오는 메서드

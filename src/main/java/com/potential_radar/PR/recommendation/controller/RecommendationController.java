@@ -1,41 +1,39 @@
 package com.potential_radar.PR.recommendation.controller;
 
-import com.potential_radar.PR.recommendation.dto.RecommendedMemberResponse;
 import com.potential_radar.PR.recommendation.dto.RecommendedProjectResponse;
+import com.potential_radar.PR.recommendation.dto.RecommendRequest;
 import com.potential_radar.PR.recommendation.service.RecommendationService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
 @RestController
-@RequiredArgsConstructor
-@RequestMapping("/api/recommendation")
+@RequestMapping("/api/v1/recommend")
 public class RecommendationController {
 
     private final RecommendationService recommendationService;
 
-    /**
-     * [팀원 대상] 사용자에게 적합한 프로젝트 목록을 추천
-     * @param userId 추천 대상 사용자 ID
-     * @return 추천된 프로젝트 리스트 (유사도 기반 정렬)
-     */
-    @GetMapping("/projects")
-    public ResponseEntity<List<RecommendedProjectResponse>> recommendProjects(@RequestParam Long userId) {
-        return ResponseEntity.ok(recommendationService.getRecommendedProjectsForUser(userId));
+    public RecommendationController(RecommendationService recommendationService) {
+        this.recommendationService = recommendationService;
     }
 
     /**
-     * [팀장 대상] 특정 프로젝트에 적합한 멤버 목록을 추천
-     * @param projectId 추천 대상 프로젝트 ID
-     * @return 추천된 멤버 리스트 (유사도 기반 정렬)
+     * 특정 사용자에게 적합한 프로젝트를 추천합니다.
+     * POST 요청으로 /api/v1/recommend/projects 경로로 접근합니다.
+     *
+     * @param request 사용자 정보가 담긴 RecommendRequest 객체
+     * @return 추천된 프로젝트 목록을 담은 HTTP 응답 (상태 코드 200 OK)
      */
-    @GetMapping("/members")
-    public ResponseEntity<List<RecommendedMemberResponse>> recommendMembers(@RequestParam Long projectId) {
-        return ResponseEntity.ok(recommendationService.getRecommendedMembersForProject(projectId));
+    @PostMapping("/projects")
+    public ResponseEntity<List<RecommendedProjectResponse>> getRecommendedProjectsForUser(@RequestBody RecommendRequest request) {
+        // RecommendationService를 호출하여 Python API로부터 추천된 프로젝트 목록을 가져옵니다.
+        List<RecommendedProjectResponse> recommendedProjects = recommendationService.getRecommendedProjectsForUser(request);
+
+        // 추천 결과를 JSON 형태로 반환
+        return ResponseEntity.ok(recommendedProjects);
     }
 }

@@ -1,16 +1,22 @@
 package com.potential_radar.PR.recommendation.dto;
 
 import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Getter
-@Setter
+import java.util.List;
+
+@Data
+@NoArgsConstructor
 @AllArgsConstructor
-// [팀원 대상] 사용자에게 적합한 프로젝트 목록을 추천
 public class RecommendedProjectResponse {
-    private Long projectId;     // 추천된 프로젝트 ID
-    private String title;       // 프로젝트 제목
-    private String description; // 프로젝트 설명
-    private double matchScore;  // 추천 점수
+    private Long projectId;
+    private String title;
+    private String description;
+    private Double matchScore;
+
+    // 이 필드가 Python API 응답에 실제로 포함되어 있고
+    // 그 값이 JSON 객체들의 리스트일 경우에 사용합니다.
+    // 만약 단순 문자열 리스트라면 List<String>을 사용합니다.
+    private List<Object> projectTechStacks; // JSON 객체를 받기 위해 Object 타입으로 설정
 }

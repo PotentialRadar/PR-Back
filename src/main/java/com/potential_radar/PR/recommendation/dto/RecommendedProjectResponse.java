@@ -16,7 +16,7 @@ public class RecommendedProjectResponse {
     private Double matchScore;
 
     // 이 필드가 Python API 응답에 실제로 포함되어 있고
-    // 그 값이 JSON 객체들의 리스트일 경우에 사용합니다.
-    // 만약 단순 문자열 리스트라면 List<String>을 사용합니다.
+    // 그 값이 JSON 객체들의 리스트일 경우에 사용
+    // 만약 단순 문자열 리스트라면 List<String>을 사용
     private List<Object> projectTechStacks; // JSON 객체를 받기 위해 Object 타입으로 설정
 }

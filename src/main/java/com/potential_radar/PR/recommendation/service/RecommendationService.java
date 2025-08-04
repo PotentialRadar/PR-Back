@@ -27,8 +27,8 @@ public class RecommendationService {
     }
 
     /**
-     * Python API를 호출하여 사용자에게 적합한 프로젝트를 추천합니다.
-     * WebClient를 사용하여 비동기적으로 POST 요청을 보냅니다.
+     * Python API를 호출하여 사용자에게 적합한 프로젝트를 추천
+     * WebClient를 사용하여 비동기적으로 POST 요청을 보냄
      *
      * @param request 사용자 정보가 담긴 RecommendRequest 객체
      * @return 추천된 프로젝트 목록 (API 호출 실패 시 빈 리스트 반환)
@@ -37,7 +37,6 @@ public class RecommendationService {
         System.out.println("Python 추천 API 호출 중: " + pythonApiHost + "/api/recommend/projects");
 
         try {
-            // 👇 실제 JSON 로그 출력
             String jsonBody = objectMapper.writeValueAsString(request);
             System.out.println("전송 JSON 바디: " + jsonBody);
 

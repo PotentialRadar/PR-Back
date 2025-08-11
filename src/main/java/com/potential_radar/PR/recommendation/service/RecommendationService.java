@@ -3,15 +3,17 @@ package com.potential_radar.PR.recommendation.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.potential_radar.PR.recommendation.dto.RecommendRequest;
 import com.potential_radar.PR.recommendation.dto.RecommendedProjectResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Flux;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.util.Collections;
 import java.util.List;
 
+@Slf4j
 @Service
 public class RecommendationService {
 
@@ -33,28 +35,53 @@ public class RecommendationService {
      * @param request 사용자 정보가 담긴 RecommendRequest 객체
      * @return 추천된 프로젝트 목록 (API 호출 실패 시 빈 리스트 반환)
      */
-    public List<RecommendedProjectResponse> getRecommendedProjectsForUser(RecommendRequest request) {
-        System.out.println("Python 추천 API 호출 중: " + pythonApiHost + "/api/recommend/projects");
+    public List<RecommendedProjectResponse> getRecommendedProjectsForUser(
+            RecommendRequest request,
+            int topN,
+            double minScore,
+            double minOverlap,
+            boolean strict
+    ) {
+        log.info("[SPRING->AI] strict={} topN={} minScore={} minOverlap={}",
+                strict, topN, minScore, minOverlap);
 
         try {
-            String jsonBody = objectMapper.writeValueAsString(request);
-            System.out.println("전송 JSON 바디: " + jsonBody);
-
-            Flux<RecommendedProjectResponse> projectsFlux = webClient.post()
-                    .uri("/api/recommend/projects")
-                    .contentType(MediaType.APPLICATION_JSON) // 요청 Body의 Content-Type 설정
-                    .bodyValue(request) // 요청 Body에 RecommendRequest 객체 전달
+            return webClient.post()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/api/recommend/projects")
+                            .queryParam("topN", topN)
+                            .queryParam("minScore", minScore)
+                            .queryParam("minOverlap", minOverlap)
+                            .queryParam("strict", strict)
+                            .build())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(request)
                     .retrieve()
                     .bodyToFlux(RecommendedProjectResponse.class)
-                    .onErrorResume(e -> {
-                        System.err.println("Python 추천 API 호출 실패: " + e.getMessage());
-                        return Flux.empty();
-                    });
-
-            return projectsFlux.collectList().block();
+                    .collectList()
+                    .block();
+        } catch (WebClientResponseException e) {
+            log.error("FastAPI 응답 오류: {}", e.getResponseBodyAsString());
+            throw e;
         } catch (Exception e) {
-            System.err.println("추천 서비스에서 예외 발생: " + e.getMessage());
+            log.error("추천 서비스 예외: {}", e.getMessage(), e);
             return Collections.emptyList();
         }
     }
+
+    public List<RecommendedProjectResponse> callFastApi(RecommendRequest request) {
+        try {
+            return webClient.post()
+                    .uri("/api/recommend/projects")
+                    .bodyValue(request)
+                    .retrieve()
+                    .bodyToFlux(RecommendedProjectResponse.class)
+                    .collectList()
+                    .block();
+        } catch (WebClientResponseException e) {
+            log.error("FastAPI 응답 오류: {}", e.getResponseBodyAsString());
+            throw e;
+        }
+    }
+
 }

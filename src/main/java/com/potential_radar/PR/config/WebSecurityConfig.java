@@ -50,9 +50,16 @@ public class WebSecurityConfig {
                 .cors(cors -> {})
                 .csrf(csrf->csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/login", "/api/signup", "/api/token",
-                                "/oauth2/**", "/login/oauth2/**", "/api/login/**",
-                                "/api/users/**")
+                        .requestMatchers(
+                                "/api/login",
+                                "/api/signup",
+                                "/api/token",
+                                "/oauth2/**",
+                                "/login/oauth2/**",
+                                "/api/login/**",
+                                "/api/users/**",
+                                "/api/recommend/**"
+                        )
                         .permitAll()
                         .requestMatchers("/api/projects/**").permitAll()
                         .anyRequest().authenticated())

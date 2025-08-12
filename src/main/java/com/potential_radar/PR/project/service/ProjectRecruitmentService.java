@@ -92,6 +92,46 @@ public class ProjectRecruitmentService {
                 .build();
     }
 
+    // 전체 구인글 목록 조회
+    @Transactional(readOnly = true)
+    public List<ProjectRecruitmentResponse> getAllProjects() {
+        List<ProjectRecruitment> projects = projectRecruitmentRepository.findAll();
+        List<ProjectRecruitmentResponse> responses = new ArrayList<>();
+        for (ProjectRecruitment pr : projects) {
+            List<ProjectTechStackDTO> techStackDTOs = new ArrayList<>();
+            for (ProjectTechStack ts : pr.getTechStacks()) {
+                techStackDTOs.add(ProjectTechStackDTO.builder()
+                        .techStackName(ts.getTechStackName())
+                        .recruitCount(ts.getRecruitCount())
+                        .build());
+            }
+
+            int appliedCount = projectMemberRepository.countByProject_ProjectId(pr.getProjectId());
+            int acceptedCount = projectMemberRepository.countByProject_ProjectIdAndStatus(
+                    pr.getProjectId(), ProjectMember.MemberStatus.ACCEPTED);
+
+            int remainingCount = pr.getRecruitCount() - acceptedCount;
+
+            responses.add(ProjectRecruitmentResponse.builder()
+                    .projectId(pr.getProjectId())
+                    .title(pr.getTitle())
+                    .description(pr.getDescription())
+                    .recruitDeadline(pr.getRecruitDeadline())
+                    .startDate(pr.getStartDate())
+                    .endDate(pr.getEndDate())
+                    .fileUrl(pr.getFileUrl())
+                    .status(pr.getStatus().name())
+                    .viewCount(pr.getViewCount())
+                    .recruitCount(pr.getRecruitCount())
+                    .appliedCount(appliedCount)
+                    .acceptedCount(acceptedCount)
+                    .remainingCount(remainingCount)
+                    .techStacks(techStackDTOs)
+                    .build());
+        }
+        return responses;
+    }
+
     // 구인글 수정
     @Transactional
     public void updateProject(Long id, ProjectRecruitmentRequest request) {

@@ -1,5 +1,7 @@
 package com.potential_radar.PR.project.service;
 
+import com.potential_radar.PR.common.excetpion.AccessDeniedException;
+import com.potential_radar.PR.common.excetpion.DuplicateApplicationException;
 import com.potential_radar.PR.common.excetpion.NotFoundException;
 import com.potential_radar.PR.project.domain.*;
 import com.potential_radar.PR.project.dto.ProjectApplyRequest;
@@ -24,7 +26,7 @@ public class ProjectMemberService {
     // 프로젝트 지원
     @Transactional public void applyProject(Long projectId, ProjectApplyRequest request) {
         if (projectMemberRepository.existsByProject_ProjectIdAndUser_UserId(projectId, request.getUserId())) {
-            throw new IllegalArgumentException("이미 지원하였습니다.");
+            throw new DuplicateApplicationException("이미 지원하였습니다.");
         }
         ProjectRecruitment project = projectRecruitmentRepository.findById(projectId)
                 .orElseThrow(() -> new NotFoundException("프로젝트를 찾을 수 없습니다."));
@@ -65,7 +67,7 @@ public class ProjectMemberService {
 
         // 2. 팀장 검증
         if (!project.getTeamLeader().getUserId().equals(teamLeaderId)) {
-            throw new IllegalArgumentException("팀장만 승인/거절이 가능합니다.");
+            throw new AccessDeniedException("팀장만 승인/거절이 가능합니다.");
         }
 
         // 3. 지원자 찾기
@@ -74,7 +76,7 @@ public class ProjectMemberService {
 
         // 4. 지원자가 해당 프로젝트 소속인지 검증 (보안)
         if (!member.getProject().getProjectId().equals(projectId)) {
-            throw new IllegalArgumentException("잘못된 접근입니다.");
+            throw new AccessDeniedException("잘못된 접근입니다.");
         }
 
         // 5. 상태 변경

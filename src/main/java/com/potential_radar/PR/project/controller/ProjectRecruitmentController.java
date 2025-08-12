@@ -12,6 +12,8 @@ import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
@@ -27,6 +29,13 @@ public class ProjectRecruitmentController {
                 .orElseThrow(() -> new NotFoundException("해당 유저가 존재하지 않습니다."));
         Long id = projectRecruitmentService.createProject(request, user);
         return ResponseEntity.ok(id);
+    }
+
+    // 프로젝트 전체 조회
+    @GetMapping
+    public ResponseEntity<List<ProjectRecruitmentResponse>> getAllProjects() {
+        List<ProjectRecruitmentResponse> response = projectRecruitmentService.getAllProjects();
+        return ResponseEntity.ok(response);
     }
 
     // 구인글 단일 조회

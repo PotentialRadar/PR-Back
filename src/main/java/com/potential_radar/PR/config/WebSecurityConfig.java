@@ -47,27 +47,30 @@ public class WebSecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf->csrf.disable())
+                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/login", "/api/signup", "/api/token",
                                 "/oauth2/**", "/login/oauth2/**", "/api/login/**",
-                                "/api/users/**")
-                       .permitAll()
+                                "/api/users/**").permitAll()
                         .requestMatchers("/api/projects/**").permitAll()
-                        .anyRequest().authenticated())
+                        .anyRequest().authenticated()
+                )
                 .oauth2Login(oauth -> oauth
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(customOAuth2UserService)
                         )
-                        .successHandler(oAuth2SuccessHandler) // ✅ 추가
+                        .successHandler(oAuth2SuccessHandler)
                         .failureUrl("/api/login/fail")
                 )
-
-                .addFilterBefore(tokenAuthenticationFilter(), org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class) // ✅ JWT 필터 등록
+                .addFilterBefore(tokenAuthenticationFilter(), org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
                 .logout(logout -> logout
                         .logoutSuccessUrl("/login")
-                        .invalidateHttpSession(true) //세션 무효화 처리로 보안성 강화.
+                        .invalidateHttpSession(true)
                         .permitAll()
+                )
+                // ⬇CORS 람다식 구성
+                .cors(cors -> cors
+                        .configurationSource(configurationSource())
                 );
         return http.build();
     }
@@ -97,7 +100,7 @@ public class WebSecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
 
         // 🔁 여기만 변경
-        configuration.setAllowedOriginPatterns(List.of("http://localhost:5173")); // or "*"
+        configuration.setAllowedOrigins(List.of("http://localhost:5173")); // or "*"
 
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));

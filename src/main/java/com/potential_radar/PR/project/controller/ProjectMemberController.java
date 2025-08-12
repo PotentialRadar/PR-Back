@@ -1,5 +1,6 @@
 package com.potential_radar.PR.project.controller;
 
+import com.potential_radar.PR.common.excetpion.AccessDeniedException;
 import com.potential_radar.PR.common.excetpion.NotFoundException;
 import com.potential_radar.PR.project.domain.ProjectMember;
 import com.potential_radar.PR.project.domain.ProjectRecruitment;
@@ -43,7 +44,7 @@ public class ProjectMemberController {
         // 2. 팀리더 검사 (userId가 teamLeader의 userId와 같은지)
         if (!project.getTeamLeader().getUserId().equals(userId)) {
             // 403 Forbidden
-            throw new IllegalArgumentException("팀장만 지원자 목록을 볼 수 있습니다."); // 또는 커스텀 예외 던져도 됨
+            throw new AccessDeniedException("팀장만 지원자 목록을 볼 수 있습니다."); // 또는 커스텀 예외 던져도 됨
         }
 
         // 3. 지원자 목록 조회

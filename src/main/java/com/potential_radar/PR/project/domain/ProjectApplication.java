@@ -5,11 +5,11 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "project_member",    uniqueConstraints = {
+@Table(name = "project_application",    uniqueConstraints = {
         @UniqueConstraint(columnNames = {"project_id", "user_id"})
 })
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-public class ProjectMember {
+public class ProjectApplication {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,10 +34,10 @@ public class ProjectMember {
     // 상태(지원, 합류 등)
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private MemberStatus status = MemberStatus.APPLIED;
+    private ApplicationStatus status = ApplicationStatus.PENDING;
 
-    public enum MemberStatus {
-        APPLIED,   // 지원중
+    public enum ApplicationStatus {
+        PENDING,   // 지원중
         ACCEPTED,  // 합류됨
         REJECTED   // 거절
     }

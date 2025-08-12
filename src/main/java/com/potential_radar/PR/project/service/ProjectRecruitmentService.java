@@ -14,7 +14,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class ProjectRecruitmentService {
     private final ProjectRecruitmentRepository projectRecruitmentRepository;
-    private final ProjectMemberRepository projectMemberRepository;
+    private final ProjectApplicationRepository projectApplicationRepository;
     private final ProjectTechStackRepository projectTechStackRepository;
 
     //구인글 생성
@@ -65,11 +65,11 @@ public class ProjectRecruitmentService {
             );
         }
         // 전체 지원자 수
-        int appliedCount = projectMemberRepository.countByProject_ProjectId(pr.getProjectId());
+        int appliedCount = projectApplicationRepository.countByProject_ProjectId(pr.getProjectId());
 
         // 승인된 지원자 수
-        int acceptedCount = projectMemberRepository.countByProject_ProjectIdAndStatus(
-                pr.getProjectId(), ProjectMember.MemberStatus.ACCEPTED);
+        int acceptedCount = projectApplicationRepository.countByProject_ProjectIdAndStatus(
+                pr.getProjectId(), ProjectApplication.ApplicationStatus.ACCEPTED);
 
         // 남은 자리 (모집인원 - 승인된 지원자)
         int remainingCount = pr.getRecruitCount() - acceptedCount;
@@ -106,9 +106,9 @@ public class ProjectRecruitmentService {
                         .build());
             }
 
-            int appliedCount = projectMemberRepository.countByProject_ProjectId(pr.getProjectId());
-            int acceptedCount = projectMemberRepository.countByProject_ProjectIdAndStatus(
-                    pr.getProjectId(), ProjectMember.MemberStatus.ACCEPTED);
+            int appliedCount = projectApplicationRepository.countByProject_ProjectId(pr.getProjectId());
+            int acceptedCount = projectApplicationRepository.countByProject_ProjectIdAndStatus(
+                    pr.getProjectId(), ProjectApplication.ApplicationStatus.ACCEPTED);
 
             int remainingCount = pr.getRecruitCount() - acceptedCount;
 

@@ -1,0 +1,44 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "analysis": {
+      "analyzer": {
+        "korean_analyzer": {
+          "type": "custom",
+          "tokenizer": "nori_tokenizer",
+          "filter": [
+            "lowercase",
+            "nori_part_of_speech",
+            "nori_readingform"
+          ]
+        },
+        "tech_stack_analyzer": {
+          "type": "custom",
+          "tokenizer": "keyword",
+          "filter": [
+            "lowercase",
+            "tech_stack_filter"
+          ]
+        }
+      },
+      "filter": {
+        "tech_stack_filter": {
+          "type": "word_delimiter",
+          "generate_word_parts": true,
+          "generate_number_parts": true,
+          "catenate_words": true,
+          "catenate_numbers": true,
+          "split_on_case_change": true,
+          "split_on_numerics": true
+        }
+      },
+      "tokenizer": {
+        "nori_tokenizer": {
+          "type": "nori_tokenizer",
+          "decompound_mode": "mixed"
+        }
+      }
+    }
+  }
+}

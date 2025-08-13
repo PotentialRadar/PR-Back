@@ -9,7 +9,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class ProjectSearchReq {
+public class ProjectSearchReq {
     // 프로젝트명 키워드 검색
     private String projectName;
 

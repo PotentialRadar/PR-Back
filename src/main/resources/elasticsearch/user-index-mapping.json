@@ -1,0 +1,64 @@
+{
+  "properties": {
+    "userId": {
+      "type": "long"
+    },
+    "nickname": {
+      "type": "text",
+      "analyzer": "korean_analyzer",
+      "fields": {
+        "keyword": {
+          "type": "keyword"
+        },
+        "ngram": {
+          "type": "text",
+          "analyzer": "standard"
+        }
+      }
+    },
+    "techPart": {
+      "type": "keyword"
+    },
+    "techStacks": {
+      "type": "text",
+      "analyzer": "tech_stack_analyzer",
+      "fields": {
+        "keyword": {
+          "type": "keyword"
+        }
+      }
+    },
+    "introduction": {
+      "type": "text",
+      "analyzer": "korean_analyzer"
+    },
+    "profileImage": {
+      "type": "keyword",
+      "index": false
+    },
+    "githubUrl": {
+      "type": "keyword",
+      "index": false
+    },
+    "region": {
+      "type": "text",
+      "analyzer": "korean_analyzer",
+      "fields": {
+        "keyword": {
+          "type": "keyword"
+        }
+      }
+    },
+    "isSearchable": {
+      "type": "boolean"
+    },
+    "createdAt": {
+      "type": "date",
+      "format": "yyyy-MM-dd'T'HH:mm:ss.SSS"
+    },
+    "updatedAt": {
+      "type": "date",
+      "format": "yyyy-MM-dd'T'HH:mm:ss.SSS"
+    }
+  }
+}

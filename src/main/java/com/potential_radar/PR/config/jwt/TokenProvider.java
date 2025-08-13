@@ -1,9 +1,9 @@
 package com.potential_radar.PR.config.jwt;
 
-import com.potential_radar.PR.config.oauth.CustomUserDetails;
 import com.potential_radar.PR.user.model.User;
-import com.potential_radar.PR.user.repository.UserRepository;
 import io.jsonwebtoken.*;
+import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -11,6 +11,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.Key;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Date;
@@ -21,12 +23,25 @@ import java.util.Set;
 @Slf4j
 public class TokenProvider {
     private final JwtProperties jwtProperties;
-    private final UserRepository userRepository;
+    private Key secretKey;
 
+    @PostConstruct
+    public void init() {
+        byte[] keyBytes = jwtProperties.getSecretKey().getBytes(StandardCharsets.UTF_8);
+        this.secretKey = Keys.hmacShaKeyFor(keyBytes);
+    }
 
     public String generateToken(User user, Duration expiredAt) {
         Date now = new Date();
         return makeToken(new Date(now.getTime()+ expiredAt.toMillis()), user);
+    }
+
+    public String generateAccessToken(User user) {
+        return generateToken(user, Duration.ofMillis(jwtProperties.getAccessTokenExpiration()));
+    }
+
+    public String generateRefreshToken(User user) {
+        return generateToken(user, Duration.ofMillis(jwtProperties.getRefreshTokenExpiration()));
     }
 
     // JWT 토큰 생성 메서드
@@ -40,7 +55,7 @@ public class TokenProvider {
                 .setExpiration(expiredAt)
                 .setSubject(user.getEmail())
                 .claim("id", user.getUserId())
-                .signWith(SignatureAlgorithm.HS256, jwtProperties.getSecretKey())
+                .signWith(secretKey, SignatureAlgorithm.HS256)
                 .compact();
     }
 
@@ -49,20 +64,23 @@ public class TokenProvider {
     public boolean validToken(String token) {
         try {
             Jwts.parser()
-                    .setSigningKey(jwtProperties.getSecretKey())
+                    .setSigningKey(secretKey)
                     .parseClaimsJws(token);
 
             return true;
         }catch (ExpiredJwtException e) {
-            // 만료된 토큰 로깅
-            log.warn("⚠️ Token expired : {}",e.getMessage());
+            log.warn("⚠️ Expired JWT token: {}", e.getMessage());
             return false;
-        }catch(JwtException e) {
-            // JWT 관련 예외 로깅
-            log.warn("❌ Token invalid : {}",e.getMessage());
+        } catch (SecurityException | MalformedJwtException e) {
+            log.warn("❌ Malformed JWT token: {}", e.getMessage());
             return false;
-        }catch(Exception e) {
-            // 예상치 못한 예외 로깅
+        } catch (UnsupportedJwtException e) {
+            log.warn("Unsupported JWT token: {}", e.getMessage());
+            return false;
+        } catch (IllegalArgumentException e) {
+            log.warn("JWT claims string is empty: {}", e.getMessage());
+            return false;
+        } catch(Exception e) {
             log.error("🔥 Unexpected error during token validation : {}",e.getMessage());
             return false;
         }
@@ -71,20 +89,10 @@ public class TokenProvider {
     // 토큰 기반으로 인증 정보를 가져오는 메서드
     public Authentication getAuthentication(String token) {
         Claims claims = getClaims(token);
-        String email = claims.getSubject();
+        // 토큰에서 권한 정보를 추출하거나 사용자별 권한 조회
+        Set<SimpleGrantedAuthority> authorities = Collections.singleton(new SimpleGrantedAuthority("ROLE_USER"));
 
-        // ✅ DB에서 사용자 조회
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("유저를 찾을 수 없습니다."));
-
-        // ✅ CustomUserDetails 생성
-        CustomUserDetails userDetails = new CustomUserDetails(user);
-
-        return new UsernamePasswordAuthenticationToken(
-                userDetails,
-                null,
-                userDetails.getAuthorities()
-        );
+        return new UsernamePasswordAuthenticationToken(new org.springframework.security.core.userdetails.User(claims.getSubject(),"",authorities), null, authorities);
     }
 
     // 토큰 기반으로 유저 ID를 가져오는 메서드
@@ -97,7 +105,7 @@ public class TokenProvider {
     private Claims getClaims(String token) {
         try{
             return Jwts.parser()
-                    .setSigningKey(jwtProperties.getSecretKey())
+                    .setSigningKey(secretKey)
                     .parseClaimsJws(token)
                     .getBody();
         }catch (JwtException e) {

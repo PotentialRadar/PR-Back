@@ -28,6 +28,7 @@ public class ProjectRecruitmentService {
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
                 .fileUrl(request.getFileUrl())
+                .recruitCount(request.getRecruitCount() != null ? request.getRecruitCount() : 0)
                 .status(ProjectStatus.RECRUITING)
                 .build();
 

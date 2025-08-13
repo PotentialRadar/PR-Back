@@ -14,7 +14,7 @@ model.fit(X_train, y_train)
 # 모델 저장 경로 생성
 os.makedirs("model", exist_ok=True)
 
-# 모델 저장
+# 모델 저장 #
 joblib.dump(model, "model/recommender.pkl")
 
 print("✅ 모델 학습 및 저장 완료: model/recommender.pkl")

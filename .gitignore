@@ -1,3 +1,4 @@
+# Build files
 HELP.md
 .gradle
 build/
@@ -36,10 +37,25 @@ out/
 ### VS Code ###
 .vscode/
 
+### Configuration - IMPORTANT ###
+# Spring Boot config
 src/main/resources/application.yml
+# Python config
+.env
+
+### OS Files ###
 .DS_Store
 ._.DS_Store
 **/.DS_Store
 **/._.DS_Store
 
+### Python ###
+# Virtual Environment
 venv/
+# Python Cache
+__pycache__/
+*.pyc
+
+### AI Model Files ###
+# Trained models (use Git LFS or exclude)
+*.pkl

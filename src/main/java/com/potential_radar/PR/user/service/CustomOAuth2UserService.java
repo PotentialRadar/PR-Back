@@ -1,6 +1,6 @@
 package com.potential_radar.PR.user.service;
 
-import com.potential_radar.PR.user.model.User;
+import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.oauth.Google2UserInfo;
 import com.potential_radar.PR.user.oauth.Kakao2UserInfo;
 import com.potential_radar.PR.user.oauth.OAuth2UserInfo;

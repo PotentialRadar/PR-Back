@@ -1,16 +1,20 @@
 package com.potential_radar.PR.project.domain;
 
+import com.potential_radar.PR.common.entity.TechPart;
 import com.potential_radar.PR.common.entity.TechStack;
 import jakarta.persistence.*;
 import lombok.*;
 
-@Entity
-@Table(name = "project_tech_stack")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-public class ProjectTechStack {
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class ProjectTechPart {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long projectTechStackId;
+    private Long projectTechPartId;
 
     // 연관관계
     @ManyToOne(fetch = FetchType.LAZY)
@@ -18,8 +22,9 @@ public class ProjectTechStack {
     private ProjectRecruitment project;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tech_stack_id")
-    private TechStack techStack; // 예: Java, Spring, Vue
+    @JoinColumn(name = "tech_part_id")
+    private TechPart techPart; // 예: 백엔드, 프론트엔드, 모바일 등
 
-
+    @Column(nullable = false)
+    private Integer recruitCount; // 기술별 정원
 }

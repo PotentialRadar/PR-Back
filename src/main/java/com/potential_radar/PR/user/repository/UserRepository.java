@@ -1,6 +1,6 @@
 package com.potential_radar.PR.user.repository;
 
-import com.potential_radar.PR.user.model.User;
+import com.potential_radar.PR.user.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

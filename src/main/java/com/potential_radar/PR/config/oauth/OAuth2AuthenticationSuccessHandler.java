@@ -1,7 +1,7 @@
 package com.potential_radar.PR.config.oauth;
 
 import com.potential_radar.PR.config.jwt.TokenProvider;
-import com.potential_radar.PR.user.model.User;
+import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.repository.UserRepository;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;

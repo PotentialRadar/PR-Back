@@ -1,6 +1,6 @@
 package com.potential_radar.PR.user.service;
 
-import com.potential_radar.PR.user.model.EmailVerification;
+import com.potential_radar.PR.user.domain.EmailVerification;
 import com.potential_radar.PR.user.repository.EmailVerificationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.mail.SimpleMailMessage;

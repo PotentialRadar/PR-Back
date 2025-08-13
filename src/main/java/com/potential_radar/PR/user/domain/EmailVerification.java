@@ -1,9 +1,8 @@
-package com.potential_radar.PR.user.model;
+package com.potential_radar.PR.user.domain;
 
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.cglib.core.Local;
 
 import java.time.LocalDateTime;
 

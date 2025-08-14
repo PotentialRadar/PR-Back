@@ -56,8 +56,7 @@ public class WebSecurityConfig {
                                 "/oauth2/**",
                                 "/login/oauth2/**",
                                 "/api/login/**",
-                                "/api/users/**",
-                                "/api/recommend/**"
+                                "/api/users/**"
                         )
                         .permitAll()
                         .requestMatchers("/api/projects/**").permitAll()

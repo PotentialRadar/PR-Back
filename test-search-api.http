@@ -1,0 +1,104 @@
+### Search API Test Script
+### 포트 8087에서 실행 중인 애플리케이션 테스트
+
+### 1. Health Check - Elasticsearch 연결 확인
+GET http://localhost:8087/api/health/elasticsearch
+Accept: application/json
+
+###
+
+### 2. Health Check - Database 연결 확인  
+GET http://localhost:8087/api/health/database
+Accept: application/json
+
+###
+
+### 3. 데이터 동기화 - 모든 데이터
+POST http://localhost:8087/api/search/admin/sync/all
+Content-Type: application/json
+
+###
+
+### 4. 데이터 동기화 - 유저만
+POST http://localhost:8087/api/search/admin/sync/users
+Content-Type: application/json
+
+###
+
+### 5. 데이터 동기화 - 프로젝트만
+POST http://localhost:8087/api/search/admin/sync/projects
+Content-Type: application/json
+
+###
+
+### 6. 유저 검색 - 전체
+GET http://localhost:8087/api/search/users
+Accept: application/json
+
+###
+
+### 7. 유저 검색 - 닉네임으로
+GET http://localhost:8087/api/search/users?nickname=testuser1
+Accept: application/json
+
+###
+
+### 8. 유저 검색 - 기술 파트로
+GET http://localhost:8087/api/search/users?techPart=Backend
+Accept: application/json
+
+###
+
+### 9. 유저 검색 - 기술 스택으로
+GET http://localhost:8087/api/search/users?techStacks=Java&techStacks=Spring
+Accept: application/json
+
+###
+
+### 10. 프로젝트 검색 - 전체
+GET http://localhost:8087/api/search/projects
+Accept: application/json
+
+###
+
+### 11. 프로젝트 검색 - 프로젝트명으로
+GET http://localhost:8087/api/search/projects?projectName=테스트
+Accept: application/json
+
+###
+
+### 12. 프로젝트 검색 - 기술 스택으로
+GET http://localhost:8087/api/search/projects?techStacks=Spring&techStacks=React
+Accept: application/json
+
+###
+
+### 13. 프로젝트 검색 - 필요 기술 파트로
+GET http://localhost:8087/api/search/projects?requiredTechParts=Backend
+Accept: application/json
+
+###
+
+### 14. 통합 검색 - 전체
+GET http://localhost:8087/api/search/unified?keyword=test
+Accept: application/json
+
+###
+
+### 15. 통합 검색 - 유저만
+GET http://localhost:8087/api/search/unified?keyword=testuser&searchType=user
+Accept: application/json
+
+###
+
+### 16. 통합 검색 - 프로젝트만
+GET http://localhost:8087/api/search/unified?keyword=프로젝트&searchType=project
+Accept: application/json
+
+###
+
+### 17. 통합 검색 - 기술 스택 필터 적용
+GET http://localhost:8087/api/search/unified?keyword=개발&techStacks=Java&techStacks=Spring
+Accept: application/json
+
+###

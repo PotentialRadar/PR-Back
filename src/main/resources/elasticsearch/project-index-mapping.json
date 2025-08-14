@@ -48,12 +48,12 @@
       }
     },
     "createdAt": {
-      "type": "date",
-      "format": "yyyy-MM-dd'T'HH:mm:ss.SSS"
+      "type": "text",
+      "index": false
     },
     "updatedAt": {
-      "type": "date",
-      "format": "yyyy-MM-dd'T'HH:mm:ss.SSS"
+      "type": "text",
+      "index": false
     }
   }
 }

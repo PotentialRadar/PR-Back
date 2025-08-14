@@ -2,7 +2,6 @@ package com.potential_radar.PR.search.dto;
 
 import lombok.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -19,7 +18,7 @@ public class ProjectSearchRes {
     private String status;
     private Long ownerId;
     private String ownerNickname;
-    private LocalDateTime createdAt;
+    private String createdAt;
 
     // 검색 관련
     private Double matchScore;

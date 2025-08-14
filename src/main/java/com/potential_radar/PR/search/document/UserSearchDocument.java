@@ -4,7 +4,6 @@ import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Document(indexName = "users")
@@ -48,9 +47,9 @@ public class UserSearchDocument {
     @Field(type = FieldType.Boolean)
     private Boolean isSearchable = true;
 
-    @Field(type = FieldType.Date)
-    private LocalDateTime createdAt;
+    @Field(type = FieldType.Text, index = false)
+    private String createdAt;
 
-    @Field(type = FieldType.Date)
-    private LocalDateTime updatedAt;
+    @Field(type = FieldType.Text, index = false)
+    private String updatedAt;
 }

@@ -55,4 +55,28 @@ public class SearchController {
         SearchResult<ProjectSearchRes> result = searchService.searchProjects(request);
         return ResponseEntity.ok(result);
     }
+
+    @GetMapping("/unified")
+    public ResponseEntity<UnifiedSearchRes> unifiedSearch(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "all") String searchType,
+            @RequestParam(required = false) List<String> techStacks,
+            @RequestParam(required = false) String techPart,
+            @RequestParam(required = false) List<String> requiredTechParts,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        UnifiedSearchReq request = UnifiedSearchReq.builder()
+                .keyword(keyword)
+                .searchType(searchType)
+                .techStacks(techStacks)
+                .techPart(techPart)
+                .requiredTechParts(requiredTechParts)
+                .page(page)
+                .size(size)
+                .build();
+
+        UnifiedSearchRes result = searchService.unifiedSearch(request);
+        return ResponseEntity.ok(result);
+    }
 }

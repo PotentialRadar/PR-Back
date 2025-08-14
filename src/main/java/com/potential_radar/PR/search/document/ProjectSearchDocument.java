@@ -4,7 +4,6 @@ import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 
@@ -46,9 +45,9 @@ public class ProjectSearchDocument {
     @Field(type = FieldType.Text, analyzer = "korean_analyzer")
     private String ownerNickname;
 
-    @Field(type = FieldType.Date)
-    private LocalDateTime createdAt;
+    @Field(type = FieldType.Text, index = false)
+    private String createdAt;
 
-    @Field(type = FieldType.Date)
-    private LocalDateTime updatedAt;
+    @Field(type = FieldType.Text, index = false)
+    private String updatedAt;
 }

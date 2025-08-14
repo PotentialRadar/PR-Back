@@ -17,6 +17,7 @@ import org.springframework.data.elasticsearch.core.query.CriteriaQuery;
 import org.springframework.stereotype.Service;
 
 import org.springframework.data.elasticsearch.core.query.Query;
+import org.springframework.data.domain.Sort;
 
 
 import java.util.List;
@@ -35,7 +36,6 @@ public class SearchService {
     public SearchResult<UserSearchRes> searchUsers(UserSearchReq request) {
         long startTime = System.currentTimeMillis();
 
-        // ✅ Criteria 방식으로 변경 (Spring Boot 3.x 호환)
         Criteria criteria = new Criteria();
 
         // 검색 허용된 사용자만
@@ -51,11 +51,15 @@ public class SearchService {
             criteria = criteria.and("techPart").is(request.getTechPart());
         }
 
-        // 기술 스택 검색
+        // 기술 스택 검색 (부분 일치 및 정확 일치 모두 지원)
         if (request.getTechStacks() != null && !request.getTechStacks().isEmpty()) {
             Criteria techStackCriteria = null;
             for (String techStack : request.getTechStacks()) {
-                Criteria stackCriteria = new Criteria("techStacks").contains(techStack);
+                // 정확 일치와 부분 일치 모두 고려
+                Criteria exactMatch = new Criteria("techStacks.keyword").is(techStack);
+                Criteria partialMatch = new Criteria("techStacks").contains(techStack.toLowerCase());
+                Criteria stackCriteria = exactMatch.or(partialMatch);
+                
                 techStackCriteria = (techStackCriteria == null) ? stackCriteria : techStackCriteria.or(stackCriteria);
             }
             if (techStackCriteria != null) {
@@ -63,7 +67,13 @@ public class SearchService {
             }
         }
 
-        Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
+        // 점수와 생성일시 기준으로 정렬
+        Sort sort = Sort.by(
+                Sort.Order.desc("_score"),
+                Sort.Order.desc("createdAt")
+        );
+        
+        Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
 
         Query query = new CriteriaQuery(criteria).setPageable(pageable);
 
@@ -98,11 +108,15 @@ public class SearchService {
             criteria = criteria.and("projectName").contains(request.getProjectName());
         }
 
-        // 기술 스택 검색
+        // 기술 스택 검색 (부분 일치 및 정확 일치 모두 지원)
         if (request.getTechStacks() != null && !request.getTechStacks().isEmpty()) {
             Criteria techStackCriteria = null;
             for (String techStack : request.getTechStacks()) {
-                Criteria stackCriteria = new Criteria("techStacks").contains(techStack);
+                // 정확 일치와 부분 일치 모두 고려
+                Criteria exactMatch = new Criteria("techStacks.keyword").is(techStack);
+                Criteria partialMatch = new Criteria("techStacks").contains(techStack.toLowerCase());
+                Criteria stackCriteria = exactMatch.or(partialMatch);
+                
                 techStackCriteria = (techStackCriteria == null) ? stackCriteria : techStackCriteria.or(stackCriteria);
             }
             if (techStackCriteria != null) {
@@ -122,7 +136,13 @@ public class SearchService {
             }
         }
 
-        Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
+        // 점수와 생성일시 기준으로 정렬
+        Sort sort = Sort.by(
+                Sort.Order.desc("_score"),
+                Sort.Order.desc("createdAt")
+        );
+        
+        Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
 
         Query query = new CriteriaQuery(criteria).setPageable(pageable);
 
@@ -175,6 +195,43 @@ public class SearchService {
                 .ownerNickname(doc.getOwnerNickname())
                 .createdAt(doc.getCreatedAt())
                 .matchScore((double) hit.getScore())
+                .build();
+    }
+
+    public UnifiedSearchRes unifiedSearch(UnifiedSearchReq request) {
+        long startTime = System.currentTimeMillis();
+        
+        SearchResult<UserSearchRes> userResults = null;
+        SearchResult<ProjectSearchRes> projectResults = null;
+        
+        if ("all".equals(request.getSearchType()) || "user".equals(request.getSearchType())) {
+            UserSearchReq userReq = UserSearchReq.builder()
+                    .nickname(request.getKeyword())
+                    .techPart(request.getTechPart())
+                    .techStacks(request.getTechStacks())
+                    .page(request.getPage())
+                    .size(request.getSize())
+                    .build();
+            userResults = searchUsers(userReq);
+        }
+        
+        if ("all".equals(request.getSearchType()) || "project".equals(request.getSearchType())) {
+            ProjectSearchReq projectReq = ProjectSearchReq.builder()
+                    .projectName(request.getKeyword())
+                    .techStacks(request.getTechStacks())
+                    .requiredTechParts(request.getRequiredTechParts())
+                    .page(request.getPage())
+                    .size(request.getSize())
+                    .build();
+            projectResults = searchProjects(projectReq);
+        }
+        
+        long totalSearchTime = System.currentTimeMillis() - startTime;
+        
+        return UnifiedSearchRes.builder()
+                .users(userResults)
+                .projects(projectResults)
+                .totalSearchTimeMs(totalSearchTime)
                 .build();
     }
 }

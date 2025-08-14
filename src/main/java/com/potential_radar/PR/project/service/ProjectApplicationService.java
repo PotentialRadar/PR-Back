@@ -36,7 +36,7 @@ public class ProjectApplicationService {
                 .project(project)
                 .user(user)
                 .status(ProjectApplication.ApplicationStatus.PENDING)
-                .techStack(request.getTechStack())
+                .techPart(request.getTechPart())
                 .applicationMessage(request.getApplicationMessage())
                 .build();
         ProjectApplicationRepository.save(member);
@@ -51,7 +51,7 @@ public class ProjectApplicationService {
                         .id(member.getId())
                         .userId(member.getUser().getUserId())
                         .userName(member.getUser().getName()) // 필요하다면
-                        .techStack(member.getTechStack())      // 엔티티에 필드 있으면
+                        .techPart(member.getTechPart())      // 엔티티에 필드 있으면
                         .applicationMessage(member.getApplicationMessage())
                         .status(member.getStatus().name())
                         .build())
@@ -87,6 +87,5 @@ public class ProjectApplicationService {
         } else {
             throw new IllegalArgumentException("유효하지 않은 상태값입니다.");
         }
-        // 저장 생략: JPA dirty checking
     }
 }

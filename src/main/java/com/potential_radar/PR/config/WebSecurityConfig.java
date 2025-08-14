@@ -102,7 +102,7 @@ public class WebSecurityConfig {
         // 🔁 여기만 변경
         configuration.setAllowedOrigins(List.of("http://localhost:5173")); // or "*"
 
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH","DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true); // ✅ 쿠키 전달 위해 반드시 필요
 

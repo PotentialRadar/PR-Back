@@ -25,8 +25,8 @@ public class ProjectApplication {
     @JoinColumn(name = "user_id")
     private User user;
 
-    @Column(name = "tech_stack")
-    private String techStack;
+    @Column(name = "tech_part")
+    private String techPart;
 
     @Column(name = "application_message", length = 255)
     private String applicationMessage;

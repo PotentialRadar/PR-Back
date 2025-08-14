@@ -5,6 +5,7 @@ import com.potential_radar.PR.config.jwt.TokenProvider;
 import com.potential_radar.PR.user.dto.LoginResponse;
 import com.potential_radar.PR.user.dto.UserLoginRequest;
 import com.potential_radar.PR.user.dto.UserSignupRequest;
+import com.potential_radar.PR.user.model.Provider;
 import com.potential_radar.PR.user.model.User;
 import com.potential_radar.PR.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
@@ -32,12 +33,8 @@ public class UserServiceImpl implements UserService {
         User user = User.builder()
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
-                .name(request.name())
                 .nickname(request.nickname())
-                .isPortfolioOpen(false) //초기 기본값
-                .provider(User.Provider.LOCAL)
-                .reputationScore(null)
-                .reviewCount(0)
+                .provider(Provider.EMAIL)
                 .build();
 
 

@@ -50,7 +50,6 @@ public class ProjectApplicationService {
                 .map(member -> ProjectApplicationResponseDTO.builder()
                         .id(member.getId())
                         .userId(member.getUser().getUserId())
-                        .userName(member.getUser().getName()) // 필요하다면
                         .techPart(member.getTechPart())      // 엔티티에 필드 있으면
                         .applicationMessage(member.getApplicationMessage())
                         .status(member.getStatus().name())

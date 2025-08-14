@@ -1,5 +1,6 @@
 package com.potential_radar.PR.user.service;
 
+import com.potential_radar.PR.user.model.Provider;
 import com.potential_radar.PR.user.model.User;
 import com.potential_radar.PR.user.oauth.Google2UserInfo;
 import com.potential_radar.PR.user.oauth.Kakao2UserInfo;
@@ -51,14 +52,9 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         return userRepository.findByEmail(userInfo.getEmail())
                 .orElseGet(() -> userRepository.save(User.builder()
                         .email(userInfo.getEmail())
-                        .name(userInfo.getName())
                         .nickname(userInfo.getName()) // 초기 닉네임 설정
-                        .provider(User.Provider.valueOf(userInfo.getProvider().toUpperCase()))
+                        .provider(Provider.valueOf(userInfo.getProvider().toUpperCase()))
                         .providerUserId(userInfo.getProviderId())
-                        .isPortfolioOpen(false) // 기본값 설정
-                        .profileImage(null)     // 필요시 설정
-                        .reputationScore(null)  // @PrePersist에서 0으로 초기화
-                        .reviewCount(0)
                         .build()));
     }
 

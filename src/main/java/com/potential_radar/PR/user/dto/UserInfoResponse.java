@@ -5,17 +5,13 @@ import com.potential_radar.PR.user.model.User;
 public record UserInfoResponse(
         Long id,
         String email,
-        String nickname,
-        String name,
-        String profileImage
+        String nickname
 ) {
     public UserInfoResponse(User user) {
         this(
                 user.getUserId(),
                 user.getEmail(),
-                user.getNickname(),
-                user.getName(),
-                user.getProfileImage()
+                user.getNickname()
         );
     }
 }

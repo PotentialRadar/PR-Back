@@ -1,6 +1,7 @@
 package com.potential_radar.PR.user.service;
 
 import com.potential_radar.PR.user.model.EmailVerification;
+import com.potential_radar.PR.user.model.Provider;
 import com.potential_radar.PR.user.model.User;
 import com.potential_radar.PR.user.repository.EmailVerificationRepository;
 import com.potential_radar.PR.user.repository.UserRepository;
@@ -28,7 +29,7 @@ public class EmailAuthService {
 
     public void validateAndSendCode(String email) {
         userRepository.findByEmail(email).ifPresent(user -> {
-            if (user.getProvider() != User.Provider.LOCAL) {
+            if (user.getProvider() != Provider.EMAIL) {
                 throw new IllegalArgumentException("이미 " + user.getProvider().name() + " 계정으로 가입된 이메일입니다. 소셜 로그인을 이용해주세요.");
             } else {
                 throw new IllegalArgumentException("이미 가입된 이메일입니다.");

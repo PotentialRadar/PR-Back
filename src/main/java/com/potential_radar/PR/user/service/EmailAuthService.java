@@ -26,7 +26,6 @@ public class EmailAuthService {
     @Value("${email.verification.expiration-minutes:3}")
     private long expirationMinutes;
 
-    @Transactional(readOnly = true)
     public void validateAndSendCode(String email) {
         userRepository.findByEmail(email).ifPresent(user -> {
             if (user.getProvider() != User.Provider.LOCAL) {

@@ -69,8 +69,4 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("로그아웃 처리 중 오류가 발생했습니다");
         }
     }
-
-    // 모든 인증이 필요한 요청에선 Authorization: Bearer {AccessToken} 헤더 사용
-
-
 }

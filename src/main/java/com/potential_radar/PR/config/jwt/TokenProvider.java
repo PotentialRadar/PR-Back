@@ -4,6 +4,7 @@ import com.potential_radar.PR.user.model.User;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -21,6 +22,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 @Service
 @Slf4j
+@Getter
 public class TokenProvider {
     private final JwtProperties jwtProperties;
     private Key secretKey;
@@ -38,10 +40,6 @@ public class TokenProvider {
 
     public String generateAccessToken(User user) {
         return generateToken(user, Duration.ofMillis(jwtProperties.getAccessTokenExpiration()));
-    }
-
-    public String generateRefreshToken(User user) {
-        return generateToken(user, Duration.ofMillis(jwtProperties.getRefreshTokenExpiration()));
     }
 
     // JWT 토큰 생성 메서드

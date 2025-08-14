@@ -12,13 +12,12 @@ import os
 
 router = APIRouter()
 
-# 모델 로드 (없으면 None) - 향상된 알고리즘 테스트를 위해 일시적으로 비활성화
+# 모델 로드 (향상된 알고리즘으로 훈련된 모델)
 current_dir = os.path.dirname(__file__)
 model_path = os.path.join(current_dir, "../model/recommender.pkl")
 try:
-    # model = joblib.load(model_path)  # 일시적으로 주석 처리
-    model = None  # 향상된 룰 기반 알고리즘 사용을 위해 강제로 None 설정
-    print(f"향상된 룰 기반 알고리즘을 사용합니다 (ML 모델 비활성화)")
+    model = joblib.load(model_path)
+    print(f"향상된 ML 모델을 성공적으로 로드했습니다: {model_path}")
 except Exception as e:
     print(f"모델 로드 실패({model_path}): {e}")
     model = None

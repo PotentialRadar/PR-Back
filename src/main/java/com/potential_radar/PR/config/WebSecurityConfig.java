@@ -49,29 +49,33 @@ public class WebSecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/login", "/api/signup", "/api/token",
-                                "/oauth2/**", "/login/oauth2/**", "/api/login/**",
-                                "/api/users/**").permitAll()
+                        .requestMatchers(
+                                "/api/login",
+                                "/api/signup",
+                                "/api/token",
+                                "/oauth2/**",
+                                "/login/oauth2/**",
+                                "/api/login/**",
+                                "/api/users/**",
+                                "/api/recommend/**"
+                        )
+                        .permitAll()
                         .requestMatchers("/api/projects/**").permitAll()
-                        .anyRequest().authenticated()
-                )
+                        .anyRequest().authenticated())
                 .oauth2Login(oauth -> oauth
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(customOAuth2UserService)
                         )
-                        .successHandler(oAuth2SuccessHandler)
+                        .successHandler(oAuth2SuccessHandler) // ✅ 추가
                         .failureUrl("/api/login/fail")
                 )
-                .addFilterBefore(tokenAuthenticationFilter(), org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
+
+                .addFilterBefore(tokenAuthenticationFilter(), org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class) // ✅ JWT 필터 등록
                 .logout(logout -> logout
                         .logoutSuccessUrl("/login")
-                        .invalidateHttpSession(true)
+                        .invalidateHttpSession(true) //세션 무효화 처리로 보안성 강화.
                         .permitAll()
                 )
-                // ⬇CORS 람다식 구성
-                .cors(cors -> cors
-                        .configurationSource(configurationSource())
-                );
         return http.build();
     }
 
@@ -96,15 +100,13 @@ public class WebSecurityConfig {
     }
 
     @Bean
-    public CorsConfigurationSource configurationSource(){
+    public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-
-        // 🔁 여기만 변경
-        configuration.setAllowedOrigins(List.of("http://localhost:5173")); // or "*"
-
+        configuration.setAllowedOriginPatterns(List.of("http://localhost:5173")); // 또는 setAllowedOrigins
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH","DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
-        configuration.setAllowCredentials(true); // ✅ 쿠키 전달 위해 반드시 필요
+        configuration.setExposedHeaders(List.of("Authorization", "Set-Cookie")); // JWT, 쿠키 헤더 허용 시
+        configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

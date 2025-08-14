@@ -27,8 +27,8 @@ public class AuthController {
     private final EmailAuthService emailAuthService;
 
     @PostMapping("/send-code")
-    public ResponseEntity<Void> sendVerificationCode(@Valid @RequestBody EmailRequest request) {
-        emailAuthService.sendVerificationCode(request.getEmail());
+    public ResponseEntity<?> sendVerificationCode(@Valid @RequestBody EmailRequest request) {
+        emailAuthService.validateAndSendCode(request.getEmail());
         return ResponseEntity.ok().build();
     }
 
@@ -39,7 +39,7 @@ public class AuthController {
     }
 
     @GetMapping("/check-nickname")
-    public ResponseEntity<Map<String, Boolean>> checkNickname(@RequestParam @NotBlank @Size(min = 2, max = 20) String nickname) {        boolean duplicate = userService.existsByNickName(nickname);
+    public ResponseEntity<Map<String, Boolean>> checkNickname(@RequestParam @NotBlank @Size(min = 2, max = 20) String nickname) {        boolean duplicate = userService.existsbynickname(nickname);
         return ResponseEntity.ok(Map.of("duplicate", duplicate));
 
     }

@@ -1,19 +1,16 @@
 package com.potential_radar.PR.user.service;
 
+import com.potential_radar.PR.common.excetpion.NotFoundException;
 import com.potential_radar.PR.config.jwt.TokenProvider;
 import com.potential_radar.PR.user.dto.LoginResponse;
 import com.potential_radar.PR.user.dto.UserLoginRequest;
 import com.potential_radar.PR.user.dto.UserSignupRequest;
-import com.potential_radar.PR.user.model.RefreshToken;
 import com.potential_radar.PR.user.model.User;
-import com.potential_radar.PR.user.repository.RefreshTokenRepository;
 import com.potential_radar.PR.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import java.time.Duration;
 
 
 @Service
@@ -24,7 +21,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenProvider tokenProvider;
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final RefreshTokenService refreshTokenService;
 
     @Override
     public User register(UserSignupRequest request) {
@@ -41,7 +38,7 @@ public class UserServiceImpl implements UserService {
                 .provider(User.Provider.LOCAL)
                 .reputationScore(null)
                 .reviewCount(0)
-        .build();
+                .build();
 
 
         return userRepository.save(user);
@@ -53,17 +50,17 @@ public class UserServiceImpl implements UserService {
     }
 
     public User findById(Long userId){
-        return userRepository.findById(userId).orElseThrow(()->new IllegalArgumentException("Unexpected User"));
+        return userRepository.findById(userId).orElseThrow(()->new NotFoundException("사용자를 찾을 수 없습니다. ID: " + userId));
     }
 
     @Override
     public User findByEmail(String email) {
-        return userRepository.findByEmail(email).orElseThrow(()->new IllegalArgumentException("Unexpected User"));
+        return userRepository.findByEmail(email).orElseThrow(()->new NotFoundException("사용자를 찾을 수 없습니다. 이메일: " + email));
     }
 
     @Override
     public LoginResponse login(UserLoginRequest request) {
-         // 1. 이메일로 유저 조회
+        // 1. 이메일로 유저 조회
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(()->new IllegalArgumentException("존재하지 않는 사용자입니다."));
 
@@ -72,24 +69,18 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
         }
 
-        // 3. 토큰 발급
-        String accessToken = tokenProvider.generateToken(user, Duration.ofMinutes(30));
-        String refreshToken = tokenProvider.generateToken(user, Duration.ofDays(14));
-
-        // 4. refreshToken 저장 또는 갱신
-        refreshTokenRepository.findByUserId(user.getUserId())
-                .ifPresentOrElse(
-                        rt -> rt.update(refreshToken),
-                        ()-> refreshTokenRepository.save(new RefreshToken(user.getUserId(), refreshToken))
-                );
+        // 3. 액세스 토큰 생성 (만료 시간은 JwtProperties에서 관리)
+        String accessToken = tokenProvider.generateAccessToken(user);
+        // 4. 리프레시 토큰 생성 및 저장 (UUID 기반, 로직은 RefreshTokenService에 위임)
+        String refreshToken = refreshTokenService.createAndSaveRefreshToken(user);
 
         // 5. 응답 반환
         return new LoginResponse(accessToken, refreshToken);
     }
 
     @Override
-    public boolean existsByNickName(String nickName) {
-        return userRepository.existsByNickname(nickName);
+    public boolean existsbynickname(String nickname) {
+        return userRepository.existsByNickname(nickname);
     }
 
 

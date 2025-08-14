@@ -5,6 +5,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
+
 @Entity
 @Table(name = "refresh_tokens")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -21,13 +23,23 @@ public class RefreshToken {
     @Column(name="refresh_token", nullable = false)
     private String refreshToken;
 
-    public RefreshToken(Long userId, String refreshToken) {
+    @Column(name="expiry_date", nullable = false)
+    private Instant expiryDate;
+
+    public RefreshToken(Long userId, String refreshToken, Instant expiryDate) {
         this.userId = userId;
         this.refreshToken = refreshToken;
+        this.expiryDate = expiryDate;
     }
 
-    public RefreshToken update(String newRefreshToken) {
+    public RefreshToken update(String newRefreshToken, Instant newExpiryDate) {
         this.refreshToken = newRefreshToken;
+        this.expiryDate = newExpiryDate;
         return this;
+    }
+
+    public boolean isExpired(){
+
+        return this.expiryDate.isBefore(Instant.now());
     }
 }

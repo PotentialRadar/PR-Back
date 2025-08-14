@@ -7,6 +7,7 @@ import com.potential_radar.PR.user.model.User;
 import com.potential_radar.PR.user.repository.RefreshTokenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
@@ -18,8 +19,8 @@ public class TokenService {
     private final UserService userService;
     private final RefreshTokenRepository refreshTokenRepository;
 
-    @Transactional
-    public String createNewAccessToken(String refreshToken){
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public String createNewAccessToken(String refreshToken) {
         // DB에서 리프레시 토큰을 찾아 유효성 검증
         RefreshToken foundRefreshToken = refreshTokenService.findByRefreshToken(refreshToken);
 

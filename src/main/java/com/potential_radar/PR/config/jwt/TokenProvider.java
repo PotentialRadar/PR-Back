@@ -29,13 +29,19 @@ public class TokenProvider {
 
     @PostConstruct
     public void init() {
+        if (jwtProperties.getSecretKey() == null || jwtProperties.getSecretKey().isEmpty()) {
+            throw new IllegalStateException("JWT secret key must not be null or empty");
+        }
         byte[] keyBytes = jwtProperties.getSecretKey().getBytes(StandardCharsets.UTF_8);
+        if (keyBytes.length < 32) {
+            throw new IllegalStateException("JWT secret key must be at least 256 bits");
+        }
         this.secretKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
     public String generateToken(User user, Duration expiredAt) {
         Date now = new Date();
-        return makeToken(new Date(now.getTime()+ expiredAt.toMillis()), user);
+        return makeToken(new Date(now.getTime() + expiredAt.toMillis()), user);
     }
 
     public String generateAccessToken(User user) {
@@ -66,7 +72,7 @@ public class TokenProvider {
                     .parseClaimsJws(token);
 
             return true;
-        }catch (ExpiredJwtException e) {
+        } catch (ExpiredJwtException e) {
             log.warn("⚠️ Expired JWT token: {}", e.getMessage());
             return false;
         } catch (SecurityException | MalformedJwtException e) {
@@ -78,8 +84,8 @@ public class TokenProvider {
         } catch (IllegalArgumentException e) {
             log.warn("JWT claims string is empty: {}", e.getMessage());
             return false;
-        } catch(Exception e) {
-            log.error("🔥 Unexpected error during token validation : {}",e.getMessage());
+        } catch (Exception e) {
+            log.error("🔥 Unexpected error during token validation : {}", e.getMessage());
             return false;
         }
     }
@@ -90,7 +96,7 @@ public class TokenProvider {
         // 토큰에서 권한 정보를 추출하거나 사용자별 권한 조회
         Set<SimpleGrantedAuthority> authorities = Collections.singleton(new SimpleGrantedAuthority("ROLE_USER"));
 
-        return new UsernamePasswordAuthenticationToken(new org.springframework.security.core.userdetails.User(claims.getSubject(),"",authorities), null, authorities);
+        return new UsernamePasswordAuthenticationToken(new org.springframework.security.core.userdetails.User(claims.getSubject(), "", authorities), null, authorities);
     }
 
     // 토큰 기반으로 유저 ID를 가져오는 메서드
@@ -101,13 +107,13 @@ public class TokenProvider {
 
 
     private Claims getClaims(String token) {
-        try{
+        try {
             return Jwts.parser()
                     .setSigningKey(secretKey)
                     .parseClaimsJws(token)
                     .getBody();
-        }catch (JwtException e) {
-            throw new IllegalArgumentException("Invalid JWT token",e);
+        } catch (JwtException e) {
+            throw new IllegalArgumentException("Invalid JWT token", e);
 
         }
     }

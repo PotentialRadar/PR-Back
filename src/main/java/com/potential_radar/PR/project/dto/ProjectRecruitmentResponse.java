@@ -7,6 +7,7 @@ import java.util.List;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class ProjectRecruitmentResponse {
     private Long projectId;
+    private Long teamLeaderId;
     private String title;
     private String description;
     private LocalDate recruitDeadline;

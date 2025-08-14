@@ -15,8 +15,7 @@ import java.util.*;
 public class ProjectRecruitmentService {
     private final ProjectRecruitmentRepository projectRecruitmentRepository;
     private final ProjectApplicationRepository projectApplicationRepository;
-    private final ProjectTechPartRepository projectTechPartRepository;
-    private final ProjectTechStackRepository projectTechStackRepository;
+    private final ProjectMemberRepository projectMemberRepository;
 
     // 구인글 생성
     @Transactional
@@ -68,6 +67,17 @@ public class ProjectRecruitmentService {
         project.setTechParts(techParts);
 
         projectRecruitmentRepository.save(project); // cascade로 하위 엔티티도 저장
+
+        // 팀리더 멤버 보장
+        if (!projectMemberRepository.existsByProject_ProjectIdAndUser_UserId(project.getProjectId(), teamLeader.getUserId())) {
+            projectMemberRepository.save(ProjectMember.builder()
+                    .project(project)
+                    .user(teamLeader)
+                    .role(ProjectMember.Role.LEADER)
+                    .techPart(null) // 리더는 파트 없어도 OK
+                    .build());
+        }
+
         return project.getProjectId();
     }
 
@@ -103,6 +113,7 @@ public class ProjectRecruitmentService {
 
         return ProjectRecruitmentResponse.builder()
                 .projectId(pr.getProjectId())
+                .teamLeaderId(pr.getTeamLeader().getUserId())
                 .title(pr.getTitle())
                 .description(pr.getDescription())
                 .recruitDeadline(pr.getRecruitDeadline())
@@ -151,6 +162,7 @@ public class ProjectRecruitmentService {
 
             responses.add(ProjectRecruitmentResponse.builder()
                     .projectId(pr.getProjectId())
+                    .teamLeaderId(pr.getTeamLeader().getUserId())
                     .title(pr.getTitle())
                     .description(pr.getDescription())
                     .recruitDeadline(pr.getRecruitDeadline())

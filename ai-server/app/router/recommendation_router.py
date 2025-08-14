@@ -2,7 +2,7 @@ from fastapi import APIRouter, Query, Depends
 from typing import List
 from sqlalchemy.orm import Session
 from app.schemas import RecommendRequest, ProjectRecommendation
-from app.utils.feature_engineering import compute_features, final_score
+from app.utils.feature_engineering import compute_features, final_score, enhanced_final_score
 from app.utils.preprocess import normalize_tech_stacks, to_name_list
 from app.config import settings
 from app.database import get_db
@@ -12,12 +12,13 @@ import os
 
 router = APIRouter()
 
-# 모델 로드 (없으면 None)
+# 모델 로드 (없으면 None) - 향상된 알고리즘 테스트를 위해 일시적으로 비활성화
 current_dir = os.path.dirname(__file__)
 model_path = os.path.join(current_dir, "../model/recommender.pkl")
 try:
-    model = joblib.load(model_path)
-    print(f"모델을 성공적으로 로드했습니다: {model_path}")
+    # model = joblib.load(model_path)  # 일시적으로 주석 처리
+    model = None  # 향상된 룰 기반 알고리즘 사용을 위해 강제로 None 설정
+    print(f"향상된 룰 기반 알고리즘을 사용합니다 (ML 모델 비활성화)")
 except Exception as e:
     print(f"모델 로드 실패({model_path}): {e}")
     model = None
@@ -95,9 +96,11 @@ def get_recommended_projects(
             # === ML 경로 ===
             feats = compute_features(user_names, proj_names)  # e.g., [overlap]
             score = float(model.predict_proba([feats])[0][1])
+            print(f"[DEBUG] Using ML model for project {p.projectId}")
         else:
-            # === 룰 기반 경로 ===
-            score = float(final_score(user_names, user_norm, proj_names, proj_norm))
+            # === 룰 기반 경로 (향상된 알고리즘) ===
+            score = float(enhanced_final_score(user_names, user_norm, proj_names, proj_norm))
+            print(f"[DEBUG] Using enhanced_final_score for project {p.projectId}")
 
         print(f"[DEBUG] Project ID {p.projectId}, overlap={overlap:.2f}, score={score:.4f}")
 

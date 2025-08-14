@@ -75,7 +75,7 @@ public class WebSecurityConfig {
                         .logoutSuccessUrl("/login")
                         .invalidateHttpSession(true) //세션 무효화 처리로 보안성 강화.
                         .permitAll()
-                )
+                );
         return http.build();
     }
 

@@ -47,12 +47,20 @@ public class WebSecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+                .cors(cors -> {})
                 .csrf(csrf->csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/login", "/api/signup", "/api/token",
-                                "/oauth2/**", "/login/oauth2/**", "/api/login/**",
-                                "/api/users/**")
-                       .permitAll()
+                        .requestMatchers(
+                                "/api/login",
+                                "/api/signup",
+                                "/api/token",
+                                "/oauth2/**",
+                                "/login/oauth2/**",
+                                "/api/login/**",
+                                "/api/users/**",
+                                "/api/recommend/**"
+                        )
+                        .permitAll()
                         .requestMatchers("/api/projects/**").permitAll()
                         .anyRequest().authenticated())
                 .oauth2Login(oauth -> oauth
@@ -93,15 +101,13 @@ public class WebSecurityConfig {
     }
 
     @Bean
-    public CorsConfigurationSource configurationSource(){
+    public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-
-        // 🔁 여기만 변경
-        configuration.setAllowedOriginPatterns(List.of("http://localhost:5173")); // or "*"
-
+        configuration.setAllowedOriginPatterns(List.of("http://localhost:5173")); // 또는 setAllowedOrigins
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
-        configuration.setAllowCredentials(true); // ✅ 쿠키 전달 위해 반드시 필요
+        configuration.setExposedHeaders(List.of("Authorization", "Set-Cookie")); // JWT, 쿠키 헤더 허용 시
+        configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

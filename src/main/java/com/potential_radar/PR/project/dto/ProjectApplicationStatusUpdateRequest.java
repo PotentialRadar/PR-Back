@@ -4,6 +4,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Getter @Setter
-public class ProjectMemberStatusUpdateRequest {
+public class ProjectApplicationStatusUpdateRequest {
     private String status;  //승인,거절
 }

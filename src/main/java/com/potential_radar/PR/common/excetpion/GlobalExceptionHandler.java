@@ -17,9 +17,24 @@ public class GlobalExceptionHandler {
         );
     }
 
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleIllegalArgument(IllegalArgumentException ex) {
         return ResponseEntity.badRequest().body(
+                Map.of("message", ex.getMessage())
+        );
+    }
+
+    @ExceptionHandler(DuplicateApplicationException.class)
+    public ResponseEntity<Map<String, String>> handleDuplicateApplicationException(DuplicateApplicationException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                Map.of("message", ex.getMessage())
+        );
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, String>> handleAccessDeniedException(AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
                 Map.of("message", ex.getMessage())
         );
     }

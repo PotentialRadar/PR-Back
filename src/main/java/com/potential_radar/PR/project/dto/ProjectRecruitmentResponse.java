@@ -20,4 +20,5 @@ public class ProjectRecruitmentResponse {
     private Integer acceptedCount;     // 승인된 지원자 수
     private Integer remainingCount;    // 남은 모집 인원
     private List<ProjectTechStackDTO> techStacks;
+    private List<ProjectPartRecruitmentDTO> recruitmentParts;
 }

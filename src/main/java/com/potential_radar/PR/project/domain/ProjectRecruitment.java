@@ -48,6 +48,10 @@ public class ProjectRecruitment {
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProjectTechStack> techStacks = new ArrayList<>();
 
+    //기술파트
+    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ProjectTechPart> techParts = new ArrayList<>();
+
     @Column(nullable = false)
     private Integer recruitCount;
 }

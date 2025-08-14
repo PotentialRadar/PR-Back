@@ -28,8 +28,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         String provider = userRequest.getClientRegistration().getRegistrationId(); // google, kakao
         OAuth2UserInfo userInfo = getOAuth2UserInfo(provider, oAuth2User.getAttributes());
 
-        // 회원가입 또는 기존 유저 조회
-        User user = saveOrUpdate(userInfo);
+        saveOrUpdate(userInfo);
 
         // Security 인증 객체 반환
         return new DefaultOAuth2User(

@@ -1,5 +1,6 @@
 package com.potential_radar.PR.user.service;
 
+import com.potential_radar.PR.common.excetpion.NotFoundException;
 import com.potential_radar.PR.config.jwt.TokenProvider;
 import com.potential_radar.PR.user.dto.LoginResponse;
 import com.potential_radar.PR.user.dto.UserLoginRequest;
@@ -49,12 +50,12 @@ public class UserServiceImpl implements UserService {
     }
 
     public User findById(Long userId){
-        return userRepository.findById(userId).orElseThrow(()->new IllegalArgumentException("Unexpected User"));
+        return userRepository.findById(userId).orElseThrow(()->new NotFoundException("사용자를 찾을 수 없습니다. ID: " + userId));
     }
 
     @Override
     public User findByEmail(String email) {
-        return userRepository.findByEmail(email).orElseThrow(()->new IllegalArgumentException("Unexpected User"));
+        return userRepository.findByEmail(email).orElseThrow(()->new NotFoundException("사용자를 찾을 수 없습니다. 이메일: " + email));
     }
 
     @Override

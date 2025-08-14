@@ -1,6 +1,7 @@
 package com.potential_radar.PR.user.service;
 
 import com.potential_radar.PR.config.jwt.TokenProvider;
+import com.potential_radar.PR.common.excetpion.InvalidTokenException;
 import com.potential_radar.PR.user.model.RefreshToken;
 import com.potential_radar.PR.user.model.User;
 import com.potential_radar.PR.user.repository.RefreshTokenRepository;
@@ -25,7 +26,7 @@ public class TokenService {
         // 리프레시 토큰이 만료되었는지 확인
         if (foundRefreshToken.isExpired()) {
             refreshTokenRepository.delete(foundRefreshToken); // 만료된 토큰은 삭제
-            throw new IllegalArgumentException("Expired refresh token, please log in again.");
+            throw new InvalidTokenException("만료된 리프레시 토큰입니다. 다시 로그인해주세요.");
         }
 
         Long userId = foundRefreshToken.getUserId();

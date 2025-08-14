@@ -27,8 +27,8 @@ public class AuthController {
     private final EmailAuthService emailAuthService;
 
     @PostMapping("/send-code")
-    public ResponseEntity<Void> sendVerificationCode(@Valid @RequestBody EmailRequest request) {
-        emailAuthService.sendVerificationCode(request.getEmail());
+    public ResponseEntity<?> sendVerificationCode(@Valid @RequestBody EmailRequest request) {
+        emailAuthService.validateAndSendCode(request.getEmail());
         return ResponseEntity.ok().build();
     }
 

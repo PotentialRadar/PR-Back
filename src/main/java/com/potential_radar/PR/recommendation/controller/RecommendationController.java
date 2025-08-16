@@ -44,6 +44,17 @@ public class RecommendationController {
     ) {
         List<RecommendedProjectResponse> result =
                 recommendationService.getRecommendedProjectsForUser(request, topN, minScore, minOverlap, strict);
+        
+        // Explanation 데이터 확인 로깅
+        for (RecommendedProjectResponse project : result) {
+            if (project.getExplanation() != null) {
+                System.out.println("✅ 프로젝트 " + project.getProjectId() + " explanation 있음: " + 
+                    project.getExplanation().getMainReason());
+            } else {
+                System.out.println("❌ 프로젝트 " + project.getProjectId() + " explanation 없음");
+            }
+        }
+        
         return ResponseEntity.ok(result);
     }
 }

@@ -16,6 +16,8 @@ public class ProjectRecruitmentService {
     private final ProjectRecruitmentRepository projectRecruitmentRepository;
     private final ProjectApplicationRepository projectApplicationRepository;
     private final ProjectMemberRepository projectMemberRepository;
+    private final ProjectTechPartRepository projectTechPartRepository;
+    private final ProjectTechStackRepository projectTechStackRepository;
 
     // 구인글 생성
     @Transactional
@@ -182,67 +184,83 @@ public class ProjectRecruitmentService {
         return responses;
     }
 
-    // 구인글 수정 (통째 교체)
+    // 구인글 수정 (전량 삭제 → 재삽입)
     @Transactional
     public void updateProject(Long id, ProjectRecruitmentRequest request) {
         ProjectRecruitment project = projectRecruitmentRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("해당 구인글이 존재하지 않습니다."));
 
+        // 1) 기본 필드 업데이트
         project.setTitle(request.getTitle());
         project.setDescription(request.getDescription());
         project.setRecruitDeadline(request.getRecruitDeadline());
         project.setStartDate(request.getStartDate());
         project.setEndDate(request.getEndDate());
         project.setFileUrl(request.getFileUrl());
+        if (request.getStatus() != null) project.setStatus(ProjectStatus.valueOf(request.getStatus()));
+        if (request.getRecruitCount() != null) project.setRecruitCount(request.getRecruitCount());
 
-        if (request.getStatus() != null) {
-            project.setStatus(ProjectStatus.valueOf(request.getStatus()));
-        }
-        if (request.getRecruitCount() != null) {
-            project.setRecruitCount(request.getRecruitCount());
-        }
+        // 2) 자식 전량 삭제 (벌크)
+        projectTechStackRepository.deleteAllByProjectId(id);
+        projectTechPartRepository.deleteAllByProjectId(id);
 
-        // 스택 교체
-        project.getTechStacks().clear();
-        List<ProjectTechStack> newStacks = new ArrayList<>();
-        if (request.getTechStacks() != null) {
+        // (선택) DB에 삭제를 먼저 확정하고 싶다면 중간 flush
+        // em.flush();
+
+        // 3) 요청 바탕으로 자식 재삽입
+        // 3-1) TechStacks
+        if (request.getTechStacks() != null && !request.getTechStacks().isEmpty()) {
             for (ProjectTechStackDTO tsDto : request.getTechStacks()) {
-                newStacks.add(ProjectTechStack.builder()
+                if (tsDto.getTechStackName() == null || tsDto.getTechStackName().isBlank()) {
+                    throw new IllegalArgumentException("techStackName is required");
+                }
+                Integer cnt = tsDto.getRecruitCount();
+                if (cnt != null && cnt < 0) throw new IllegalArgumentException("techStack.recruitCount must be >= 0");
+
+                ProjectTechStack stack = ProjectTechStack.builder()
                         .project(project)
-                        .techStackName(tsDto.getTechStackName())
-                        .recruitCount(tsDto.getRecruitCount())
-                        .build());
+                        .techStackName(tsDto.getTechStackName().trim())
+                        .recruitCount(cnt)
+                        .build();
+
+                projectTechStackRepository.save(stack);
             }
         }
-        project.getTechStacks().addAll(newStacks);
 
-        // ✅ 파트 교체
-        project.getTechParts().clear();
-        List<ProjectTechPart> newParts = new ArrayList<>();
-        if (request.getRecruitmentParts() != null) {
+        // 3-2) TechParts (중복 방지 검증 포함)
+        if (request.getRecruitmentParts() != null && !request.getRecruitmentParts().isEmpty()) {
             Set<String> seen = new HashSet<>();
             for (ProjectPartRecruitmentDTO dto : request.getRecruitmentParts()) {
                 String name = (dto.getPartName() == null ? "" : dto.getPartName().trim()).toUpperCase(Locale.ROOT);
                 if (name.isEmpty()) throw new IllegalArgumentException("partName is required");
-                if (dto.getRecruitCount() == null || dto.getRecruitCount() < 0)
-                    throw new IllegalArgumentException("recruitCount must be >= 0");
+                Integer cnt = dto.getRecruitCount();
+                if (cnt == null || cnt < 0) throw new IllegalArgumentException("recruitCount must be >= 0");
                 if (!seen.add(name)) throw new IllegalArgumentException("Duplicate partName: " + name);
 
-                newParts.add(ProjectTechPart.builder()
+                ProjectTechPart part = ProjectTechPart.builder()
                         .project(project)
                         .partName(name)
-                        .recruitCount(dto.getRecruitCount())
-                        .build());
+                        .recruitCount(cnt)
+                        .build();
+
+                projectTechPartRepository.save(part);
             }
         }
-        project.getTechParts().addAll(newParts);
+        // 끝: 같은 트랜잭션 내에서 DELETE → INSERT 순서로 처리되어 유니크 충돌이 사라짐
     }
-
     // 구인글 삭제
     @Transactional
     public void deleteProject(Long id) {
         ProjectRecruitment project = projectRecruitmentRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("해당 구인글이 존재하지 않습니다."));
+
+        // 1) 자식 테이블 전부 삭제 (순서는 크게 상관없지만, 일관성을 위해 통일)
+        projectApplicationRepository.deleteAllByProjectId(id);
+        projectMemberRepository.deleteAllByProjectId(id);
+        projectTechStackRepository.deleteAllByProjectId(id);
+        projectTechPartRepository.deleteAllByProjectId(id);
+
+        // 2) 부모 삭제
         projectRecruitmentRepository.delete(project);
     }
 }

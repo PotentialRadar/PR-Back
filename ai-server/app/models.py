@@ -1,7 +1,6 @@
-from sqlalchemy import Column, Integer, String, Text, Table, ForeignKey
+from sqlalchemy import Column, Integer, BigInteger, String, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from .database import Base
-from sqlalchemy.ext.declarative import declarative_base
 
 class Project(Base):
     # Spring Boot의 ProjectRecruitment 엔티티에 매핑

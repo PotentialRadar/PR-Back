@@ -13,9 +13,10 @@ import os
 
 def train_enhanced_model():
     """향상된 알고리즘으로 생성된 데이터로 ML 모델 훈련"""
+    from app.config import get_training_data_path
     
     # 훈련 데이터 로드
-    data_path = "/Users/jun/workspace/kosa-team-project-final/PR-Back/ai-server/training_data_enhanced.csv"
+    data_path = get_training_data_path()
     df = pd.read_csv(data_path)
     
     print(f"훈련 데이터 로드: {len(df)}개 샘플")
@@ -83,25 +84,28 @@ def train_enhanced_model():
         print(f"{feature_names[i]}: {importance:.4f}")
     
     # 모델 저장
-    model_dir = "/Users/jun/workspace/kosa-team-project-final/PR-Back/ai-server/app/model"
-    os.makedirs(model_dir, exist_ok=True)
-    model_path = os.path.join(model_dir, "recommender_enhanced.pkl")
+    from app.config import get_model_path
+    from pathlib import Path
     
-    joblib.dump(model, model_path)
-    print(f"\n향상된 모델이 저장되었습니다: {model_path}")
+    model_path = Path(get_model_path())
+    model_dir = model_path.parent
+    
+    # 향상된 모델 저장
+    enhanced_model_path = model_dir / "recommender_enhanced.pkl"
+    joblib.dump(model, enhanced_model_path)
+    print(f"\n향상된 모델이 저장되었습니다: {enhanced_model_path}")
     
     # 기존 모델 백업하고 새 모델로 교체
-    old_model_path = os.path.join(model_dir, "recommender.pkl")
-    backup_path = os.path.join(model_dir, "recommender_backup.pkl")
+    backup_path = model_dir / "recommender_backup.pkl"
     
-    if os.path.exists(old_model_path):
-        os.rename(old_model_path, backup_path)
+    if model_path.exists():
+        model_path.rename(backup_path)
         print(f"기존 모델을 백업했습니다: {backup_path}")
     
     # 새 모델을 기본 모델로 설정
     import shutil
-    shutil.copy2(model_path, old_model_path)
-    print(f"새 모델을 기본 모델로 설정했습니다: {old_model_path}")
+    shutil.copy2(enhanced_model_path, model_path)
+    print(f"새 모델을 기본 모델로 설정했습니다: {model_path}")
     
     # 샘플 예측 테스트
     print(f"\n=== 샘플 예측 테스트 ===")

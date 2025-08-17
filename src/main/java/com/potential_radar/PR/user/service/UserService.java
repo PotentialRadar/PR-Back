@@ -1,8 +1,6 @@
 package com.potential_radar.PR.user.service;
 
-import com.potential_radar.PR.user.dto.LoginResponse;
-import com.potential_radar.PR.user.dto.UserLoginRequest;
-import com.potential_radar.PR.user.dto.UserSignupRequest;
+import com.potential_radar.PR.user.dto.*;
 import com.potential_radar.PR.user.model.User;
 
 
@@ -19,5 +17,14 @@ public interface UserService {
     LoginResponse login(UserLoginRequest request);
 
     boolean existsbynickname(String nickname);
+
+    // 개인정보 관련 메서드
+    UserProfileResponse getUserProfile(String email);
+    
+    void updateUserBasic(String email, UserBasicUpdateRequest request);
+    
+    void updateUserProfile(String email, UserProfileUpdateRequest request);
+    
+    void deleteUser(String email);
 
 }

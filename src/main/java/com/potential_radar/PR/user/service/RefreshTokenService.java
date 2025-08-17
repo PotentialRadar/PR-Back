@@ -38,4 +38,9 @@ public class RefreshTokenService {
         refreshTokenRepository.save(refreshToken);
         return tokenValue;
     }
+
+    @Transactional
+    public void deleteRefreshToken(Long userId) {
+        refreshTokenRepository.deleteByUserId(userId);
+    }
 }

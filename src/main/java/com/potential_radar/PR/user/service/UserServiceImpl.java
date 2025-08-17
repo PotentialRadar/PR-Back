@@ -2,12 +2,9 @@ package com.potential_radar.PR.user.service;
 
 import com.potential_radar.PR.common.excetpion.NotFoundException;
 import com.potential_radar.PR.config.jwt.TokenProvider;
-import com.potential_radar.PR.user.dto.LoginResponse;
-import com.potential_radar.PR.user.dto.UserLoginRequest;
-import com.potential_radar.PR.user.dto.UserSignupRequest;
-import com.potential_radar.PR.user.model.Provider;
-import com.potential_radar.PR.user.model.User;
-import com.potential_radar.PR.user.repository.UserRepository;
+import com.potential_radar.PR.user.dto.*;
+import com.potential_radar.PR.user.model.*;
+import com.potential_radar.PR.user.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,6 +17,8 @@ import org.springframework.stereotype.Service;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final UserProfileRepository userProfileRepository;
+    private final TechPartRepository techPartRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenProvider tokenProvider;
     private final RefreshTokenService refreshTokenService;
@@ -80,5 +79,83 @@ public class UserServiceImpl implements UserService {
         return userRepository.existsByNickname(nickname);
     }
 
+    @Override
+    public UserProfileResponse getUserProfile(String email) {
+        User user = findByEmail(email);
+        UserProfile userProfile = userProfileRepository.findByUser(user)
+                .orElseThrow(() -> new NotFoundException("사용자 프로필을 찾을 수 없습니다"));
+        return new UserProfileResponse(userProfile);
+    }
+
+    @Override
+    public void updateUserBasic(String email, UserBasicUpdateRequest request) {
+        User user = findByEmail(email);
+        
+        // 이메일 중복 체크 (본인 이메일이 아닌 경우에만)
+        if (!user.getEmail().equals(request.email()) && userRepository.existsByEmail(request.email())) {
+            throw new IllegalArgumentException("이미 사용 중인 이메일입니다");
+        }
+        
+        // 닉네임 중복 체크 (본인 닉네임이 아닌 경우에만)
+        if (!user.getNickname().equals(request.nickname()) && userRepository.existsByNickname(request.nickname())) {
+            throw new IllegalArgumentException("이미 사용 중인 닉네임입니다");
+        }
+        
+        // User 엔티티에 setter가 없으므로 리플렉션을 사용하거나 Builder 패턴으로 새로 생성
+        // 여기서는 User 엔티티에 update 메서드를 추가하는 것이 좋겠지만, 현재는 직접 업데이트
+        userRepository.updateUserBasic(user.getUserId(), request.nickname(), request.email());
+    }
+
+    @Override
+    public void updateUserProfile(String email, UserProfileUpdateRequest request) {
+        User user = findByEmail(email);
+        UserProfile userProfile = userProfileRepository.findByUser(user)
+                .orElseThrow(() -> new NotFoundException("사용자 프로필을 찾을 수 없습니다"));
+        
+        // TechPart 유효성 검사
+        if (request.techPartId() != null) {
+            TechPart techPart = techPartRepository.findById(request.techPartId())
+                    .orElseThrow(() -> new NotFoundException("기술 분야를 찾을 수 없습니다"));
+            userProfile.setTechPart(techPart);
+        }
+        
+        // 사용자 닉네임 업데이트 (프로필에서 닉네임도 변경 가능)
+        if (request.nickname() != null && !user.getNickname().equals(request.nickname())) {
+            if (userRepository.existsByNickname(request.nickname())) {
+                throw new IllegalArgumentException("이미 사용 중인 닉네임입니다");
+            }
+            userRepository.updateNickname(user.getUserId(), request.nickname());
+        }
+        
+        // 프로필 정보 업데이트
+        if (request.profileImage() != null) userProfile.setProfileImage(request.profileImage());
+        if (request.bio() != null) userProfile.setBio(request.bio());
+        if (request.bioShort() != null) userProfile.setBioShort(request.bioShort());
+        if (request.phone() != null) userProfile.setPhone(request.phone());
+        if (request.githubUrl() != null) userProfile.setGithubUrl(request.githubUrl());
+        if (request.linkedinUrl() != null) userProfile.setLinkedinUrl(request.linkedinUrl());
+        if (request.websiteUrl() != null) userProfile.setWebsiteUrl(request.websiteUrl());
+        if (request.region() != null) userProfile.setRegion(request.region());
+        if (request.isPortfolioOpen() != null) userProfile.setPortfolioOpen(request.isPortfolioOpen());
+        if (request.isContactOpen() != null) userProfile.setContactOpen(request.isContactOpen());
+        if (request.isSearchOpen() != null) userProfile.setSearchOpen(request.isSearchOpen());
+        if (request.experienceRange() != null) userProfile.setExperienceRange(request.experienceRange());
+        
+        userProfileRepository.save(userProfile);
+    }
+
+    @Override
+    public void deleteUser(String email) {
+        User user = findByEmail(email);
+        
+        // 프로필이 있다면 삭제
+        userProfileRepository.findByUser(user).ifPresent(userProfileRepository::delete);
+        
+        // 리프레시 토큰 삭제
+        refreshTokenService.deleteRefreshToken(user.getUserId());
+        
+        // 사용자 삭제
+        userRepository.delete(user);
+    }
 
 }

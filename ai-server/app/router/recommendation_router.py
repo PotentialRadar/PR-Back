@@ -1,50 +1,70 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends, HTTPException
 from typing import List
-from app.schemas import RecommendRequest, ProjectRecommendation
-from app.utils.feature_engineering import compute_features, final_score
+import logging
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.exc import SQLAlchemyError
+
+from app.schemas import RecommendRequest, ProjectRecommendation, RecommendationExplanation
+from app.utils.feature_engineering import compute_features, enhanced_final_score
 from app.utils.preprocess import normalize_tech_stacks, to_name_list
+from app.utils.explanation_generator import RecommendationExplainer
 from app.config import settings
-import joblib
-import os
+from app.database import get_db
+from app.models import Project
+from app.core.model_loader import get_model, is_ml_model_available
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
-
-# 모델 로드 (없으면 None)
-current_dir = os.path.dirname(__file__)
-model_path = os.path.join(current_dir, "../model/recommender.pkl")
-try:
-    model = joblib.load(model_path)
-    print(f"모델을 성공적으로 로드했습니다: {model_path}")
-except Exception as e:
-    print(f"모델 로드 실패({model_path}): {e}")
-    model = None
 
 @router.post("/recommend/projects", response_model=List[ProjectRecommendation])
 def recommend_projects(
     request: RecommendRequest,
+    db: Session = Depends(get_db),
     topN: int = Query(settings.RECO_DEFAULT_TOPN, ge=1, le=50),
     minScore: float = Query(settings.RECO_DEFAULT_MINSCORE, ge=0.0, le=1.0),
     minOverlap: float = Query(settings.RECO_DEFAULT_MINOVERLAP, ge=0.0, le=1.0),
     strict: bool = Query(settings.RECO_DEFAULT_STRICT),
 ):
     """
-    - topN: 상위 N개 보장
-    - minScore: 임계값(기본 0.5)
-    - minOverlap: 사용자/프로젝트 기술스택 Jaccard 겹침 비율 최소값
-    - strict: True면 임계값과 minOverlap 모두 만족하는 항목만 반환(topN 미만이어도 채우지 않음)
-                False면 임계값/겹침 통과 결과가 모자라면 점수 상위로 채워서 N개 보장
+    프로젝트 추천 API
+    
+    Args:
+        request: 사용자 기술스택 정보
+        topN: 상위 N개 추천 (1-50)
+        minScore: 최소 점수 임계값 (0.0-1.0)
+        minOverlap: 최소 기술스택 겹침 비율 (0.0-1.0)
+        strict: 엄격 모드 (True시 임계값 미만 제외)
+    
+    Returns:
+        추천 프로젝트 리스트 (점수순 정렬)
     """
-    return get_recommended_projects(
-        request,
-        topN=topN,
-        min_threshold=minScore,
-        min_overlap=minOverlap,
-        strict=strict,
-    )
+    try:
+        # 입력 검증
+        if not request.tech_stacks:
+            raise HTTPException(status_code=400, detail="기술스택이 비어있습니다")
+        
+        return get_recommended_projects(
+            request=request,
+            db=db,
+            topN=topN,
+            min_threshold=minScore,
+            min_overlap=minOverlap,
+            strict=strict,
+        )
+    except HTTPException:
+        # 이미 처리된 HTTP 예외는 그대로 전파
+        raise
+    except SQLAlchemyError as e:
+        logger.error(f"데이터베이스 오류: {e}")
+        raise HTTPException(status_code=503, detail="데이터베이스 연결 오류")
+    except Exception as e:
+        logger.error(f"추천 시스템 오류: {e}")
+        raise HTTPException(status_code=500, detail="추천 시스템 내부 오류")
 
 
 def get_recommended_projects(
     request: RecommendRequest,
+    db: Session, # DB 세션을 파라미터로 받음
     topN: int = 5,
     min_threshold: float = 0.5,
     min_overlap: float = 0.2,
@@ -54,118 +74,37 @@ def get_recommended_projects(
     tech_stack_dicts = [ts.dict() for ts in request.tech_stacks]
     user_norm = normalize_tech_stacks(tech_stack_dicts, min_level=1, max_level=5)
     user_names = to_name_list(user_norm)
+    
+    # 1. DB에서 프로젝트 정보를 tech_stacks와 함께 한 번에 가져옵니다 (N+1 쿼리 방지)
+    # 성능 최적화: 필요 시 topN * 2 정도로 제한하여 메모리 사용량 최적화
+    max_projects = max(topN * 3, 50)  # 최소 50개, 최대 요청량의 3배
+    
+    try:
+        db_projects = (
+            db.query(Project)
+            .options(joinedload(Project.tech_stacks))
+            .limit(max_projects)
+            .all()
+        )
+        logger.debug(f"DB에서 {len(db_projects)}개 프로젝트 조회 (제한: {max_projects})")
+    except Exception as e:
+        logger.error(f"프로젝트 조회 중 오류: {e}")
+        raise HTTPException(status_code=503, detail="프로젝트 데이터 조회 실패")
 
-    # 임시 프로젝트 데이터 (예시)
+    # 2. DB 모델 객체(Project)를 Pydantic 스키마(ProjectRecommendation)로 변환합니다.
     all_projects = [
         ProjectRecommendation(
-            projectId=1,
-            title="AI 프로젝트",
-            description="AI 추천 시스템 개발",
-            matchScore=0.0,
-            projectTechStacks=["Spring", "Vue.js"],
-        ),
-        ProjectRecommendation(
-            projectId=2,
-            title="웹 개발",
-            description="프론트엔드 및 백엔드 개발",
-            matchScore=0.0,
-            projectTechStacks=["React", "Node.js"],
-        ),
-        ProjectRecommendation(
-            projectId=3,
-            title="Spring 백엔드 마이그레이션",
-            description="Spring Boot + JPA 기반 모놀리식 개편",
-            matchScore=0.0,
-            projectTechStacks=["Spring", "PostgreSQL", "Docker"],
-        ),
-        ProjectRecommendation(
-            projectId=4,
-            title="Vue 프론트 리뉴얼",
-            description="Vue.js + Pinia 상태관리 적용",
-            matchScore=0.0,
-            projectTechStacks=["Vue.js", "TypeScript"],
-        ),
-        ProjectRecommendation(
-            projectId=5,
-            title="React 대시보드",
-            description="React + Chart 구현",
-            matchScore=0.0,
-            projectTechStacks=["React", "TypeScript", "Redis"],
-        ),
-        ProjectRecommendation(
-            projectId=6,
-            title="Node.js API 서버",
-            description="Express 기반 REST API",
-            matchScore=0.0,
-            projectTechStacks=["Node.js", "PostgreSQL"],
-        ),
-        ProjectRecommendation(
-            projectId=7,
-            title="Python ETL 파이프라인",
-            description="Pandas 기반 데이터 적재/변환",
-            matchScore=0.0,
-            projectTechStacks=["Python", "PostgreSQL", "Docker"],
-        ),
-        ProjectRecommendation(
-            projectId=8,
-            title="FastAPI 추천 서비스",
-            description="FastAPI + Uvicorn 운영",
-            matchScore=0.0,
-            projectTechStacks=["Python", "FastAPI", "Redis"],
-        ),
-        ProjectRecommendation(
-            projectId=9,
-            title="검색 성능 개선",
-            description="OpenSearch 도입 및 인덱스 튜닝",
-            matchScore=0.0,
-            projectTechStacks=["Python", "Docker", "Redis"],
-        ),
-        ProjectRecommendation(
-            projectId=10,
-            title="배치 파이프라인 컨테이너화",
-            description="Docker 기반 CI/CD",
-            matchScore=0.0,
-            projectTechStacks=["Docker", "Python"],
-        ),
-        # --- 추가 항목 (partial-overlap, alias 등) ---
-        ProjectRecommendation(
-            projectId=11,
-            title="Spring + React 마이그레이션",
-            description="Spring 백엔드와 React 프론트 통합 작업",
-            matchScore=0.0,
-            projectTechStacks=["Spring", "React"],
-        ),
-        ProjectRecommendation(
-            projectId=12,
-            title="Vue + Node + Redis 캐시 적용",
-            description="Vue.js 프론트와 Node 백엔드, Redis 캐시 도입",
-            matchScore=0.0,
-            projectTechStacks=["Vue.js", "Node", "Redis"],  # 'Node' 별칭 → node.js 로 표준화 기대
-        ),
-        ProjectRecommendation(
-            projectId=13,
-            title="DB 마이그레이션",
-            description="Postgre 로 데이터 이전",
-            matchScore=0.0,
-            projectTechStacks=["Postgre"],  # 별칭 → postgresql 로 표준화 기대
-        ),
-        ProjectRecommendation(
-            projectId=14,
-            title="Next.js 대시보드",
-            description="Next.js + TypeORM 기반 관리 화면",
-            matchScore=0.0,
-            projectTechStacks=["Next.js", "TypeORM"],
-        ),
-        ProjectRecommendation(
-            projectId=15,
-            title="Spring Boot + JPA 리팩토링",
-            description="Spring Boot와 JPA로 레거시 리팩토링",
-            matchScore=0.0,
-            projectTechStacks=["Spring Boot", "JPA"],  # springboot 별칭 매핑 확인용
-        ),
+            projectId=p.project_id,
+            title=p.title,
+            description=p.description,
+            matchScore=0.0, # 점수는 나중에 계산
+            projectTechStacks=[ts.tech_stack_name for ts in p.tech_stacks] # 수정된 모델의 컬럼명(tech_stack_name)으로 변경
+        )
+        for p in db_projects
     ]
 
     scored: List[ProjectRecommendation] = []
+    explainer = RecommendationExplainer()
 
     for p in all_projects:
         # 프로젝트 스택도 정규화하여 공정 비교
@@ -179,17 +118,47 @@ def get_recommended_projects(
         union = u_set | p_set
         overlap = (len(u_set & p_set) / len(union)) if union else 0.0
 
-        if model is not None:
-            # === ML 경로 ===
-            feats = compute_features(user_names, proj_names)  # e.g., [overlap]
+        model = get_model()
+        
+        if is_ml_model_available():
+            # ML 모델 사용
+            feats = compute_features(user_names, proj_names)
             score = float(model.predict_proba([feats])[0][1])
+            logger.debug(f"ML 모델 사용 - 프로젝트 {p.projectId}")
         else:
-            # === 룰 기반 경로 ===
-            score = float(final_score(user_names, user_norm, proj_names, proj_norm))
+            # 룰 기반 알고리즘 사용
+            score = float(enhanced_final_score(user_names, user_norm, proj_names, proj_norm))
+            logger.debug(f"룰 기반 알고리즘 사용 - 프로젝트 {p.projectId}")
 
-        print(f"[DEBUG] Project ID {p.projectId}, overlap={overlap:.2f}, score={score:.4f}")
+        logger.debug(f"프로젝트 {p.projectId}: overlap={overlap:.2f}, score={score:.4f}")
+
+        # Explanation 생성
+        try:
+            logger.info(f"설명 생성 시작 - 프로젝트 {p.projectId}: {p.title}")
+            logger.info(f"사용자 기술: {user_names}")
+            logger.info(f"프로젝트 기술: {proj_names}")
+            
+            explanation_data = explainer.generate_explanation(
+                user_techs=user_names,
+                user_norm=user_norm,
+                project_techs=proj_names,
+                project_norm=proj_norm,
+                project_title=p.title,
+                match_score=score
+            )
+            
+            logger.info(f"설명 데이터 생성됨: {explanation_data}")
+            explanation = RecommendationExplanation(**explanation_data)
+            logger.info(f"설명 객체 생성 완료: {explanation}")
+        except Exception as e:
+            logger.error(f"설명 생성 실패 (프로젝트 {p.projectId}): {e}")
+            logger.error(f"예외 상세: {type(e).__name__}: {str(e)}")
+            import traceback
+            logger.error(f"트레이스백: {traceback.format_exc()}")
+            explanation = None
 
         p.matchScore = round(score, 2)
+        p.explanation = explanation
         # keep overlap for post-filtering (not serialized)
         p.__dict__["_overlap"] = overlap
         scored.append(p)
@@ -210,14 +179,14 @@ def get_recommended_projects(
         # 느슨 모드: 통과 항목이 충분하면 그 중 상위 N개, 아니면 전체에서 상위 N개 보장
         result = passing[:topN] if len(passing) >= topN else scored[:topN]
 
-    # 요약 로그 한 줄 (디버그 보기 편하게)
+    # 추천 결과 로깅
     try:
         summary = [(p.projectId, float(p.matchScore)) for p in result]
-        print(
-            "[REC] strict=%s topN=%d minScore=%.2f minOverlap=%.2f -> %s"
-            % (strict, topN, min_threshold, min_overlap, summary)
+        logger.info(
+            f"추천 완료 - strict={strict}, topN={topN}, "
+            f"minScore={min_threshold:.2f}, minOverlap={min_overlap:.2f} -> {summary}"
         )
-    except Exception as _:
-        pass
+    except Exception as e:
+        logger.warning(f"추천 결과 로깅 실패: {e}")
 
-    return result
+    return result 

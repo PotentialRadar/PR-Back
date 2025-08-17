@@ -5,7 +5,7 @@
     },
     "nickname": {
       "type": "text",
-      "analyzer": "korean_analyzer",
+      "analyzer": "standard",
       "fields": {
         "keyword": {
           "type": "keyword"
@@ -30,7 +30,7 @@
     },
     "introduction": {
       "type": "text",
-      "analyzer": "korean_analyzer"
+      "analyzer": "standard"
     },
     "profileImage": {
       "type": "keyword",
@@ -40,16 +40,16 @@
       "type": "keyword",
       "index": false
     },
-    "region": {
-      "type": "text",
-      "analyzer": "korean_analyzer",
-      "fields": {
-        "keyword": {
-          "type": "keyword"
-        }
-      }
+    "experienceRange": {
+      "type": "keyword"
     },
     "isSearchable": {
+      "type": "boolean"
+    },
+    "isPortfolioOpen": {
+      "type": "boolean"
+    },
+    "isSearchOpen": {
       "type": "boolean"
     },
     "createdAt": {

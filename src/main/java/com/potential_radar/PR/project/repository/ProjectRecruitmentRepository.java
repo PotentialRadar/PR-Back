@@ -1,7 +1,34 @@
 package com.potential_radar.PR.project.repository;
 
 import com.potential_radar.PR.project.domain.ProjectRecruitment;
+import com.potential_radar.PR.project.domain.ProjectStatus;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 public interface ProjectRecruitmentRepository extends JpaRepository<ProjectRecruitment, Long> {
+    
+    // 증분 동기화를 위한 메서드들
+    List<ProjectRecruitment> findByUpdatedAtAfter(LocalDateTime since);
+    
+    List<ProjectRecruitment> findByUpdatedAtBetween(LocalDateTime start, LocalDateTime end);
+    
+    @Query("SELECT COUNT(p) FROM ProjectRecruitment p WHERE p.updatedAt > :since")
+    long countByUpdatedAtAfter(@Param("since") LocalDateTime since);
+    
+    @Query("SELECT p FROM ProjectRecruitment p WHERE p.updatedAt > :since ORDER BY p.updatedAt ASC")
+    List<ProjectRecruitment> findByUpdatedAtAfterOrderByUpdatedAt(@Param("since") LocalDateTime since);
+    
+    // 페이징 지원 증분 동기화
+    List<ProjectRecruitment> findByUpdatedAtAfterOrderByUpdatedAt(LocalDateTime since, PageRequest pageRequest);
+    
+    // 상태별 조회
+    List<ProjectRecruitment> findByStatusAndUpdatedAtAfter(ProjectStatus status, LocalDateTime since);
+    
+    // 모집중인 프로젝트만 조회
+    List<ProjectRecruitment> findByStatus(ProjectStatus status);
 }

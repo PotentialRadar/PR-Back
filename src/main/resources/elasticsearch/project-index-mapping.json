@@ -5,7 +5,7 @@
     },
     "projectName": {
       "type": "text",
-      "analyzer": "korean_analyzer",
+      "analyzer": "standard",
       "fields": {
         "keyword": {
           "type": "keyword"
@@ -30,7 +30,7 @@
     },
     "description": {
       "type": "text",
-      "analyzer": "korean_analyzer"
+      "analyzer": "standard"
     },
     "status": {
       "type": "keyword"
@@ -40,12 +40,16 @@
     },
     "ownerNickname": {
       "type": "text",
-      "analyzer": "korean_analyzer",
+      "analyzer": "standard",
       "fields": {
         "keyword": {
           "type": "keyword"
         }
       }
+    },
+    "deadline": {
+      "type": "date",
+      "format": "date_optional_time"
     },
     "createdAt": {
       "type": "text",

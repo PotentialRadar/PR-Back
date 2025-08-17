@@ -1,5 +1,6 @@
 package com.potential_radar.PR.search.dto;
 
+import com.potential_radar.PR.common.enums.ExperienceRange;
 import lombok.*;
 
 import java.util.List;
@@ -17,7 +18,7 @@ public class UserSearchRes {
     private String introduction;
     private String profileImage;
     private String githubUrl;
-    private String region;
+    private ExperienceRange experienceRange;
     private String createdAt;
 
     // 검색 관련

@@ -61,8 +61,11 @@ public class DataSyncService {
         syncAllProjectsToElasticsearch();
     }
     
-    private UserSearchDocument convertUserToDocument(User user) {
-        return UserSearchDocument.builder()
+    public UserSearchDocument convertUserToDocument(User user) {
+        log.info("Converting user to document: ID={}, Nickname={}, IsPortfolioOpen={}", 
+                user.getUserId(), user.getNickname(), user.isPortfolioOpen());
+        
+        UserSearchDocument document = UserSearchDocument.builder()
                 .id(String.valueOf(user.getUserId()))
                 .userId(user.getUserId())
                 .nickname(user.getNickname())
@@ -71,14 +74,20 @@ public class DataSyncService {
                 .introduction("안녕하세요, " + user.getNickname() + "입니다.") // 기본 소개
                 .profileImage(user.getProfileImage())
                 .githubUrl("https://github.com/" + user.getNickname().toLowerCase()) // 기본 GitHub URL
-                .region("서울") // 기본 지역
+                .experienceRange(user.getExperienceRange()) // 경력 정보
                 .isSearchable(true) // 기본값으로 검색 가능하게 설정
+                .isPortfolioOpen(user.isPortfolioOpen()) // 포트폴리오 공개 여부
+                .isSearchOpen(true) // 검색 허용 여부 (기본값 true)
                 .createdAt(user.getCreatedAt().format(ELASTICSEARCH_DATE_FORMAT))
                 .updatedAt(user.getUpdatedAt().format(ELASTICSEARCH_DATE_FORMAT))
                 .build();
+        
+        log.info("Created document: nickname={}, isPortfolioOpen={}, isSearchOpen={}", 
+                document.getNickname(), document.getIsPortfolioOpen(), document.getIsSearchOpen());
+        return document;
     }
     
-    private ProjectSearchDocument convertProjectToDocument(ProjectRecruitment project) {
+    public ProjectSearchDocument convertProjectToDocument(ProjectRecruitment project) {
         return ProjectSearchDocument.builder()
                 .id(String.valueOf(project.getProjectId()))
                 .projectId(project.getProjectId())

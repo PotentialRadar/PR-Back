@@ -1,5 +1,6 @@
 package com.potential_radar.PR.user.domain;
 
+import com.potential_radar.PR.common.enums.ExperienceRange;
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
@@ -59,6 +60,8 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private int reviewCount = 0;
 
+    @Enumerated(EnumType.STRING)
+    private ExperienceRange experienceRange;
 
     @PrePersist
     protected void onCreate() {
@@ -75,7 +78,7 @@ public class User implements UserDetails {
     public User(String email, String password, String name, String nickname,
                 String profileImage, boolean isPortfolioOpen,
                 Provider provider, String providerUserId,
-                BigDecimal reputationScore, int reviewCount) {
+                BigDecimal reputationScore, int reviewCount, ExperienceRange experienceRange) {
         this.email = email;
         this.password = password;
         this.name = name;
@@ -86,6 +89,7 @@ public class User implements UserDetails {
         this.providerUserId = providerUserId;
         this.reputationScore = reputationScore;
         this.reviewCount = reviewCount;
+        this.experienceRange = experienceRange;
     }
 
     @Override
@@ -132,6 +136,7 @@ public class User implements UserDetails {
         // 계정이 사용 가능한지 확인하는 로직
         return  true; // true -> 사용 가능
     }
+
 
     public enum Provider {
         LOCAL, KAKAO, GOOGLE

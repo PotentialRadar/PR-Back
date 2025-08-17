@@ -22,8 +22,8 @@ public class ProjectSearchDocument {
     @Field(type = FieldType.Long)
     private Long projectId;
 
-    // ✅ 커스텀 한글 분석기 사용
-    @Field(type = FieldType.Text, analyzer = "korean_analyzer")
+    // ✅ 표준 분석기 사용
+    @Field(type = FieldType.Text, analyzer = "standard")
     private String projectName;
 
     // ✅ 커스텀 기술스택 분석기 사용
@@ -33,7 +33,7 @@ public class ProjectSearchDocument {
     @Field(type = FieldType.Keyword)
     private List<String> requiredTechParts;
 
-    @Field(type = FieldType.Text, analyzer = "korean_analyzer")
+    @Field(type = FieldType.Text, analyzer = "standard")
     private String description;
 
     @Field(type = FieldType.Keyword)
@@ -42,8 +42,11 @@ public class ProjectSearchDocument {
     @Field(type = FieldType.Long)
     private Long ownerId;
 
-    @Field(type = FieldType.Text, analyzer = "korean_analyzer")
+    @Field(type = FieldType.Text, analyzer = "standard")
     private String ownerNickname;
+
+    @Field(type = FieldType.Date, format = DateFormat.date_optional_time)
+    private String deadline;
 
     @Field(type = FieldType.Text, index = false)
     private String createdAt;

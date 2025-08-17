@@ -1,5 +1,6 @@
 package com.potential_radar.PR.search.dto;
 
+import com.potential_radar.PR.common.enums.ExperienceRange;
 import lombok.*;
 
 import java.util.List;
@@ -10,14 +11,17 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class UserSearchReq {
-    // 사용자 닉네임 검색
-    private String nickname;
+    // 통합 검색창: 닉네임, 유저의 기술 스택들(보유스킬)과 기술 파트(직무)
+    private String keyword;
 
-    // 기술 파트 필터링
-    private String techPart;
+    // 기술 파트 다중 선택
+    private List<String> techParts;
 
-    // 기술 스택 검색 (부분 일치)
+    // 기술 스택 다중 선택
     private List<String> techStacks;
+
+    // 경력(ExperienceRange) 다중 선택
+    private List<ExperienceRange> experienceRanges;
 
     // 페이징
     private int page = 0;

@@ -4,8 +4,13 @@ import com.potential_radar.PR.common.excetpion.NotFoundException;
 import com.potential_radar.PR.project.domain.*;
 import com.potential_radar.PR.project.dto.*;
 import com.potential_radar.PR.project.repository.*;
+import com.potential_radar.PR.search.event.ProjectCreatedEvent;
+import com.potential_radar.PR.search.event.ProjectUpdatedEvent;
+import com.potential_radar.PR.search.event.ProjectDeletedEvent;
+import com.potential_radar.PR.search.event.ProjectStatusChangedEvent;
 import com.potential_radar.PR.user.domain.User;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
@@ -16,6 +21,7 @@ public class ProjectRecruitmentService {
     private final ProjectRecruitmentRepository projectRecruitmentRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final ProjectTechStackRepository projectTechStackRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     //구인글 생성
     @Transactional
@@ -37,8 +43,6 @@ public class ProjectRecruitmentService {
             for (ProjectTechStackDTO tsDto : request.getTechStacks()) {
                 ProjectTechStack techStack = ProjectTechStack.builder()
                         .project(project)
-                        .techStackName(tsDto.getTechStackName())
-                        .recruitCount(tsDto.getRecruitCount())
                         .build();
                 techStacks.add(techStack);
             }
@@ -46,6 +50,10 @@ public class ProjectRecruitmentService {
         project.setTechStacks(techStacks);
 
         projectRecruitmentRepository.save(project); // Cascade로 techStacks도 같이 저장됨
+        
+        // 🔥 프로젝트 생성 이벤트 발행
+        eventPublisher.publishEvent(new ProjectCreatedEvent(project));
+        
         return project.getProjectId();
     }
 
@@ -59,8 +67,6 @@ public class ProjectRecruitmentService {
         for (ProjectTechStack ts : pr.getTechStacks()) {
             techStackDTOs.add(
                     ProjectTechStackDTO.builder()
-                            .techStackName(ts.getTechStackName())
-                            .recruitCount(ts.getRecruitCount())
                             .build()
             );
         }
@@ -98,6 +104,9 @@ public class ProjectRecruitmentService {
         ProjectRecruitment project = projectRecruitmentRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("해당 구인글이 존재하지 않습니다."));
 
+        // 이전 상태 저장 (상태 변경 이벤트를 위해)
+        ProjectStatus previousStatus = project.getStatus();
+
         // 필드 업데이트
         project.setTitle(request.getTitle());
         project.setDescription(request.getDescription());
@@ -117,13 +126,19 @@ public class ProjectRecruitmentService {
             for (ProjectTechStackDTO tsDto : request.getTechStacks()) {
                 ProjectTechStack techStack = ProjectTechStack.builder()
                         .project(project)
-                        .techStackName(tsDto.getTechStackName())
-                        .recruitCount(tsDto.getRecruitCount())
                         .build();
                 newStacks.add(techStack);
             }
         }
         project.getTechStacks().addAll(newStacks);
+        
+        // 🔥 프로젝트 업데이트 이벤트 발행
+        eventPublisher.publishEvent(new ProjectUpdatedEvent(project));
+        
+        // 🔥 상태가 변경된 경우 상태 변경 이벤트 발행
+        if (previousStatus != project.getStatus()) {
+            eventPublisher.publishEvent(new ProjectStatusChangedEvent(project, previousStatus, project.getStatus()));
+        }
     }
 
     // 구인글 삭제
@@ -131,7 +146,14 @@ public class ProjectRecruitmentService {
     public void deleteProject(Long id) {
         ProjectRecruitment project = projectRecruitmentRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("해당 구인글이 존재하지 않습니다."));
+        
+        // 삭제하기 전에 프로젝트 정보 저장 (이벤트를 위해)
+        String projectName = project.getTitle();
+        
         projectRecruitmentRepository.delete(project);
+        
+        // 🔥 프로젝트 삭제 이벤트 발행
+        eventPublisher.publishEvent(new ProjectDeletedEvent(id, projectName));
     }
 
 }

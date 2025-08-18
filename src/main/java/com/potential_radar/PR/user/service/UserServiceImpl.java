@@ -3,7 +3,7 @@ package com.potential_radar.PR.user.service;
 import com.potential_radar.PR.common.excetpion.NotFoundException;
 import com.potential_radar.PR.config.jwt.TokenProvider;
 import com.potential_radar.PR.user.dto.*;
-import com.potential_radar.PR.user.model.*;
+import com.potential_radar.PR.user.domain.*;
 import com.potential_radar.PR.user.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;

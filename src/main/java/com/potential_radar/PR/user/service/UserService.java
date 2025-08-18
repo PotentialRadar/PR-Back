@@ -1,7 +1,7 @@
 package com.potential_radar.PR.user.service;
 
 import com.potential_radar.PR.user.dto.*;
-import com.potential_radar.PR.user.model.User;
+import com.potential_radar.PR.user.domain.User;
 
 
 public interface UserService {

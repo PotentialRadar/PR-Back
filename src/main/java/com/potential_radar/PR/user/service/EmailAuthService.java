@@ -1,8 +1,7 @@
 package com.potential_radar.PR.user.service;
 
-import com.potential_radar.PR.user.model.EmailVerification;
-import com.potential_radar.PR.user.model.Provider;
-import com.potential_radar.PR.user.model.User;
+import com.potential_radar.PR.user.domain.EmailVerification;
+import com.potential_radar.PR.user.domain.Provider;
 import com.potential_radar.PR.user.repository.EmailVerificationRepository;
 import com.potential_radar.PR.user.repository.UserRepository;
 import java.time.LocalDateTime;

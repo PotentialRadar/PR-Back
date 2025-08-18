@@ -1,7 +1,6 @@
 package com.potential_radar.PR.config.oauth;
 
-import com.potential_radar.PR.user.model.User;
-import com.potential_radar.PR.user.model.UserProfile;
+import com.potential_radar.PR.user.domain.User;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;

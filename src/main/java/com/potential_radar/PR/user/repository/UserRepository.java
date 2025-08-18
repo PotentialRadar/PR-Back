@@ -1,7 +1,7 @@
 package com.potential_radar.PR.user.repository;
 
-import com.potential_radar.PR.user.model.Provider;
-import com.potential_radar.PR.user.model.User;
+import com.potential_radar.PR.user.domain.Provider;
+import com.potential_radar.PR.user.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

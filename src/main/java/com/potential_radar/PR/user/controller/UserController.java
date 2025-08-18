@@ -1,7 +1,7 @@
 package com.potential_radar.PR.user.controller;
 
 import com.potential_radar.PR.user.dto.*;
-import com.potential_radar.PR.user.model.User;
+import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.service.TokenService;
 import com.potential_radar.PR.user.service.UserService;
 import jakarta.validation.Valid;

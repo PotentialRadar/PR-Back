@@ -1,6 +1,6 @@
 package com.potential_radar.PR.user.repository;
 
-import com.potential_radar.PR.user.model.RefreshToken;
+import com.potential_radar.PR.user.domain.RefreshToken;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

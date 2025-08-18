@@ -1,8 +1,8 @@
 package com.potential_radar.PR.user.dto;
 
-import com.potential_radar.PR.user.model.ExperienceRange;
-import jakarta.validation.constraints.Email;
+import com.potential_radar.PR.user.domain.ExperienceRange;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record UserProfileUpdateRequest(
@@ -16,7 +16,8 @@ public record UserProfileUpdateRequest(
         
         @Size(max = 500, message = "자기소개는 500자 이하여야 합니다")
         String bio,
-        
+
+        @Pattern(regexp = "^\\d{10,11}$", message = "전화번호는 숫자만 10~11자리여야 합니다")
         String phone,
         
         String githubUrl,
@@ -24,7 +25,6 @@ public record UserProfileUpdateRequest(
         String linkedinUrl,
         
         String websiteUrl,
-
         
         Boolean isPortfolioOpen,
         

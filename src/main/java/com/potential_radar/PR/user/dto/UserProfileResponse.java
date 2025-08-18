@@ -1,7 +1,7 @@
 package com.potential_radar.PR.user.dto;
 
-import com.potential_radar.PR.user.model.ExperienceRange;
-import com.potential_radar.PR.user.model.UserProfile;
+import com.potential_radar.PR.user.domain.ExperienceRange;
+import com.potential_radar.PR.user.domain.UserProfile;
 
 import java.math.BigDecimal;
 

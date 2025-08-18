@@ -1,4 +1,4 @@
-package com.potential_radar.PR.user.model;
+package com.potential_radar.PR.user.domain;
 
 import jakarta.persistence.*;
 import lombok.Builder;
@@ -48,16 +48,16 @@ public class UserProfile {
     private String websiteUrl;
 
     @Column(nullable = false)
-    @ColumnDefault("true")
-    private boolean isPortfolioOpen = true;
+    @ColumnDefault("false")
+    private boolean isPortfolioOpen = false;
 
     @Column(nullable = false)
     @ColumnDefault("false")
     private boolean isContactOpen = false;
 
     @Column(nullable = false)
-    @ColumnDefault("true")
-    private boolean isSearchOpen = true;
+    @ColumnDefault("false")
+    private boolean isSearchOpen = false;
 
     @Column(nullable = false, precision = 5, scale = 2)
     @ColumnDefault("0.0")

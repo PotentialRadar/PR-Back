@@ -1,6 +1,6 @@
 package com.potential_radar.PR.project.domain;
 
-import com.potential_radar.PR.user.model.User;
+import com.potential_radar.PR.user.domain.User;
 import jakarta.persistence.*;
 import lombok.*;
 

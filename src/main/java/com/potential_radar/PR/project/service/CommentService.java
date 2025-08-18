@@ -8,7 +8,7 @@ import com.potential_radar.PR.project.dto.CommentRequestDto;
 import com.potential_radar.PR.project.dto.CommentResponseDto;
 import com.potential_radar.PR.project.repository.ProjectCommentRepository;
 import com.potential_radar.PR.project.repository.ProjectRecruitmentRepository;
-import com.potential_radar.PR.user.model.User;
+import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

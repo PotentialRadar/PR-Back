@@ -7,7 +7,7 @@ import com.potential_radar.PR.project.domain.*;
 import com.potential_radar.PR.project.dto.ProjectApplicationResponseDTO;
 import com.potential_radar.PR.project.dto.ProjectApplyRequest;
 import com.potential_radar.PR.project.repository.*;
-import com.potential_radar.PR.user.model.User;
+import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -58,7 +58,7 @@ public class ProjectApplicationService {
                 .map(member -> ProjectApplicationResponseDTO.builder()
                         .id(member.getId())
                         .userId(member.getUser().getUserId())
-                        .userName(member.getUser().getName())
+//                        .userName(member.getUser().getName())  * 이름 필드 삭제
                         .techPart(member.getTechPart())
                         .applicationMessage(member.getApplicationMessage())
                         .status(member.getStatus().name())

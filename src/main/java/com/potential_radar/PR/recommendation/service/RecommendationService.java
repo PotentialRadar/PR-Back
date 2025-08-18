@@ -1,12 +1,11 @@
 package com.potential_radar.PR.recommendation.service;
 
-import com.potential_radar.PR.project.domain.ProjectRecruitment;
 import com.potential_radar.PR.project.repository.ProjectRecruitmentRepository;
 import com.potential_radar.PR.recommendation.domain.RecommendationHistory;
 import com.potential_radar.PR.recommendation.dto.RecommendRequest;
 import com.potential_radar.PR.recommendation.dto.RecommendedProjectResponse;
 import com.potential_radar.PR.recommendation.repository.RecommendationHistoryRepository;
-import com.potential_radar.PR.user.model.User;
+import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;

@@ -4,7 +4,7 @@ import com.potential_radar.PR.common.excetpion.NotFoundException;
 import com.potential_radar.PR.project.domain.*;
 import com.potential_radar.PR.project.dto.*;
 import com.potential_radar.PR.project.repository.*;
-import com.potential_radar.PR.user.model.User;
+import com.potential_radar.PR.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

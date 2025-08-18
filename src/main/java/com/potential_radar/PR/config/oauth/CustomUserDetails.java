@@ -1,12 +1,13 @@
 package com.potential_radar.PR.config.oauth;
 
-import com.potential_radar.PR.user.model.User;
+import com.potential_radar.PR.user.domain.User;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
-import java.util.Collections;
+import java.util.List;
 
 @Getter
 public class CustomUserDetails implements UserDetails {
@@ -29,7 +30,8 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return user.getAuthorities(); // User 엔티티의 권한을 그대로 사용
+        // 추후 역할 기반 시스템이 도입되면 이 부분을 수정해야 합니다.
+        return List.of(new SimpleGrantedAuthority("ROLE_USER"));
     }
 
     @Override

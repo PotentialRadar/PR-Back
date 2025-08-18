@@ -15,8 +15,8 @@ public class TechPart {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "tech_id")
-    private Long id;
+    @Column(name = "tech_part_id")
+    private Long techPartId;
 
     @Column(name = "name", nullable = false, unique = true, length = 50)
     private String name;

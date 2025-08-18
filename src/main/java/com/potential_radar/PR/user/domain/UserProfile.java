@@ -1,5 +1,6 @@
 package com.potential_radar.PR.user.domain;
 
+import com.potential_radar.PR.common.domain.TechPart;
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;

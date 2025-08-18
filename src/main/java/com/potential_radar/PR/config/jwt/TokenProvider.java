@@ -1,6 +1,6 @@
 package com.potential_radar.PR.config.jwt;
 
-import com.potential_radar.PR.user.model.User;
+import com.potential_radar.PR.user.domain.User;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;

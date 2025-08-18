@@ -1,7 +1,7 @@
 package com.potential_radar.PR.recommendation.domain;
 
 import com.potential_radar.PR.project.domain.ProjectRecruitment;
-import com.potential_radar.PR.user.model.User;
+import com.potential_radar.PR.user.domain.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;

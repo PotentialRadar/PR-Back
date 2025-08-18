@@ -4,7 +4,7 @@ import com.potential_radar.PR.config.oauth.CustomUserDetails;
 import com.potential_radar.PR.user.dto.EmailRequest;
 import com.potential_radar.PR.user.dto.EmailVerificationRequest;
 import com.potential_radar.PR.user.dto.UserInfoResponse;
-import com.potential_radar.PR.user.model.User;
+import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.service.EmailAuthService;
 import com.potential_radar.PR.user.service.UserService;
 import jakarta.validation.Valid;

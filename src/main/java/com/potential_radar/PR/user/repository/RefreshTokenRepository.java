@@ -1,6 +1,6 @@
 package com.potential_radar.PR.user.repository;
 
-import com.potential_radar.PR.user.model.RefreshToken;
+import com.potential_radar.PR.user.domain.RefreshToken;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
@@ -8,4 +8,5 @@ import java.util.Optional;
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
     Optional<RefreshToken> findByRefreshToken(String refreshToken);
     Optional<RefreshToken> findByUserId(Long userId);
+    void deleteByUserId(Long userId);
 }

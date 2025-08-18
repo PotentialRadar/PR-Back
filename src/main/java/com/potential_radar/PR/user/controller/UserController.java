@@ -1,9 +1,7 @@
 package com.potential_radar.PR.user.controller;
 
-import com.potential_radar.PR.user.dto.LoginResponse;
-import com.potential_radar.PR.user.dto.UserLoginRequest;
-import com.potential_radar.PR.user.dto.UserSignupRequest;
-import com.potential_radar.PR.user.model.User;
+import com.potential_radar.PR.user.dto.*;
+import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.service.TokenService;
 import com.potential_radar.PR.user.service.UserService;
 import jakarta.validation.Valid;
@@ -49,5 +47,31 @@ public class UserController {
         User user = userService.findByEmail(email);
         tokenService.deleteRefreshToken(user.getUserId());
         return ResponseEntity.ok("로그아웃 성공");
+    }
+
+    // 개인정보 조회
+    @GetMapping("/user/profile")
+    public ResponseEntity<UserProfileResponse> getUserProfile(Principal principal) {
+        String email = principal.getName();
+        UserProfileResponse profile = userService.getUserProfile(email);
+        return ResponseEntity.ok(profile);
+    }
+
+    // 프로필 정보 수정 (닉네임 포함)
+    @PutMapping("/user/profile")
+    public ResponseEntity<Object> updateUserProfile(
+            @Valid @RequestBody UserProfileUpdateRequest request,
+            Principal principal) {
+        String email = principal.getName();
+        userService.updateUserProfile(email, request);
+        return ResponseEntity.ok(Map.of("message", "프로필이 수정되었습니다"));
+    }
+
+    // 회원 탈퇴
+    @DeleteMapping("/user")
+    public ResponseEntity<Object> deleteUser(Principal principal) {
+        String email = principal.getName();
+        userService.deleteUser(email);
+        return ResponseEntity.ok(Map.of("message", "회원 탈퇴가 완료되었습니다"));
     }
 }

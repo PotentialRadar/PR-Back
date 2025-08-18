@@ -37,18 +37,17 @@ public class ProjectRecruitment {
     private Integer viewCount = 0;
 
     @Column(name = "file_url")
-    private String fileUrl; // 첨부파일 경로
+    private String fileUrl;
 
     @Column(updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
     private LocalDateTime updatedAt = LocalDateTime.now();
 
-    // 연관관계(기술스택)
+    // 연관관계
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProjectTechStack> techStacks = new ArrayList<>();
 
-    //기술파트
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProjectTechPart> techParts = new ArrayList<>();
 

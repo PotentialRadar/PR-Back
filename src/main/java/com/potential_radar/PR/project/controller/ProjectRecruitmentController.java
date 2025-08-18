@@ -56,6 +56,7 @@ public class ProjectRecruitmentController {
     }
 
     // 구인글 삭제
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProject(@PathVariable Long id) {
         projectRecruitmentService.deleteProject(id);

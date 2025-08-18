@@ -5,8 +5,8 @@ import com.potential_radar.PR.search.document.ProjectSearchDocument;
 import com.potential_radar.PR.search.repository.UserSearchRepository;
 import com.potential_radar.PR.search.repository.ProjectSearchRepository;
 import com.potential_radar.PR.user.repository.UserRepository;
-import com.potential_radar.PR.project.repository.ProjectRecruitmentRepository;
 import com.potential_radar.PR.user.domain.User;
+import com.potential_radar.PR.project.repository.ProjectRecruitmentRepository;
 import com.potential_radar.PR.project.domain.ProjectRecruitment;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,8 +28,8 @@ public class DataSyncService {
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS");
     
     private final UserRepository userRepository;
-    private final ProjectRecruitmentRepository projectRepository;
     private final UserSearchRepository userSearchRepository;
+    private final ProjectRecruitmentRepository projectRecruitmentRepository;
     private final ProjectSearchRepository projectSearchRepository;
     
     @Transactional(readOnly = true)
@@ -45,34 +45,22 @@ public class DataSyncService {
         log.info("Synchronized {} users to Elasticsearch", userDocs.size());
     }
     
+    public void syncAllData() {
+        syncAllUsersToElasticsearch();
+        syncAllProjectsToElasticsearch();
+    }
+
     @Transactional(readOnly = true)
     public void syncAllProjectsToElasticsearch() {
         log.info("Starting project data synchronization to Elasticsearch...");
         
-        List<ProjectRecruitment> projects = projectRepository.findAll();
-        List<ProjectSearchDocument> projectDocs = new ArrayList<>();
-        
-        for (ProjectRecruitment project : projects) {
-            try {
-                // 트랜잭션 내에서 techStacks 강제 로딩
-                project.getTechStacks().size(); // 지연 로딩 강제 실행
-                ProjectSearchDocument doc = convertProjectToDocument(project);
-                projectDocs.add(doc);
-            } catch (Exception e) {
-                log.error("Failed to convert project {} to document: {}", project.getProjectId(), e.getMessage());
-                // 실패한 프로젝트는 기본값으로 생성
-                ProjectSearchDocument doc = createDefaultProjectDocument(project);
-                projectDocs.add(doc);
-            }
-        }
+        List<ProjectRecruitment> projects = projectRecruitmentRepository.findAll();
+        List<ProjectSearchDocument> projectDocs = projects.stream()
+                .map(this::convertProjectToDocument)
+                .collect(Collectors.toList());
         
         projectSearchRepository.saveAll(projectDocs);
         log.info("Synchronized {} projects to Elasticsearch", projectDocs.size());
-    }
-    
-    public void syncAllData() {
-        syncAllUsersToElasticsearch();
-        syncAllProjectsToElasticsearch();
     }
     
     public UserSearchDocument convertUserToDocument(User user) {
@@ -83,7 +71,7 @@ public class DataSyncService {
                 .id(String.valueOf(user.getUserId()))
                 .userId(user.getUserId())
                 .nickname(user.getNickname())
-                .techPart(getUserTechPart(user)) // 실제 데이터에서 기술 파트 추출
+                .techPart(user.getTechPart()) // 사용자가 설정한 기술 파트
                 .techStacks(getUserTechStacks(user)) // 실제 연관관계에서 기술 스택 추출
                 .introduction("안녕하세요, " + user.getNickname() + "입니다.") // 기본 소개
                 .profileImage(user.getProfileImage())
@@ -101,15 +89,6 @@ public class DataSyncService {
         return document;
     }
     
-    private String getUserTechPart(User user) {
-        // 사용자 ID에 따라 임의의 기술 파트 할당 (실제로는 사용자가 직접 선택)
-        Long userId = user.getUserId();
-        String[] techParts = {"Backend", "Frontend", "Mobile", "DevOps", "AI/ML", "Full Stack"};
-        
-        // 사용자 ID를 기반으로 다양한 기술 파트 할당
-        int index = (int) (userId % techParts.length);
-        return techParts[index];
-    }
     
     private List<String> getUserTechStacks(User user) {
         // 실제 사용자의 기술 스택 연관관계에서 추출
@@ -124,25 +103,65 @@ public class DataSyncService {
         }
         return List.of("Java", "Spring"); // 기본값
     }
-    
-    
+
     public ProjectSearchDocument convertProjectToDocument(ProjectRecruitment project) {
-        return ProjectSearchDocument.builder()
+        log.info("Converting project to document: ID={}, Title={}", 
+                project.getProjectId(), project.getTitle());
+        
+        ProjectSearchDocument document = ProjectSearchDocument.builder()
                 .id(String.valueOf(project.getProjectId()))
                 .projectId(project.getProjectId())
-                .projectName(project.getTitle())
+                .title(project.getTitle())
                 .description(project.getDescription())
+                .techParts(getProjectTechParts(project))
                 .techStacks(getProjectTechStacks(project))
-                .requiredTechParts(List.of("Backend", "Frontend")) // 기본값
                 .status(project.getStatus().name())
-                .ownerId(project.getTeamLeader().getUserId())
-                .ownerNickname(project.getTeamLeader().getNickname())
+                .teamLeaderId(project.getTeamLeader() != null ? project.getTeamLeader().getUserId() : null)
+                .teamLeaderNickname(project.getTeamLeader() != null ? project.getTeamLeader().getNickname() : "Unknown")
+                .recruitCount(project.getRecruitCount())
+                .viewCount(project.getViewCount())
+                .recruitDeadline(project.getRecruitDeadline() != null ? 
+                    project.getRecruitDeadline().atStartOfDay().format(ELASTICSEARCH_DATE_FORMAT) : null)
+                .startDate(project.getStartDate() != null ? 
+                    project.getStartDate().atStartOfDay().format(ELASTICSEARCH_DATE_FORMAT) : null)
+                .endDate(project.getEndDate() != null ? 
+                    project.getEndDate().atStartOfDay().format(ELASTICSEARCH_DATE_FORMAT) : null)
                 .createdAt(project.getCreatedAt().format(ELASTICSEARCH_DATE_FORMAT))
                 .updatedAt(project.getUpdatedAt().format(ELASTICSEARCH_DATE_FORMAT))
                 .build();
+        
+        log.info("Created project document: title={}, techParts={}, techStacks={}", 
+                document.getTitle(), document.getTechParts(), document.getTechStacks());
+        return document;
+    }
+    
+    private List<String> getProjectTechParts(ProjectRecruitment project) {
+        // 실제로는 ProjectTechPart 연관관계에서 추출해야 하지만, 
+        // 현재는 간단하게 프로젝트 제목 기반으로 추출
+        String title = project.getTitle().toLowerCase();
+        List<String> techParts = new ArrayList<>();
+        
+        if (title.contains("backend") || title.contains("백엔드") || title.contains("서버") || title.contains("api")) {
+            techParts.add("Backend");
+        }
+        if (title.contains("frontend") || title.contains("프론트") || title.contains("웹") || title.contains("react") || title.contains("vue")) {
+            techParts.add("Frontend");
+        }
+        if (title.contains("mobile") || title.contains("모바일") || title.contains("앱") || title.contains("ios") || title.contains("android")) {
+            techParts.add("Mobile");
+        }
+        if (title.contains("devops") || title.contains("인프라") || title.contains("배포") || title.contains("ci/cd")) {
+            techParts.add("DevOps");
+        }
+        if (title.contains("ai") || title.contains("ml") || title.contains("머신러닝") || title.contains("딥러닝")) {
+            techParts.add("AI/ML");
+        }
+        
+        return techParts.isEmpty() ? List.of("Full Stack") : techParts;
     }
     
     private List<String> getProjectTechStacks(ProjectRecruitment project) {
+        // 실제 프로젝트의 기술 스택 연관관계에서 추출
         try {
             if (project.getTechStacks() != null && !project.getTechStacks().isEmpty()) {
                 return project.getTechStacks().stream()
@@ -152,26 +171,6 @@ public class DataSyncService {
         } catch (Exception e) {
             log.warn("Failed to load tech stacks for project {}: {}", project.getProjectId(), e.getMessage());
         }
-        return List.of("Spring Boot", "React"); // 기본값
-    }
-    
-    private ProjectSearchDocument createDefaultProjectDocument(ProjectRecruitment project) {
-        return ProjectSearchDocument.builder()
-                .id(String.valueOf(project.getProjectId()))
-                .projectId(project.getProjectId())
-                .projectName(project.getTitle())
-                .description(project.getDescription())
-                .techStacks(List.of("Java", "Spring")) // 기본값
-                .requiredTechParts(List.of("Backend", "Frontend")) // 기본값
-                .status(project.getStatus().name())
-                .ownerId(project.getTeamLeader().getUserId())
-                .ownerNickname(project.getTeamLeader().getNickname())
-                .createdAt(project.getCreatedAt() != null ? 
-                    project.getCreatedAt().format(ELASTICSEARCH_DATE_FORMAT) : 
-                    LocalDateTime.now().format(ELASTICSEARCH_DATE_FORMAT))
-                .updatedAt(project.getUpdatedAt() != null ? 
-                    project.getUpdatedAt().format(ELASTICSEARCH_DATE_FORMAT) : 
-                    LocalDateTime.now().format(ELASTICSEARCH_DATE_FORMAT))
-                .build();
+        return List.of("Java", "Spring Boot", "React"); // 기본값
     }
 }

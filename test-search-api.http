@@ -1,435 +1,255 @@
 ### Search API Test Script
 ### 포트 8082에서 실행 중인 애플리케이션 테스트
 
-### 1. Health Check - Elasticsearch 연결 확인
-GET http://localhost:8082/api/search/health/elasticsearch
-Accept: application/json
-
-###
-
-### 2. Health Check - Database 연결 확인  
-GET http://localhost:8082/api/search/health/database
-Accept: application/json
-
-###
-
-### 3. 데이터 동기화 - 모든 데이터
+### 1. 전체 동기화 - 모든 데이터
 POST http://localhost:8082/api/search/admin/sync/all
 Content-Type: application/json
 
 ###
 
-### 4. 데이터 동기화 - 유저만
-POST http://localhost:8082/api/search/admin/sync/users
-Content-Type: application/json
-
-###
-
-### 5. 데이터 동기화 - 프로젝트만
-POST http://localhost:8082/api/search/admin/sync/projects
-Content-Type: application/json
-
-###
-
-### 6. 유저 검색 - 전체
+### 2. 유저 검색 - 전체 (키워드 없음)
 GET http://localhost:8082/api/search/users
 Accept: application/json
 
 ###
 
-### 7. 유저 검색 - 키워드 통합 검색 (닉네임)
+### 3. 유저 검색 - 키워드 통합 검색 (닉네임)
 GET http://localhost:8082/api/search/users?keyword=지은
 Accept: application/json
 
 ###
 
-### 8. 유저 검색 - 키워드 통합 검색 (기술 파트)
+### 4. 유저 검색 - 키워드 통합 검색 (기술 파트)
 GET http://localhost:8082/api/search/users?keyword=Backend
 Accept: application/json
 
 ###
 
-### 9. 유저 검색 - 키워드 통합 검색 (기술 스택)
+### 5. 유저 검색 - 키워드 통합 검색 (기술 스택)
 GET http://localhost:8082/api/search/users?keyword=Java
 Accept: application/json
 
 ###
 
-### 10. 유저 검색 - 기술 파트 다중 선택 필터
+### 6. 유저 검색 - 기술 파트 다중 선택 필터
 GET http://localhost:8082/api/search/users?techParts=Backend&techParts=Frontend
 Accept: application/json
 
 ###
 
-### 11. 유저 검색 - 기술 스택 다중 선택 필터
+### 7. 유저 검색 - 기술 스택 다중 선택 필터
 GET http://localhost:8082/api/search/users?techStacks=Java&techStacks=Spring
 Accept: application/json
 
 ###
 
-### 12. 유저 검색 - 경력 다중 선택 필터
+### 8. 유저 검색 - 경력 다중 선택 필터
 GET http://localhost:8082/api/search/users?experienceRanges=FRESHER&experienceRanges=Y1_3
 Accept: application/json
 
 ###
 
-### 13. 유저 검색 - 통합 키워드 + 다중 필터 조합
+### 9. 유저 검색 - 통합 키워드 + 다중 필터 조합
 GET http://localhost:8082/api/search/users?keyword=개발&techParts=Backend&techStacks=Java&experienceRanges=Y1_3
 Accept: application/json
 
 ###
 
-### 14. 프로젝트 검색 - 전체
+### 10. 테스트 - 전체 사용자 수 조회
+GET http://localhost:8082/api/search/test/count
+Accept: application/json
+
+###
+
+### 11. 테스트 - 전체 사용자 문서 조회
+GET http://localhost:8082/api/search/test/all
+Accept: application/json
+
+###
+
+### ======= 🔍 키워드 통합 검색 테스트 =======
+### 하나의 키워드로 닉네임, 기술스택, 기술파트를 모두 검색
+
+### 12. 키워드 통합 검색 - 한글 닉네임
+GET http://localhost:8082/api/search/users?keyword=개발자
+Accept: application/json
+
+###
+
+### 13. 키워드 통합 검색 - 영문 기술스택
+GET http://localhost:8082/api/search/users?keyword=Spring
+Accept: application/json
+
+###
+
+### 14. 키워드 통합 검색 - 기술파트
+GET http://localhost:8082/api/search/users?keyword=Frontend
+Accept: application/json
+
+###
+
+### ======= 🔧 다중 필터 조합 테스트 =======
+
+### 15. 기술파트 + 경력 필터 조합
+GET http://localhost:8082/api/search/users?techParts=Backend&experienceRanges=Y1_3&experienceRanges=Y5_10
+Accept: application/json
+
+###
+
+### 16. 기술스택 + 경력 필터 조합  
+GET http://localhost:8082/api/search/users?techStacks=Java&techStacks=JavaScript&experienceRanges=FRESHER
+Accept: application/json
+
+###
+
+### 17. 키워드 + 모든 필터 조합
+GET http://localhost:8082/api/search/users?keyword=풀스택&techParts=Full Stack&techStacks=React&techStacks=Node.js&experienceRanges=Y1_3
+Accept: application/json
+
+###
+
+### ======= 📊 경력 필터 상세 테스트 =======
+
+### 18. 신입 개발자 검색
+GET http://localhost:8082/api/search/users?experienceRanges=FRESHER
+Accept: application/json
+
+###
+
+### 19. 시니어 개발자 검색 (5년 이상)
+GET http://localhost:8082/api/search/users?experienceRanges=Y5_10&experienceRanges=GE_10
+Accept: application/json
+
+###
+
+### 20. 주니어-미들 개발자 검색 (1-3년)
+GET http://localhost:8082/api/search/users?experienceRanges=Y1_3
+Accept: application/json
+
+###
+
+### ======= 🧪 엣지 케이스 테스트 =======
+
+### 21. 빈 키워드 검색 (모든 사용자 반환)
+GET http://localhost:8082/api/search/users?keyword=
+Accept: application/json
+
+###
+
+### 22. 존재하지 않는 키워드 검색
+GET http://localhost:8082/api/search/users?keyword=존재하지않는키워드
+Accept: application/json
+
+###
+
+### 23. 특수문자 포함 키워드 검색
+GET http://localhost:8082/api/search/users?keyword=C++
+Accept: application/json
+
+###
+
+### 24. 페이징 테스트 - 첫 번째 페이지
+GET http://localhost:8082/api/search/users?page=0&size=5
+Accept: application/json
+
+###
+
+### 25. 페이징 테스트 - 두 번째 페이지
+GET http://localhost:8082/api/search/users?page=1&size=5
+Accept: application/json
+
+###
+
+### ======= 🚀 프로젝트 검색 테스트 =======
+
+### 26. 프로젝트 검색 - 전체 (키워드 없음)
 GET http://localhost:8082/api/search/projects
 Accept: application/json
 
 ###
 
-### 15. 프로젝트 검색 - 키워드 통합 검색 (프로젝트명)
-GET http://localhost:8082/api/search/projects?keyword=테스트
+### 27. 프로젝트 검색 - 키워드 통합 검색 (제목)
+GET http://localhost:8082/api/search/projects?keyword=웹
 Accept: application/json
 
 ###
 
-### 16. 프로젝트 검색 - 키워드 통합 검색 (기술 스택)
-GET http://localhost:8082/api/search/projects?keyword=Spring
+### 28. 프로젝트 검색 - 키워드 통합 검색 (기술 파트)
+GET http://localhost:8082/api/search/projects?keyword=Backend
 Accept: application/json
 
 ###
 
-### 17. 프로젝트 검색 - 기술 파트 다중 선택 필터
+### 29. 프로젝트 검색 - 키워드 통합 검색 (기술 스택)
+GET http://localhost:8082/api/search/projects?keyword=React
+Accept: application/json
+
+###
+
+### 30. 프로젝트 검색 - 기술 파트 다중 선택 필터
 GET http://localhost:8082/api/search/projects?techParts=Backend&techParts=Frontend
 Accept: application/json
 
 ###
 
-### 18. 프로젝트 검색 - 기술 스택 다중 선택 필터
-GET http://localhost:8082/api/search/projects?techStacks=Spring&techStacks=React
+### 31. 프로젝트 검색 - 기술 스택 다중 선택 필터
+GET http://localhost:8082/api/search/projects?techStacks=Java&techStacks=Spring Boot
 Accept: application/json
 
 ###
 
-### 19. 프로젝트 검색 - 통합 키워드 + 다중 필터 조합
-GET http://localhost:8082/api/search/projects?keyword=웹개발&techParts=Backend&techStacks=Spring
+### 32. 프로젝트 검색 - 프로젝트 상태 필터
+GET http://localhost:8082/api/search/projects?statuses=RECRUITING
 Accept: application/json
 
 ###
 
-### 20. 통합 검색 - 전체
-GET http://localhost:8082/api/search/unified?keyword=test
+### 33. 프로젝트 검색 - 통합 키워드 + 다중 필터 조합
+GET http://localhost:8082/api/search/projects?keyword=개발&techParts=Frontend&techStacks=React&statuses=RECRUITING
 Accept: application/json
 
 ###
 
-### 21. 통합 검색 - 유저만
-GET http://localhost:8082/api/search/unified?keyword=testuser&searchType=user
+### 34. 프로젝트 테스트 - 전체 프로젝트 수 조회
+GET http://localhost:8082/api/search/test/projects/count
 Accept: application/json
 
 ###
 
-### 22. 통합 검색 - 프로젝트만
-GET http://localhost:8082/api/search/unified?keyword=프로젝트&searchType=project
+### 35. 프로젝트 테스트 - 전체 프로젝트 문서 조회
+GET http://localhost:8082/api/search/test/projects/all
 Accept: application/json
 
 ###
 
-### 23. 통합 검색 - 기술 스택 필터 적용
-GET http://localhost:8082/api/search/unified?keyword=개발&techStacks=Java&techStacks=Spring
+### ======= 🔍 프로젝트 키워드 통합 검색 테스트 =======
+
+### 36. 프로젝트 키워드 통합 검색 - 제목 검색
+GET http://localhost:8082/api/search/projects?keyword=앱
 Accept: application/json
 
 ###
 
-### ======= 🚀 개선된 검색 API 테스트 (2025-08-17) =======
-### 새로운 기능: 키워드 통합 검색, 경력 필터링, 다중 선택 필터, 포트폴리오/검색 공개 필터링, 프로젝트 모집중 필터링, 마감일 정렬, 캐싱, 자동완성, 검색 히스토리
-
-### 24. 사용자 검색 - 키워드 통합 검색 (닉네임, 기술스택, 기술파트 통합)
-GET http://localhost:8082/api/search/users?keyword=김철수
+### 37. 프로젝트 키워드 통합 검색 - 설명 검색  
+GET http://localhost:8082/api/search/projects?keyword=개발자
 Accept: application/json
 
 ###
 
-### 25. 사용자 검색 - 키워드 + 경력 필터 조합 (개선)
-GET http://localhost:8082/api/search/users?keyword=개발자&experienceRanges=Y1_3&experienceRanges=Y5_10
+### 38. 프로젝트 키워드 통합 검색 - Frontend
+GET http://localhost:8082/api/search/projects?keyword=Frontend
 Accept: application/json
 
 ###
 
-### 26. 프로젝트 검색 - 마감일 빠른 순 정렬 (신규)
-GET http://localhost:8082/api/search/projects?keyword=웹개발&sortBy=deadline&page=0&size=5
+### 39. 프로젝트 키워드 통합 검색 - Mobile
+GET http://localhost:8082/api/search/projects?keyword=Mobile
 Accept: application/json
 
 ###
 
-### 27. 프로젝트 검색 - 최신 생성순 정렬 (신규)
-GET http://localhost:8082/api/search/projects?keyword=React&sortBy=createdAt&page=0&size=5
+### 40. 프로젝트 페이징 테스트
+GET http://localhost:8082/api/search/projects?page=0&size=3
 Accept: application/json
 
 ###
-
-### 28. 프로젝트 검색 - 점수순 정렬 (기본값)
-GET http://localhost:8082/api/search/projects?keyword=AI&sortBy=score&page=0&size=5
-Accept: application/json
-
-###
-
-### 29. 자동완성 - 통합 검색 (신규)
-GET http://localhost:8082/api/search/autocomplete?query=Jav&type=all
-Accept: application/json
-
-###
-
-### 30. 자동완성 - 사용자만 (신규)
-GET http://localhost:8082/api/search/autocomplete?query=김&type=user
-Accept: application/json
-
-###
-
-### 31. 자동완성 - 프로젝트만 (신규)
-GET http://localhost:8082/api/search/autocomplete?query=웹&type=project
-Accept: application/json
-
-###
-
-### 32. 자동완성 - 기술스택만 (신규)
-GET http://localhost:8082/api/search/autocomplete?query=Rea&type=tech
-Accept: application/json
-
-###
-
-### 33. 검색 히스토리 조회 (신규)
-GET http://localhost:8082/api/search/history/1
-Accept: application/json
-
-###
-
-### 34. 검색 히스토리 삭제 (신규)
-DELETE http://localhost:8082/api/search/history/1
-Accept: application/json
-
-###
-
-### ======= 🔄 캐싱 성능 테스트 =======
-### 동일한 검색을 여러 번 실행하여 캐싱 효과 확인 (응답시간 비교)
-
-### 35. 첫 번째 검색 (캐시 미스 - 느림)
-GET http://localhost:8082/api/search/users?keyword=개발자&techParts=Backend&page=0&size=10
-Accept: application/json
-
-###
-
-### 36. 두 번째 검색 (캐시 히트 - 빠름)
-GET http://localhost:8082/api/search/users?keyword=개발자&techParts=Backend&page=0&size=10
-Accept: application/json
-
-###
-
-### 37. 프로젝트 캐싱 테스트 - 첫 번째
-GET http://localhost:8082/api/search/projects?keyword=웹개발&sortBy=deadline&page=0&size=5
-Accept: application/json
-
-###
-
-### 38. 프로젝트 캐싱 테스트 - 두 번째 (캐시됨)
-GET http://localhost:8082/api/search/projects?keyword=웹개발&sortBy=deadline&page=0&size=5
-Accept: application/json
-
-###
-
-### ======= 🔍 필터링 조건 상세 테스트 =======
-
-### 39. 사용자 - 복수 기술스택 검색
-GET http://localhost:8082/api/search/users?techStacks=JavaScript&techStacks=TypeScript&techStacks=Vue.js
-Accept: application/json
-
-###
-
-### 40. 프로젝트 - 복수 기술파트 필터링 + 마감일 정렬
-GET http://localhost:8082/api/search/projects?techParts=Backend&techParts=DevOps&sortBy=deadline
-Accept: application/json
-
-###
-
-### 41. 프로젝트 - 기술스택 + 키워드 조합
-GET http://localhost:8082/api/search/projects?keyword=커머스&techStacks=Node.js&techStacks=MongoDB
-Accept: application/json
-
-###
-
-### ======= 🔄 하이브리드 동기화 시스템 테스트 =======
-### 이벤트 기반 실시간 동기화 + 스케줄러 기반 정기 동기화 + 안전망 동기화
-
-### 42. 전체 동기화 상태 조회
-GET http://localhost:8082/api/search/admin/sync-management/status
-Accept: application/json
-
-###
-
-### 37. 동기화 건강성 체크
-GET http://localhost:8082/api/search/admin/sync-management/health
-Accept: application/json
-
-###
-
-### 38. 실패한 동기화 작업 조회
-GET http://localhost:8082/api/search/admin/sync-management/failed
-Accept: application/json
-
-###
-
-### 39. 진행중인 동기화 작업 조회
-GET http://localhost:8082/api/search/admin/sync-management/in-progress
-Accept: application/json
-
-###
-
-### 40. Dead Letter Queue 상태 조회
-GET http://localhost:8082/api/search/admin/sync-management/dead-letter-queue
-Accept: application/json
-
-###
-
-### 41. 수동 전체 동기화 실행
-POST http://localhost:8082/api/search/admin/sync-management/manual/full
-Accept: application/json
-
-###
-
-### 42. 수동 사용자 동기화 실행
-POST http://localhost:8082/api/search/admin/sync-management/manual/users
-Accept: application/json
-
-###
-
-### 43. 수동 프로젝트 동기화 실행
-POST http://localhost:8082/api/search/admin/sync-management/manual/projects
-Accept: application/json
-
-###
-
-### 44. 특정 동기화 타입 상태 조회
-GET http://localhost:8082/api/search/admin/sync-management/status/USER_INCREMENTAL
-Accept: application/json
-
-###
-
-### 45. 프로젝트 증분 동기화 상태 조회
-GET http://localhost:8082/api/search/admin/sync-management/status/PROJECT_INCREMENTAL
-Accept: application/json
-
-###
-
-### 46. 동기화 상태 리셋 (관리자용)
-POST http://localhost:8082/api/search/admin/sync-management/reset/MANUAL_FULL
-Accept: application/json
-
-###
-
-### 47. Dead Letter Queue 비우기
-DELETE http://localhost:8082/api/search/admin/sync-management/dead-letter-queue
-Accept: application/json
-
-###
-
-### ======= 🧪 동기화 시스템 테스트 시나리오 =======
-
-### 48. 시나리오 1: 프로젝트 생성 → 실시간 동기화 확인
-### 1) 먼저 검색으로 현재 프로젝트 수 확인
-GET http://localhost:8082/api/search/projects?page=0&size=1
-Accept: application/json
-
-### 2) 새 프로젝트 생성 (실제 프로젝트 API 호출)
-### POST http://localhost:8082/api/projects (실제 프로젝트 생성 API)
-
-### 3) 즉시 검색하여 새 프로젝트가 반영되었는지 확인
-GET http://localhost:8082/api/search/projects?page=0&size=10
-Accept: application/json
-
-###
-
-### 49. 시나리오 2: 동기화 실패 시 복구 테스트
-### 1) 의도적으로 Elasticsearch 연결 끊기 또는 오류 발생
-### 2) 프로젝트 생성/수정
-### 3) Dead Letter Queue 확인
-GET http://localhost:8082/api/search/admin/sync-management/dead-letter-queue
-Accept: application/json
-
-### 4) 연결 복구 후 수동 동기화
-POST http://localhost:8082/api/search/admin/sync-management/manual/projects
-Accept: application/json
-
-###
-
-### 50. 시나리오 3: 캐시 무효화 테스트
-### 1) 동일한 검색 2회 실행 (캐시 히트 확인)
-GET http://localhost:8082/api/search/projects?projectName=테스트&page=0&size=5
-Accept: application/json
-
-### 2) 프로젝트 업데이트 (캐시 무효화 트리거)
-### PUT http://localhost:8082/api/projects/{id} (실제 프로젝트 수정 API)
-
-### 3) 동일한 검색 재실행 (새로운 결과 확인)
-GET http://localhost:8082/api/search/projects?projectName=테스트&page=0&size=5
-Accept: application/json
-
-###
-
-### ======= 📊 모니터링 및 메트릭 테스트 =======
-
-### 51. 동기화 성능 메트릭 조회
-GET http://localhost:8082/api/search/admin/sync-management/status
-Accept: application/json
-
-### 응답에서 확인할 항목:
-### - healthSummary.successRate: 성공률
-### - deadLetterQueueSize: 실패한 작업 수
-### - 각 syncType별 lastSyncTime: 마지막 동기화 시간
-
-###
-
-### 52. 시스템 전체 건강성 체크
-GET http://localhost:8082/api/search/admin/sync-management/health
-Accept: application/json
-
-### 응답에서 확인할 항목:
-### - overallHealthy: 전체 시스템 건강 상태
-### - userSyncHealthy: 사용자 동기화 건강 상태  
-### - projectSyncHealthy: 프로젝트 동기화 건강 상태
-### - successRate: 전체 성공률
-
-###
-
-### ======= 🔧 동기화 레벨별 테스트 가이드 =======
-
-### 실시간 동기화 (이벤트 기반):
-### ✅ 프로젝트 생성/수정/삭제 시 즉시 검색 결과 반영
-### ✅ 프로젝트 상태 변경 (recruiting ↔ completed) 즉시 반영
-### ✅ 사용자 정보 수정 시 즉시 검색 결과 반영
-
-### 증분 동기화 (5분 주기):
-### ✅ 이벤트로 놓친 변경사항 자동 보완
-### ✅ 변경 빈도에 따른 적응형 동기화 (1분/3분/5분)
-### ✅ 배치 크기 최적화로 성능 보장
-
-### 안전망 동기화 (10분 주기):
-### ✅ Dead Letter Queue 자동 처리
-### ✅ 실패한 동기화 재시도
-### ✅ 오래된 진행중 상태 자동 복구
-
-### 전체 동기화 (주 1회):
-### ✅ 완전한 데이터 일관성 보장
-### ✅ 인덱스 최적화
-### ✅ 오래된 로그 정리
-
-###
-
-### ======= 📋 테스트 체크리스트 =======
-### ✅ searchTimeMs 필드로 응답 시간 확인
-### ✅ 캐시 히트 시 응답 시간 개선 확인
-### ✅ 자동완성 최소 2글자 이상 입력 확인
-### ✅ 프로젝트 검색 시 recruiting 상태만 반환 확인
-### ✅ 사용자 검색 시 포트폴리오/검색 공개 필터링 확인
-### ✅ 실시간 동기화: 데이터 변경 시 즉시 반영 확인
-### ✅ Dead Letter Queue: 실패한 작업 관리 확인
-### ✅ 동기화 상태: 모니터링 API 응답 확인
-### ✅ 시스템 건강성: 전체 동기화 상태 확인
-### ✅ 수동 동기화: 관리자 제어 기능 확인

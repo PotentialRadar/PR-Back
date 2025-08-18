@@ -52,7 +52,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         return userRepository.findByEmail(userInfo.getEmail())
                 .orElseGet(() -> userRepository.save(User.builder()
                         .email(userInfo.getEmail())
-                        .name(userInfo.getName())
                         .nickname(userInfo.getName()) // 초기 닉네임 설정
                         .provider(User.Provider.valueOf(userInfo.getProvider().toUpperCase()))
                         .providerUserId(userInfo.getProviderId())

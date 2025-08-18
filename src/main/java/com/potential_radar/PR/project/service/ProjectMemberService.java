@@ -48,7 +48,6 @@ public class ProjectMemberService {
                 .map(member -> ProjectMemberResponseDTO.builder()
                         .id(member.getId())
                         .userId(member.getUser().getUserId())
-                        .userName(member.getUser().getName()) // 필요하다면
                         .techStack(member.getTechStack())      // 엔티티에 필드 있으면
                         .applicationMessage(member.getApplicationMessage())
                         .status(member.getStatus().name())

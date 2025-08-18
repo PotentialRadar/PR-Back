@@ -32,8 +32,6 @@ public class User implements UserDetails {
     @Column(nullable = true)
     private String password; // 소셜로그인 null 가능
 
-    @Column(nullable = false)
-    private String name;
 
     @Column(nullable = false)
     private String nickname;
@@ -63,6 +61,8 @@ public class User implements UserDetails {
     @Enumerated(EnumType.STRING)
     private ExperienceRange experienceRange;
 
+    private String techPart;
+
     // 연관관계
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<UserTechStack> userTechStacks = new ArrayList<>();
@@ -79,13 +79,13 @@ public class User implements UserDetails {
     }
 
     @Builder //	Builder 패턴으로 객체 생성 시 유연한 코드 제공
-    public User(String email, String password, String name, String nickname,
+    public User(String email, String password, String nickname,
                 String profileImage, boolean isPortfolioOpen,
                 Provider provider, String providerUserId,
-                BigDecimal reputationScore, int reviewCount, ExperienceRange experienceRange) {
+                BigDecimal reputationScore, int reviewCount, ExperienceRange experienceRange,
+                String techPart) {
         this.email = email;
         this.password = password;
-        this.name = name;
         this.nickname = nickname;
         this.profileImage = profileImage;
         this.isPortfolioOpen = isPortfolioOpen;
@@ -94,6 +94,7 @@ public class User implements UserDetails {
         this.reputationScore = reputationScore;
         this.reviewCount = reviewCount;
         this.experienceRange = experienceRange;
+        this.techPart = techPart;
     }
 
     @Override

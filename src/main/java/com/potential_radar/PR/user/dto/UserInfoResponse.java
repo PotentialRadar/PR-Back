@@ -6,7 +6,6 @@ public record UserInfoResponse(
         Long id,
         String email,
         String nickname,
-        String name,
         String profileImage
 ) {
     public UserInfoResponse(User user) {
@@ -14,7 +13,6 @@ public record UserInfoResponse(
                 user.getUserId(),
                 user.getEmail(),
                 user.getNickname(),
-                user.getName(),
                 user.getProfileImage()
         );
     }

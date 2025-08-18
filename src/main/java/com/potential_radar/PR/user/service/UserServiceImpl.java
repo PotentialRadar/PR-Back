@@ -35,7 +35,6 @@ public class UserServiceImpl implements UserService {
         User user = User.builder()
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
-                .name(request.name())
                 .nickname(request.nickname())
                 .isPortfolioOpen(false) //초기 기본값
                 .provider(User.Provider.LOCAL)

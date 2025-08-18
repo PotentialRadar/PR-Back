@@ -6,5 +6,4 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ProjectSearchRepository extends ElasticsearchRepository<ProjectSearchDocument, String> {
-
 }

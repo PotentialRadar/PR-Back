@@ -1,28 +1,32 @@
 package com.potential_radar.PR.search.dto;
 
-import lombok.*;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.util.List;
 
 @Getter
-@Setter
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@ToString
 public class ProjectSearchReq {
-    // 통합 검색창: 프로젝트명, 프로젝트에서 사용하는 기술 스택들과 기술 파트
-    private String keyword;
-
-    // 기술 파트 다중 선택
-    private List<String> techParts;
-
-    // 기술 스택 다중 선택
-    private List<String> techStacks;
-
-    // 정렬 기준 (deadline, createdAt, score)
-    private String sortBy = "score";
-
-    // 페이징
-    private int page = 0;
-    private int size = 20;
+    
+    private String keyword;              // 통합 키워드 검색 (제목, 설명, 기술파트, 기술스택)
+    private List<String> techParts;      // 기술 파트 필터
+    private List<String> techStacks;     // 기술 스택 필터
+    private List<String> statuses;       // 프로젝트 상태 필터
+    private int page = 0;                // 페이지 번호
+    private int size = 20;               // 페이지 크기
+    
+    @Builder
+    public ProjectSearchReq(String keyword, List<String> techParts, List<String> techStacks,
+                           List<String> statuses, int page, int size) {
+        this.keyword = keyword;
+        this.techParts = techParts;
+        this.techStacks = techStacks;
+        this.statuses = statuses;
+        this.page = page;
+        this.size = size;
+    }
 }

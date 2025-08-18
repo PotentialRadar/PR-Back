@@ -19,14 +19,9 @@ public class TokenApiController {
 
     @PostMapping("/api/token")
     public ResponseEntity<CreateAccessTokenResponse> createNewAccessToken(@Valid @RequestBody CreateAccessTokenRequest request){
-        try{
-            String newAccessToken = tokenService.createNewAccessToken(request.getRefreshToken());
-
-            return ResponseEntity.status(HttpStatus.CREATED).body(new CreateAccessTokenResponse(newAccessToken));
-        }catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        }catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+        // IllegalArgumentException은 유효하지 않거나 만료된 토큰을 의미하므로 401 Unauthorized가 더 적절합니다.
+        String newAccessToken = tokenService.createNewAccessToken(request.getRefreshToken());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new CreateAccessTokenResponse(newAccessToken));
     }
 }

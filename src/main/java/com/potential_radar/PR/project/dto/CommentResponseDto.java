@@ -1,5 +1,6 @@
 package com.potential_radar.PR.project.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -15,6 +16,7 @@ public class CommentResponseDto {
     private String content;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    @JsonProperty("isPrivate")
     private boolean isPrivate;
     private List<CommentResponseDto> children;
 }

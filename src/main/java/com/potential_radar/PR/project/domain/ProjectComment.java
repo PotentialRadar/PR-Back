@@ -30,7 +30,7 @@ public class ProjectComment {
     private String content;
 
     @Column(name = "is_private", nullable = false)
-    private boolean isPrivate = false;
+    private boolean isPrivate;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

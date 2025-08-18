@@ -1,7 +1,12 @@
 package com.potential_radar.PR.user.controller;
 
-import com.potential_radar.PR.user.dto.*;
 import com.potential_radar.PR.user.domain.User;
+import com.potential_radar.PR.user.dto.*;
+import com.potential_radar.PR.like.service.LikeService;
+import com.potential_radar.PR.project.dto.ProjectRecruitmentResponse;
+import com.potential_radar.PR.user.dto.LoginResponse;
+import com.potential_radar.PR.user.dto.UserLoginRequest;
+import com.potential_radar.PR.user.dto.UserSignupRequest;
 import com.potential_radar.PR.user.service.TokenService;
 import com.potential_radar.PR.user.service.UserService;
 import jakarta.validation.Valid;
@@ -12,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -22,6 +28,7 @@ public class UserController {
 
     private final UserService userService;
     private final TokenService tokenService;
+    private final LikeService likeService;
 
     @PostMapping("/login")
     public ResponseEntity<Object> login(@RequestBody UserLoginRequest loginRequest) {
@@ -73,5 +80,11 @@ public class UserController {
         String email = principal.getName();
         userService.deleteUser(email);
         return ResponseEntity.ok(Map.of("message", "회원 탈퇴가 완료되었습니다"));
+    }
+
+    @GetMapping("/users/{userId}/likes/projects")
+    public ResponseEntity<List<ProjectRecruitmentResponse>> getLikedProjects(@PathVariable Long userId) {
+        List<ProjectRecruitmentResponse> likedProjects = likeService.getLikedProjects(userId);
+        return ResponseEntity.ok(likedProjects);
     }
 }

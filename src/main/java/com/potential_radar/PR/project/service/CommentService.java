@@ -41,9 +41,10 @@ public class CommentService {
                     .orElseThrow(() -> new NotFoundException("부모 댓글을 찾을 수 없습니다."));
         }
 
+        boolean secret = Boolean.TRUE.equals(request.getIsPrivate());
         ProjectComment comment = ProjectComment.builder()
                 .content(request.getContent())
-                .isPrivate(request.isPrivate())
+                .isPrivate(secret)
                 .user(user)
                 .project(project)
                 .parent(parentComment)
@@ -80,8 +81,13 @@ public class CommentService {
             throw new AccessDeniedException("댓글 수정 권한이 없습니다.");
         }
 
-        comment.setContent(request.getContent());
-        comment.setPrivate(request.isPrivate());
+        // 수정 (넘어온 값이 있을 때만 변경)
+        if (request.getContent() != null) {
+            comment.setContent(request.getContent());
+        }
+        if (request.getIsPrivate() != null) {
+            comment.setPrivate(request.getIsPrivate());
+        }
     }
 
     // 댓글 삭제

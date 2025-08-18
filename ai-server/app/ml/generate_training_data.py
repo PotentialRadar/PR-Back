@@ -11,12 +11,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 ai_server_dir = os.path.dirname(os.path.dirname(current_dir))
 sys.path.insert(0, ai_server_dir)
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 import pandas as pd
-import numpy as np
-from typing import List, Dict
-import itertools
 
 from app.models import Project
 from app.utils.feature_engineering import compute_features, enhanced_final_score

@@ -64,6 +64,24 @@ public class RecommendationService {
                 strict, topN, minScore, minOverlap);
 
         try {
+            // AI 서버 응답을 먼저 String으로 받아서 로그 출력
+            String rawResponse = webClient.post()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/api/recommend/projects")
+                            .queryParam("topN", topN)
+                            .queryParam("minScore", minScore)
+                            .queryParam("minOverlap", minOverlap)
+                            .queryParam("strict", strict)
+                            .build())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(request)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+                    
+            log.info("🔍 AI 서버 원본 응답: {}", rawResponse);
+            
+            // 이제 JSON을 객체로 변환
             List<RecommendedProjectResponse> recommendedProjects = webClient.post()
                     .uri(uriBuilder -> uriBuilder
                             .path("/api/recommend/projects")

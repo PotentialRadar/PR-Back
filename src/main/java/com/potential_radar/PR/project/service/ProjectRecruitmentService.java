@@ -18,6 +18,7 @@ public class ProjectRecruitmentService {
     private final ProjectMemberRepository projectMemberRepository;
     private final ProjectTechPartRepository projectTechPartRepository;
     private final ProjectTechStackRepository projectTechStackRepository;
+    private final ProjectCommentRepository projectCommentRepository;
 
     // 구인글 생성
     @Transactional
@@ -177,8 +178,8 @@ public class ProjectRecruitmentService {
                     .appliedCount(appliedCount)
                     .acceptedCount(acceptedCount)
                     .remainingCount(remainingCount)
-                    .techStacks(techStackDTOs)
-                    .recruitmentParts(partDTOs)
+                .techStacks(techStackDTOs)
+                .recruitmentParts(partDTOs)
                     .build());
         }
         return responses;
@@ -259,6 +260,7 @@ public class ProjectRecruitmentService {
         projectMemberRepository.deleteAllByProjectId(id);
         projectTechStackRepository.deleteAllByProjectId(id);
         projectTechPartRepository.deleteAllByProjectId(id);
+        projectCommentRepository.deleteAllByProjectId(id);
 
         // 2) 부모 삭제
         projectRecruitmentRepository.delete(project);

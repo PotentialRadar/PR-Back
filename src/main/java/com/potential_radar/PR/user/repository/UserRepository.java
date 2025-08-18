@@ -20,10 +20,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByProviderAndProviderUserId(Provider provider, String providerUserId);
 
     @Modifying
-    @Query("UPDATE User u SET u.nickname = :nickname, u.email = :email, u.updatedAt = CURRENT_TIMESTAMP WHERE u.userId = :userId")
-    void updateUserBasic(Long userId, String nickname, String email);
-
-    @Modifying
     @Query("UPDATE User u SET u.nickname = :nickname, u.updatedAt = CURRENT_TIMESTAMP WHERE u.userId = :userId")
     void updateNickname(Long userId, String nickname);
 

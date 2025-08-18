@@ -17,9 +17,6 @@ public record UserProfileUpdateRequest(
         @Size(max = 500, message = "자기소개는 500자 이하여야 합니다")
         String bio,
         
-        @Size(max = 100, message = "한줄소개는 100자 이하여야 합니다")
-        String bioShort,
-        
         String phone,
         
         String githubUrl,
@@ -27,8 +24,7 @@ public record UserProfileUpdateRequest(
         String linkedinUrl,
         
         String websiteUrl,
-        
-        String region,
+
         
         Boolean isPortfolioOpen,
         

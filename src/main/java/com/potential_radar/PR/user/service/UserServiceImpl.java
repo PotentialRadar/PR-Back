@@ -91,19 +91,13 @@ public class UserServiceImpl implements UserService {
     public void updateUserBasic(String email, UserBasicUpdateRequest request) {
         User user = findByEmail(email);
         
-        // 이메일 중복 체크 (본인 이메일이 아닌 경우에만)
-        if (!user.getEmail().equals(request.email()) && userRepository.existsByEmail(request.email())) {
-            throw new IllegalArgumentException("이미 사용 중인 이메일입니다");
-        }
-        
         // 닉네임 중복 체크 (본인 닉네임이 아닌 경우에만)
         if (!user.getNickname().equals(request.nickname()) && userRepository.existsByNickname(request.nickname())) {
             throw new IllegalArgumentException("이미 사용 중인 닉네임입니다");
         }
         
-        // User 엔티티에 setter가 없으므로 리플렉션을 사용하거나 Builder 패턴으로 새로 생성
-        // 여기서는 User 엔티티에 update 메서드를 추가하는 것이 좋겠지만, 현재는 직접 업데이트
-        userRepository.updateUserBasic(user.getUserId(), request.nickname(), request.email());
+        // 닉네임만 업데이트 (이메일은 변경 불가)
+        userRepository.updateNickname(user.getUserId(), request.nickname());
     }
 
     @Override
@@ -130,12 +124,10 @@ public class UserServiceImpl implements UserService {
         // 프로필 정보 업데이트
         if (request.profileImage() != null) userProfile.setProfileImage(request.profileImage());
         if (request.bio() != null) userProfile.setBio(request.bio());
-        if (request.bioShort() != null) userProfile.setBioShort(request.bioShort());
         if (request.phone() != null) userProfile.setPhone(request.phone());
         if (request.githubUrl() != null) userProfile.setGithubUrl(request.githubUrl());
         if (request.linkedinUrl() != null) userProfile.setLinkedinUrl(request.linkedinUrl());
         if (request.websiteUrl() != null) userProfile.setWebsiteUrl(request.websiteUrl());
-        if (request.region() != null) userProfile.setRegion(request.region());
         if (request.isPortfolioOpen() != null) userProfile.setPortfolioOpen(request.isPortfolioOpen());
         if (request.isContactOpen() != null) userProfile.setContactOpen(request.isContactOpen());
         if (request.isSearchOpen() != null) userProfile.setSearchOpen(request.isSearchOpen());

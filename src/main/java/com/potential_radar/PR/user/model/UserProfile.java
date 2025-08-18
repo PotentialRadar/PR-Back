@@ -47,9 +47,6 @@ public class UserProfile {
     @Column
     private String websiteUrl;
 
-    @Column
-    private String region;
-
     @Column(nullable = false)
     @ColumnDefault("true")
     private boolean isPortfolioOpen = true;
@@ -70,9 +67,6 @@ public class UserProfile {
     @ColumnDefault("0")
     private int reviewCount = 0;
 
-    @Column
-    private String bioShort; // 한줄소개
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ExperienceRange experienceRange = ExperienceRange.FRESHER;
@@ -91,13 +85,11 @@ public class UserProfile {
         this.githubUrl = githubUrl;
         this.linkedinUrl = linkedinUrl;
         this.websiteUrl = websiteUrl;
-        this.region = region;
         if (isPortfolioOpen != null) this.isPortfolioOpen = isPortfolioOpen;
         if (isContactOpen   != null) this.isContactOpen   = isContactOpen;
         if (isSearchOpen    != null) this.isSearchOpen    = isSearchOpen;
         if (reputationScore != null) this.reputationScore = reputationScore;
         if (reviewCount     != null) this.reviewCount     = reviewCount;
-        this.bioShort = bioShort;
         if (experienceRange != null) this.experienceRange = experienceRange;
     }
 }

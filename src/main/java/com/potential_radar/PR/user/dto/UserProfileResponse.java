@@ -25,7 +25,7 @@ public record UserProfileResponse(
 ) {
     public UserProfileResponse(UserProfile userProfile) {
         this(
-                userProfile.getUserId(),
+                userProfile.getUser().getUserId(),
                 userProfile.getUser().getNickname(),
                 userProfile.getUser().getEmail(),
                 userProfile.getTechPart().getName(),

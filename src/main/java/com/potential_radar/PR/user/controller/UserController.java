@@ -57,17 +57,7 @@ public class UserController {
         return ResponseEntity.ok(profile);
     }
 
-    // 기본 정보 수정 (닉네임, 이메일)
-    @PutMapping("/user/basic")
-    public ResponseEntity<Object> updateUserBasic(
-            @Valid @RequestBody UserBasicUpdateRequest request,
-            Principal principal) {
-        String email = principal.getName();
-        userService.updateUserBasic(email, request);
-        return ResponseEntity.ok(Map.of("message", "기본 정보가 수정되었습니다"));
-    }
-
-    // 프로필 정보 수정
+    // 프로필 정보 수정 (닉네임 포함)
     @PutMapping("/user/profile")
     public ResponseEntity<Object> updateUserProfile(
             @Valid @RequestBody UserProfileUpdateRequest request,

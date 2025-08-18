@@ -87,18 +87,6 @@ public class UserServiceImpl implements UserService {
         return new UserProfileResponse(userProfile);
     }
 
-    @Override
-    public void updateUserBasic(String email, UserBasicUpdateRequest request) {
-        User user = findByEmail(email);
-        
-        // 닉네임 중복 체크 (본인 닉네임이 아닌 경우에만)
-        if (!user.getNickname().equals(request.nickname()) && userRepository.existsByNickname(request.nickname())) {
-            throw new IllegalArgumentException("이미 사용 중인 닉네임입니다");
-        }
-        
-        // 닉네임만 업데이트 (이메일은 변경 불가)
-        userRepository.updateNickname(user.getUserId(), request.nickname());
-    }
 
     @Override
     public void updateUserProfile(String email, UserProfileUpdateRequest request) {

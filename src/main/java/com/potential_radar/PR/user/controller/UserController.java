@@ -1,5 +1,6 @@
 package com.potential_radar.PR.user.controller;
 
+import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.dto.*;
 import com.potential_radar.PR.like.service.LikeService;
 import com.potential_radar.PR.project.dto.ProjectRecruitmentResponse;

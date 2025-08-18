@@ -1,0 +1,49 @@
+### 경력 다중 선택 필터 테스트
+
+### 1. 경력 데이터 업데이트 후 동기화
+POST http://localhost:8082/api/search/sync
+
+### 2. 전체 사용자 데이터 확인 (경력 범위 확인)
+GET http://localhost:8082/api/search/test/all
+
+### 3. 신입 개발자만 검색 (FRESHER)
+GET http://localhost:8082/api/search/users?experienceRanges=FRESHER
+
+### 4. 1년 미만 경력 개발자만 검색 (LT_1)
+GET http://localhost:8082/api/search/users?experienceRanges=LT_1
+
+### 5. 1-3년 경력 개발자만 검색 (Y1_3)
+GET http://localhost:8082/api/search/users?experienceRanges=Y1_3
+
+### 6. 5-10년 경력 개발자만 검색 (Y5_10)
+GET http://localhost:8082/api/search/users?experienceRanges=Y5_10
+
+### 7. 10년 이상 경력 개발자만 검색 (GE_10)
+GET http://localhost:8082/api/search/users?experienceRanges=GE_10
+
+### 8. 다중 경력 범위 검색 - 신입과 1년 미만
+GET http://localhost:8082/api/search/users?experienceRanges=FRESHER,LT_1
+
+### 9. 다중 경력 범위 검색 - 중급 개발자 (1-3년, 5-10년)
+GET http://localhost:8082/api/search/users?experienceRanges=Y1_3,Y5_10
+
+### 10. 시니어 개발자만 (10년 이상)
+GET http://localhost:8082/api/search/users?experienceRanges=GE_10
+
+### 11. 키워드와 경력 필터 조합 - Backend이면서 신입
+GET http://localhost:8082/api/search/users?keyword=Backend&experienceRanges=FRESHER
+
+### 12. 키워드와 경력 필터 조합 - React이면서 중급 개발자
+GET http://localhost:8082/api/search/users?keyword=React&experienceRanges=Y1_3,Y5_10
+
+### 13. 기술파트와 경력 필터 조합 - Frontend이면서 1년 미만
+GET http://localhost:8082/api/search/users?keyword=Frontend&experienceRanges=LT_1
+
+### 14. 직접 경력 테스트 - FRESHER
+GET http://localhost:8082/api/search/test/experience/FRESHER
+
+### 15. 직접 경력 테스트 - Y1_3
+GET http://localhost:8082/api/search/test/experience/Y1_3
+
+### 16. 직접 경력 테스트 - GE_10
+GET http://localhost:8082/api/search/test/experience/GE_10

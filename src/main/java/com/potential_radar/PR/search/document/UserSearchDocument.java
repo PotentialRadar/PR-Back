@@ -1,6 +1,6 @@
 package com.potential_radar.PR.search.document;
 
-import com.potential_radar.PR.common.enums.ExperienceRange;
+import com.potential_radar.PR.user.domain.ExperienceRange;
 import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.*;

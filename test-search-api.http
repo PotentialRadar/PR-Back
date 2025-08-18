@@ -2,13 +2,13 @@
 ### 포트 8082에서 실행 중인 애플리케이션 테스트
 
 ### 1. Health Check - Elasticsearch 연결 확인
-GET http://localhost:8082/api/health/elasticsearch
+GET http://localhost:8082/api/search/health/elasticsearch
 Accept: application/json
 
 ###
 
 ### 2. Health Check - Database 연결 확인  
-GET http://localhost:8082/api/health/database
+GET http://localhost:8082/api/search/health/database
 Accept: application/json
 
 ###

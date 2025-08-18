@@ -1,0 +1,37 @@
+### 다양한 기술 스택/파트로 검색 테스트
+
+### 1. 다양한 데이터로 동기화
+POST http://localhost:8082/api/search/sync
+
+### 2. 전체 사용자 데이터 확인 (기술파트/스택 다양성 확인)
+GET http://localhost:8082/api/search/test/all
+
+### 3. Backend 개발자 검색
+GET http://localhost:8082/api/search/users?keyword=Backend
+
+### 4. Frontend 개발자 검색  
+GET http://localhost:8082/api/search/users?keyword=Frontend
+
+### 5. Mobile 개발자 검색
+GET http://localhost:8082/api/search/users?keyword=Mobile
+
+### 6. DevOps 개발자 검색
+GET http://localhost:8082/api/search/users?keyword=DevOps
+
+### 7. AI/ML 개발자 검색
+GET http://localhost:8082/api/search/users?keyword=AI/ML
+
+### 8. React 기술스택으로 검색 (Frontend)
+GET http://localhost:8082/api/search/users?keyword=React
+
+### 9. Python 기술스택으로 검색 (Backend/AI)
+GET http://localhost:8082/api/search/users?keyword=Python
+
+### 10. Flutter 기술스택으로 검색 (Mobile)
+GET http://localhost:8082/api/search/users?keyword=Flutter
+
+### 11. Docker 기술스택으로 검색 (DevOps)
+GET http://localhost:8082/api/search/users?keyword=Docker
+
+### 12. Vue.js 기술스택으로 검색 (Frontend)
+GET http://localhost:8082/api/search/users?keyword=Vue.js

@@ -1,6 +1,6 @@
 package com.potential_radar.PR.search.dto;
 
-import com.potential_radar.PR.common.enums.ExperienceRange;
+import com.potential_radar.PR.user.domain.ExperienceRange;
 import lombok.*;
 
 import java.util.List;

@@ -1,0 +1,28 @@
+### 경력 검색 디버깅
+
+### 1. 동기화 먼저 실행
+POST http://localhost:8082/api/search/sync
+
+### 2. 전체 사용자 데이터 확인 (경력 범위 확인)
+GET http://localhost:8082/api/search/test/all
+
+### 3. 직접 LT_1 경력만 검색
+GET http://localhost:8082/api/search/test/experience/LT_1
+
+### 4. 직접 Y1_3 경력만 검색  
+GET http://localhost:8082/api/search/test/experience/Y1_3
+
+### 5. 직접 Y5_10 경력만 검색
+GET http://localhost:8082/api/search/test/experience/Y5_10
+
+### 6. API로 LT_1만 검색
+GET http://localhost:8082/api/search/users?experienceRanges=LT_1
+
+### 7. API로 Y1_3만 검색
+GET http://localhost:8082/api/search/users?experienceRanges=Y1_3
+
+### 8. API로 LT_1과 Y1_3 다중 검색 (문제 상황)
+GET http://localhost:8082/api/search/users?experienceRanges=LT_1&experienceRanges=Y1_3
+
+### 9. 다른 조합으로 테스트
+GET http://localhost:8082/api/search/users?experienceRanges=FRESHER&experienceRanges=LT_1

@@ -1,0 +1,34 @@
+### 기술 스택 및 기술 파트 검색 테스트
+
+### 1. 동기화 먼저 실행
+POST http://localhost:8082/api/search/sync
+
+### 2. 동기화된 데이터 확인 (첫 5명만)
+GET http://localhost:8082/api/search/test/all
+
+### 3. Java 기술스택으로 검색
+GET http://localhost:8082/api/search/users?keyword=Java
+
+### 4. Spring 기술스택으로 검색  
+GET http://localhost:8082/api/search/users?keyword=Spring
+
+### 5. Backend 기술파트로 검색
+GET http://localhost:8082/api/search/users?keyword=Backend
+
+### 6. Frontend 기술파트로 검색
+GET http://localhost:8082/api/search/users?keyword=Frontend
+
+### 7. React 기술스택으로 검색
+GET http://localhost:8082/api/search/users?keyword=React
+
+### 8. JavaScript 기술스택으로 검색
+GET http://localhost:8082/api/search/users?keyword=JavaScript
+
+### 9. 직접 기술파트 테스트 - Backend
+GET http://localhost:8082/api/search/test/techpart/Backend
+
+### 10. 직접 기술스택 테스트 - Java
+GET http://localhost:8082/api/search/test/techstack/Java
+
+### 11. 직접 기술스택 테스트 - Spring
+GET http://localhost:8082/api/search/test/techstack/Spring

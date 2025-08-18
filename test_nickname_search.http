@@ -1,0 +1,28 @@
+### 닉네임 검색 문제 디버깅
+
+### 1. 동기화 먼저 실행
+POST http://localhost:8082/api/search/sync
+
+### 2. 전체 사용자 목록에서 닉네임 확인
+GET http://localhost:8082/api/search/test/all
+
+### 3. "은비" 키워드로 검색 (문제 상황)
+GET http://localhost:8082/api/search/users?keyword=은비
+
+### 4. "조은비" 키워드로 검색 (정상 작동)
+GET http://localhost:8082/api/search/users?keyword=조은비
+
+### 5. 직접 닉네임 매치 테스트 - "은비"
+GET http://localhost:8082/api/search/test/nickname/은비
+
+### 6. 직접 닉네임 매치 테스트 - "조은비"
+GET http://localhost:8082/api/search/test/nickname/조은비
+
+### 7. 닉네임 contains 테스트 - "은비"
+GET http://localhost:8082/api/search/test/nicknamecontains/은비
+
+### 8. 다른 부분 닉네임 테스트 - "지은" (이지은에 포함)
+GET http://localhost:8082/api/search/users?keyword=지은
+
+### 9. 다른 부분 닉네임 테스트 - "민수"
+GET http://localhost:8082/api/search/users?keyword=민수

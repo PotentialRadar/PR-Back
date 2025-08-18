@@ -1,6 +1,5 @@
 package com.potential_radar.PR.user.domain;
 
-import com.potential_radar.PR.common.enums.ExperienceRange;
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,6 +13,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.ArrayList;
 
 @Getter
 @ToString
@@ -62,6 +62,10 @@ public class User implements UserDetails {
 
     @Enumerated(EnumType.STRING)
     private ExperienceRange experienceRange;
+
+    // 연관관계
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<UserTechStack> userTechStacks = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {

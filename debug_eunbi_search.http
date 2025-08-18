@@ -1,0 +1,25 @@
+### "은비" 검색 문제 정확한 디버깅
+
+### 1. 동기화
+POST http://localhost:8082/api/search/sync
+
+### 2. 모든 사용자 닉네임 확인
+GET http://localhost:8082/api/search/test/all
+
+### 3. "은비"로 직접 닉네임 contains 테스트
+GET http://localhost:8082/api/search/test/nicknamecontains/은비
+
+### 4. "은비"로 키워드 검색
+GET http://localhost:8082/api/search/users?keyword=은비
+
+### 5. "조은비"로 직접 닉네임 contains 테스트
+GET http://localhost:8082/api/search/test/nicknamecontains/조은비
+
+### 6. "조은비"로 키워드 검색
+GET http://localhost:8082/api/search/users?keyword=조은비
+
+### 7. 빈 키워드로 검색 (기본 동작 확인)
+GET http://localhost:8082/api/search/users
+
+### 8. 존재하지 않는 키워드로 검색
+GET http://localhost:8082/api/search/users?keyword=존재하지않는닉네임

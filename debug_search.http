@@ -1,0 +1,32 @@
+### 1. DB에서 실제 사용자 데이터 확인 (7번 사용자 이지은 포함)
+GET http://localhost:8082/api/users
+
+### 2. 동기화 실행 (콘솔 로그 확인)
+POST http://localhost:8082/api/search/sync
+
+### 3. Elasticsearch에 저장된 전체 사용자 확인
+GET http://localhost:8082/api/search/test/all
+
+### 4. Elasticsearch 사용자 수 확인
+GET http://localhost:8082/api/search/test/count
+
+### 5. 키워드 없이 검색 (기본 검색)
+GET http://localhost:8082/api/search/users
+
+### 6. 이지은으로 키워드 검색
+GET http://localhost:8082/api/search/users?keyword=이지은
+
+### 7. 닉네임으로 검색
+GET http://localhost:8082/api/search/users?nickname=이지은
+
+### 8. Java 키워드로 검색 (기술스택)
+GET http://localhost:8082/api/search/users?keyword=Java
+
+### 9. Backend 키워드로 검색 (기술파트)
+GET http://localhost:8082/api/search/users?keyword=Backend
+
+### 10. 직접 닉네임 매치 테스트 - 이지은
+GET http://localhost:8082/api/search/test/nickname/이지은
+
+### 11. 존재하지 않는 닉네임 테스트
+GET http://localhost:8082/api/search/test/nickname/존재하지않는이름

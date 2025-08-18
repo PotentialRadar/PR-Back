@@ -1,6 +1,6 @@
 package com.potential_radar.PR.search.service;
 
-import com.potential_radar.PR.common.enums.ExperienceRange;
+import com.potential_radar.PR.user.domain.ExperienceRange;
 import com.potential_radar.PR.search.document.ProjectSearchDocument;
 import com.potential_radar.PR.search.document.UserSearchDocument;
 import com.potential_radar.PR.search.dto.*;
@@ -21,7 +21,9 @@ import org.springframework.data.elasticsearch.core.query.Query;
 import org.springframework.data.domain.Sort;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 
@@ -50,21 +52,40 @@ public class SearchService {
         boolean hasConditions = false;
         log.info("Starting user search with request: {}", request);
 
-        // 기본 필터: 검색 허용된 사용자만 (검색 가능하고 검색 허용)
-        criteria = criteria.and("isSearchable").is(true)
-                .and("isSearchOpen").is(true);
-        hasConditions = true;
-
-        // 통합 검색창: 닉네임, 기술 스택, 기술 파트에서 검색
+        // 키워드 검색이 있는 경우
         if (request.getKeyword() != null && !request.getKeyword().trim().isEmpty()) {
             String keyword = request.getKeyword().trim();
+            log.info("Searching users with keyword: '{}'", keyword);
             
-            Criteria keywordCriteria = new Criteria("nickname").contains(keyword)
-                    .or(new Criteria("techStacks").contains(keyword))
-                    .or(new Criteria("techPart").contains(keyword));
+            // 통합 검색: 닉네임, 기술스택, 기술파트
+            Criteria nicknameCriteria = new Criteria("nickname").contains(keyword);
+            Criteria techStackCriteria = new Criteria("techStacks").contains(keyword);
+            Criteria techPartCriteria = new Criteria("techPart").is(keyword);
             
-            criteria = criteria.and(keywordCriteria);
+            criteria = nicknameCriteria
+                    .or(techStackCriteria)
+                    .or(techPartCriteria);
+            
             hasConditions = true;
+            log.info("Keyword search applied: '{}'", keyword);
+        } else {
+            // 키워드가 없고 다른 필터도 없으면 빈 결과 반환
+            boolean hasOtherFilters = (request.getTechParts() != null && !request.getTechParts().isEmpty()) ||
+                                    (request.getTechStacks() != null && !request.getTechStacks().isEmpty()) ||
+                                    (request.getExperienceRanges() != null && !request.getExperienceRanges().isEmpty());
+            
+            if (!hasOtherFilters) {
+                // 필터가 전혀 없으면 빈 결과 반환
+                criteria = new Criteria("nickname").is("__NO_RESULTS__");
+                hasConditions = true;
+                log.info("No keyword and no filters, returning empty results");
+            } else {
+                // 다른 필터가 있으면 기본 검색 가능한 사용자 필터 적용
+                criteria = new Criteria("isSearchable").is(true)
+                        .and("isSearchOpen").is(true);
+                hasConditions = true;
+                log.info("No keyword but has other filters, using default searchable filter");
+            }
         }
 
         // 기술 파트 다중 선택 필터링
@@ -98,14 +119,24 @@ public class SearchService {
 
         // 경력 다중 선택 필터링
         if (request.getExperienceRanges() != null && !request.getExperienceRanges().isEmpty()) {
+            log.info("Applying experience filter with {} ranges: {}", 
+                    request.getExperienceRanges().size(), request.getExperienceRanges());
+            
             Criteria experienceCriteria = null;
             for (ExperienceRange experience : request.getExperienceRanges()) {
                 Criteria expCriteria = new Criteria("experienceRange").is(experience.name());
                 experienceCriteria = (experienceCriteria == null) ? expCriteria : experienceCriteria.or(expCriteria);
+                log.info("Added experience criteria: {} (enum: {})", experience.name(), experience);
             }
+            
             if (experienceCriteria != null) {
                 criteria = criteria.and(experienceCriteria);
                 hasConditions = true;
+                log.info("Experience filter applied successfully. Final criteria includes: {}", 
+                        request.getExperienceRanges().stream()
+                                .map(ExperienceRange::name)
+                                .reduce((a, b) -> a + " OR " + b)
+                                .orElse("none"));
             }
         }
 
@@ -122,31 +153,19 @@ public class SearchService {
         
         log.info("hasConditions: {}", hasConditions);
         
-        if (hasConditions) {
-            Query query = new CriteriaQuery(criteria).setPageable(pageable);
-            SearchHits<UserSearchDocument> searchHits = elasticsearchOperations.search(query, UserSearchDocument.class);
-            responses = searchHits.getSearchHits().stream()
-                    .map(this::convertToUserResponse)
-                    .collect(Collectors.toList());
-            totalElements = searchHits.getTotalHits();
-        } else {
-            // 조건이 없으면 Repository의 findAll을 사용하여 모든 문서 반환
-            log.info("No search conditions, using findAll from repository");
-            Iterable<UserSearchDocument> allUsers = userSearchRepository.findAll();
-            List<UserSearchDocument> userList = new ArrayList<>();
-            allUsers.forEach(userList::add);
-            log.info("Found {} users from repository", userList.size());
-            
-            // 수동으로 페이징 처리
-            int start = request.getPage() * request.getSize();
-            int end = Math.min(start + request.getSize(), userList.size());
-            List<UserSearchDocument> pagedUsers = userList.subList(Math.min(start, userList.size()), end);
-            
-            responses = pagedUsers.stream()
-                    .map(this::convertToUserDocumentResponse)
-                    .collect(Collectors.toList());
-            totalElements = userList.size();
-        }
+        // 항상 검색 쿼리 실행 (기본 필터 + 추가 조건)
+        Query query = new CriteriaQuery(criteria).setPageable(pageable);
+        log.info("Executing search query with criteria: {}", criteria.toString());
+        SearchHits<UserSearchDocument> searchHits = elasticsearchOperations.search(query, UserSearchDocument.class);
+        responses = searchHits.getSearchHits().stream()
+                .map(this::convertToUserResponse)
+                .collect(Collectors.toList());
+        totalElements = searchHits.getTotalHits();
+        
+        log.info("Search completed. Found {} users, total hits: {}", responses.size(), totalElements);
+        
+        // 디버깅: 검색된 사용자들의 닉네임 로그
+        responses.forEach(user -> log.info("Found user: {}", user.getNickname()));
 
         long searchTime = System.currentTimeMillis() - startTime;
 
@@ -242,7 +261,8 @@ public class SearchService {
 
         // 정렬 기준에 따른 동적 정렬
         Sort sort;
-        switch (request.getSortBy()) {
+        String sortBy = request.getSortBy() != null ? request.getSortBy() : "score";
+        switch (sortBy) {
             case "deadline":
                 sort = Sort.by(
                         Sort.Order.asc("deadline"),  // 마감일 빠른 순
@@ -354,6 +374,7 @@ public class SearchService {
                     .keyword(request.getKeyword())
                     .techStacks(request.getTechStacks())
                     .techParts(request.getRequiredTechParts())
+                    .sortBy("score") // 기본값 설정
                     .page(request.getPage())
                     .size(request.getSize())
                     .build();
@@ -367,5 +388,57 @@ public class SearchService {
                 .projects(projectResults)
                 .totalSearchTimeMs(totalSearchTime)
                 .build();
+    }
+    
+    public TechTagsRes getTechTags() {
+        log.info("Getting tech tags for frontend");
+        
+        // 기술 파트 목록 (고정)
+        List<String> techParts = List.of("Backend", "Frontend", "Mobile", "DevOps", "AI/ML", "Full Stack");
+        
+        // 인기 기술 스택 조회 (Elasticsearch aggregation 사용)
+        List<TechTagsRes.PopularTechStack> popularTechStacks = getPopularTechStacks();
+        
+        return TechTagsRes.builder()
+                .techParts(techParts)
+                .popularTechStacks(popularTechStacks)
+                .build();
+    }
+    
+    private List<TechTagsRes.PopularTechStack> getPopularTechStacks() {
+        try {
+            // 모든 사용자의 기술 스택을 조회해서 빈도 계산
+            Iterable<UserSearchDocument> allUsers = userSearchRepository.findAll();
+            Map<String, Long> techStackCounts = new HashMap<>();
+            
+            for (UserSearchDocument user : allUsers) {
+                if (user.getTechStacks() != null) {
+                    for (String techStack : user.getTechStacks()) {
+                        techStackCounts.merge(techStack, 1L, Long::sum);
+                    }
+                }
+            }
+            
+            // 상위 10개 기술 스택 반환
+            return techStackCounts.entrySet().stream()
+                    .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                    .limit(10)
+                    .map(entry -> TechTagsRes.PopularTechStack.builder()
+                            .name(entry.getKey())
+                            .count(entry.getValue())
+                            .build())
+                    .collect(Collectors.toList());
+                    
+        } catch (Exception e) {
+            log.error("Failed to get popular tech stacks: {}", e.getMessage());
+            // 기본값 반환
+            return List.of(
+                TechTagsRes.PopularTechStack.builder().name("Java").count(0L).build(),
+                TechTagsRes.PopularTechStack.builder().name("JavaScript").count(0L).build(),
+                TechTagsRes.PopularTechStack.builder().name("Python").count(0L).build(),
+                TechTagsRes.PopularTechStack.builder().name("React").count(0L).build(),
+                TechTagsRes.PopularTechStack.builder().name("Spring Boot").count(0L).build()
+            );
+        }
     }
 }

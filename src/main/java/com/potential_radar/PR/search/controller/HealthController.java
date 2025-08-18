@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/health")
+@RequestMapping("/api/search/health")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class HealthController {

@@ -84,3 +84,34 @@ class HealthResponse(BaseModel):
     status: str = Field(..., description="서버 상태")
     ml_model_loaded: bool = Field(..., description="ML 모델 로드 상태")
     version: str = Field(..., description="서버 버전")
+
+# 팀원 추천 관련 스키마
+class MemberExplanation(BaseModel):
+    main_reason: str = Field(..., description="주요 추천 이유")
+    detailed_reasons: List[str] = Field(default_factory=list, description="상세 이유 목록")
+    matched_skills: List[str] = Field(default_factory=list, description="매칭된 기술스택")
+    growth_opportunities: List[str] = Field(default_factory=list, description="성장 가능한 기술")
+    simple_explanation: str = Field(..., description="간단한 한 줄 설명")
+    experience_match: str = Field(..., description="경험 수준 매칭 설명")
+
+class RecommendMemberRequest(BaseModel):
+    projectId: int = Field(..., description="프로젝트 ID")
+    requiredSkills: List[str] = Field(..., description="필요한 기술스택 목록")
+    teamSize: int = Field(default=4, description="추천받을 팀원 수")
+    experienceLevel: str = Field(default="any", description="경험 수준")
+
+class RecommendedMember(BaseModel):
+    userId: int = Field(..., description="사용자 ID")
+    name: str = Field(..., description="사용자 이름")
+    email: Optional[str] = Field(None, description="이메일")
+    profileImage: Optional[str] = Field(None, description="프로필 이미지")
+    matchScore: float = Field(..., ge=0, le=1, description="매칭 점수 (0-1)")
+    userTechStacks: List[UserTechStack] = Field(default_factory=list, description="사용자 기술스택")
+    explanation: MemberExplanation = Field(..., description="추천 설명")
+    experience: str = Field(..., description="경력")
+    portfolioCount: int = Field(default=0, description="포트폴리오 프로젝트 수")
+    completedProjects: int = Field(default=0, description="완료한 프로젝트 수")
+    averageRating: Optional[float] = Field(None, description="평균 평점")
+    lastActiveDate: str = Field(..., description="마지막 활동일")
+    isAvailable: bool = Field(default=True, description="현재 참여 가능 여부")
+    currentProjectCount: int = Field(default=0, description="현재 참여 중인 프로젝트 수")

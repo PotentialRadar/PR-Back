@@ -5,9 +5,56 @@ from typing import List, Dict, Optional
 from math import sqrt
 import logging
 
-from .tech_similarity import enhanced_similarity_score, symmetric_enhanced_similarity
+# tech_similarity 모듈을 직접 구현
 
 logger = logging.getLogger(__name__)
+
+def calculate_tech_similarity(user_techs: List[str], project_techs: List[str]) -> float:
+    """
+    간단한 기술스택 연관성 점수를 계산합니다.
+    
+    Args:
+        user_techs: 사용자 기술스택
+        project_techs: 프로젝트 기술스택
+        
+    Returns:
+        연관성 점수 (0.0 ~ 1.0)
+    """
+    if not user_techs or not project_techs:
+        return 0.0
+    
+    # 기본적인 기술스택 그룹 정의
+    tech_groups = {
+        'frontend': ['React', 'Vue.js', 'Angular', 'JavaScript', 'TypeScript', 'HTML', 'CSS'],
+        'backend': ['Node.js', 'Python', 'Java', 'Spring', 'Django', 'FastAPI', 'Express'],
+        'mobile': ['Flutter', 'React Native', 'iOS', 'Android', 'Swift', 'Kotlin'],
+        'database': ['PostgreSQL', 'MongoDB', 'MySQL', 'Redis'],
+        'cloud': ['AWS', 'Docker', 'Kubernetes', 'Azure', 'GCP'],
+        'ai': ['TensorFlow', 'PyTorch', 'Machine Learning', 'OpenCV']
+    }
+    
+    # 각 기술이 속한 그룹 찾기
+    user_groups = set()
+    project_groups = set()
+    
+    for tech in user_techs:
+        for group, techs in tech_groups.items():
+            if tech in techs:
+                user_groups.add(group)
+    
+    for tech in project_techs:
+        for group, techs in tech_groups.items():
+            if tech in techs:
+                project_groups.add(group)
+    
+    # 공통 그룹 비율 계산
+    if not user_groups or not project_groups:
+        return 0.0
+    
+    common_groups = user_groups & project_groups
+    total_groups = user_groups | project_groups
+    
+    return len(common_groups) / len(total_groups) if total_groups else 0.0
 
 # === (A) ML용 특성: 겹침 비율 1개만 ===
 def compute_features(user_techs: List[str], project_techs: List[str]) -> List[float]:
@@ -151,7 +198,8 @@ def enhanced_final_score(
         # 각 점수 계산
         jaccard_score = jaccard(user_names, proj_names)
         weighted_score = weighted_overlap(user_norm, proj_norm)
-        similarity_score = symmetric_enhanced_similarity(user_names, proj_names)
+        # 간단한 기술스택 연관성 점수로 대체
+        similarity_score = calculate_tech_similarity(user_names, proj_names)
         
         # 가중치 적용
         final = 0.4 * jaccard_score + 0.3 * weighted_score + 0.3 * similarity_score

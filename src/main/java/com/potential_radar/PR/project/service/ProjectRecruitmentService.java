@@ -1,6 +1,10 @@
 package com.potential_radar.PR.project.service;
 
+import com.potential_radar.PR.common.domain.TechPart;
+import com.potential_radar.PR.common.domain.TechStack;
 import com.potential_radar.PR.common.excetpion.NotFoundException;
+import com.potential_radar.PR.common.repository.TechPartRepository;
+import com.potential_radar.PR.common.repository.TechStackRepository;
 import com.potential_radar.PR.project.domain.*;
 import com.potential_radar.PR.project.dto.*;
 import com.potential_radar.PR.project.repository.*;
@@ -19,6 +23,8 @@ public class ProjectRecruitmentService {
     private final ProjectTechPartRepository projectTechPartRepository;
     private final ProjectTechStackRepository projectTechStackRepository;
     private final ProjectCommentRepository projectCommentRepository;
+    private final TechStackRepository techStackRepository; // New
+    private final TechPartRepository techPartRepository;   // New
 
     // 구인글 생성
     @Transactional
@@ -39,12 +45,21 @@ public class ProjectRecruitmentService {
         List<ProjectTechStack> techStacks = new ArrayList<>();
         if (request.getTechStacks() != null) {
             for (ProjectTechStackDTO tsDto : request.getTechStacks()) {
-                ProjectTechStack techStack = ProjectTechStack.builder()
+                String in = tsDto.getTechStackName() == null ? "" : tsDto.getTechStackName().trim();
+                if (in.isEmpty()) throw new IllegalArgumentException("techStackName is required");
+
+                Integer cnt = tsDto.getRecruitCount();
+                if (cnt == null || cnt < 0) cnt = 0;
+
+                TechStack foundTechStack = techStackRepository
+                        .findByNameIgnoreCase(in) // 핵심
+                        .orElseThrow(() -> new NotFoundException("TechStack not found: " + in));
+
+                techStacks.add(ProjectTechStack.builder()
                         .project(project)
-                        .techStackName(tsDto.getTechStackName())
-                        .recruitCount(tsDto.getRecruitCount())
-                        .build();
-                techStacks.add(techStack);
+                        .techStack(foundTechStack)
+                        .recruitCount(cnt)
+                        .build());
             }
         }
         project.setTechStacks(techStacks);
@@ -54,15 +69,21 @@ public class ProjectRecruitmentService {
         if (request.getRecruitmentParts() != null) {
             Set<String> seen = new HashSet<>();
             for (ProjectPartRecruitmentDTO dto : request.getRecruitmentParts()) {
-                String name = (dto.getPartName() == null ? "" : dto.getPartName().trim()).toUpperCase(Locale.ROOT);
-                if (name.isEmpty()) throw new IllegalArgumentException("partName is required");
+                String raw = dto.getPartName() == null ? "" : dto.getPartName().trim();
+                String key = raw.toUpperCase(Locale.ROOT);
+
+                if (raw.isEmpty()) throw new IllegalArgumentException("partName is required");
                 if (dto.getRecruitCount() == null || dto.getRecruitCount() < 0)
                     throw new IllegalArgumentException("recruitCount must be >= 0");
-                if (!seen.add(name)) throw new IllegalArgumentException("Duplicate partName: " + name);
+                if (!seen.add(key)) throw new IllegalArgumentException("Duplicate partName: " + raw);
+
+                TechPart foundTechPart = techPartRepository
+                        .findByNameIgnoreCase(raw) // ✅ 핵심
+                        .orElseThrow(() -> new NotFoundException("TechPart not found: " + raw));
 
                 techParts.add(ProjectTechPart.builder()
                         .project(project)
-                        .partName(name)
+                        .techPart(foundTechPart)
                         .recruitCount(dto.getRecruitCount())
                         .build());
             }
@@ -95,7 +116,7 @@ public class ProjectRecruitmentService {
         List<ProjectTechStackDTO> techStackDTOs = new ArrayList<>();
         for (ProjectTechStack ts : pr.getTechStacks()) {
             techStackDTOs.add(ProjectTechStackDTO.builder()
-                    .techStackName(ts.getTechStackName())
+                    .techStackName(ts.getTechStack().getName()) // Get name from TechStack entity
                     .recruitCount(ts.getRecruitCount())
                     .build());
         }
@@ -104,7 +125,7 @@ public class ProjectRecruitmentService {
         List<ProjectPartRecruitmentDTO> partDTOs = new ArrayList<>();
         for (ProjectTechPart pt : pr.getTechParts()) {
             partDTOs.add(ProjectPartRecruitmentDTO.builder()
-                    .partName(pt.getPartName())
+                    .partName(pt.getTechPart().getName()) // Get name from TechPart entity
                     .recruitCount(pt.getRecruitCount())
                     .build());
         }
@@ -145,7 +166,7 @@ public class ProjectRecruitmentService {
             List<ProjectTechStackDTO> techStackDTOs = new ArrayList<>();
             for (ProjectTechStack ts : pr.getTechStacks()) {
                 techStackDTOs.add(ProjectTechStackDTO.builder()
-                        .techStackName(ts.getTechStackName())
+                        .techStackName(ts.getTechStack().getName()) // Get name from TechStack entity
                         .recruitCount(ts.getRecruitCount())
                         .build());
             }
@@ -153,7 +174,7 @@ public class ProjectRecruitmentService {
             List<ProjectPartRecruitmentDTO> partDTOs = new ArrayList<>();
             for (ProjectTechPart pt : pr.getTechParts()) {
                 partDTOs.add(ProjectPartRecruitmentDTO.builder()
-                        .partName(pt.getPartName())
+                        .partName(pt.getTechPart().getName()) // Get name from TechPart entity
                         .recruitCount(pt.getRecruitCount())
                         .build());
             }
@@ -218,9 +239,12 @@ public class ProjectRecruitmentService {
                 Integer cnt = tsDto.getRecruitCount();
                 if (cnt != null && cnt < 0) throw new IllegalArgumentException("techStack.recruitCount must be >= 0");
 
+                TechStack foundTechStack = techStackRepository.findByNameIgnoreCase(tsDto.getTechStackName().trim())
+                        .orElseThrow(() -> new NotFoundException("TechStack not found: " + tsDto.getTechStackName()));
+
                 ProjectTechStack stack = ProjectTechStack.builder()
                         .project(project)
-                        .techStackName(tsDto.getTechStackName().trim())
+                        .techStack(foundTechStack) // Use the found TechStack entity
                         .recruitCount(cnt)
                         .build();
 
@@ -238,16 +262,18 @@ public class ProjectRecruitmentService {
                 if (cnt == null || cnt < 0) throw new IllegalArgumentException("recruitCount must be >= 0");
                 if (!seen.add(name)) throw new IllegalArgumentException("Duplicate partName: " + name);
 
+                TechPart foundTechPart = techPartRepository.findByNameIgnoreCase(name)
+                        .orElseThrow(() -> new NotFoundException("TechPart not found: " + name));
+
                 ProjectTechPart part = ProjectTechPart.builder()
                         .project(project)
-                        .partName(name)
+                        .techPart(foundTechPart) // Use the found TechPart entity
                         .recruitCount(cnt)
                         .build();
 
                 projectTechPartRepository.save(part);
             }
         }
-        // 끝: 같은 트랜잭션 내에서 DELETE → INSERT 순서로 처리되어 유니크 충돌이 사라짐
     }
     // 구인글 삭제
     @Transactional

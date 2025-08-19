@@ -284,91 +284,108 @@ public class SearchService {
                 .build();
     }
 
-    // 프로젝트 검색 메서드
+    // 프로젝트 검색 메서드 - Repository 메서드 사용
     public SearchResult<ProjectSearchRes> searchProjects(ProjectSearchReq request) {
         long startTime = System.currentTimeMillis();
         log.info("Starting project search with request: {}", request);
-        log.info("DEBUG - TechStacks in request: {}, isEmpty: {}", request.getTechStacks(), 
-                 request.getTechStacks() != null ? request.getTechStacks().isEmpty() : "null");
 
-        // 💡 단순한 접근 방식: 조건부 결합으로 Criteria 구성
-        Criteria finalCriteria = null;
+        List<ProjectSearchDocument> projects = new ArrayList<>();
         
-        // 키워드 검색이 있는 경우
-        if (request.getKeyword() != null && !request.getKeyword().trim().isEmpty()) {
-            String keyword = request.getKeyword().trim();
-            log.info("Searching projects with keyword: '{}'", keyword);
-            
-            // 키워드 조건 생성 (title OR description OR techParts OR techStacks OR teamLeaderNickname에서 매칭)
-            Criteria keywordCriteria = new Criteria("title").contains(keyword)
-                    .or(new Criteria("description").contains(keyword))
-                    .or(new Criteria("techParts").contains(keyword))
-                    .or(new Criteria("techStacks").contains(keyword))
-                    .or(new Criteria("teamLeaderNickname").contains(keyword));
-            
-            finalCriteria = keywordCriteria;
-            log.info("Project keyword search applied: '{}'", keyword);
-        }
-
-        // 기술 파트 필터
-        if (request.getTechParts() != null && !request.getTechParts().isEmpty()) {
-            log.info("Applying tech parts filter: {}", request.getTechParts());
-            Criteria techPartFilter = new Criteria("techParts").in(request.getTechParts());
-            
-            if (finalCriteria != null) {
-                finalCriteria = finalCriteria.and(techPartFilter);
-            } else {
-                finalCriteria = techPartFilter;
-            }
-        }
-
-        // 기술 스택 필터 - 사용자 검색과 동일한 패턴 사용
-        if (request.getTechStacks() != null && !request.getTechStacks().isEmpty()) {
-            log.info("Applying tech stacks filter: {}", request.getTechStacks());
-            Criteria techStackFilter = new Criteria("techStacks.keyword").in(request.getTechStacks());
-            
-            if (finalCriteria != null) {
-                finalCriteria = finalCriteria.and(techStackFilter);
-            } else {
-                finalCriteria = techStackFilter;
-            }
-        }
-
-        // 프로젝트 상태 필터
-        if (request.getStatuses() != null && !request.getStatuses().isEmpty()) {
-            log.info("Applying status filter: {}", request.getStatuses());
-            Criteria statusFilter = new Criteria("status").in(request.getStatuses());
-            
-            if (finalCriteria != null) {
-                finalCriteria = finalCriteria.and(statusFilter);
-            } else {
-                finalCriteria = statusFilter;
-            }
-        }
-
-        // 조건이 없으면 빈 결과 반환
-        if (finalCriteria == null) {
-            finalCriteria = new Criteria("title").is("__NO_RESULTS__");
-            log.info("No search conditions provided, returning empty results");
-        }
-
-        // 점수와 생성일시 기준으로 정렬
-        Sort sort = Sort.by(
-                Sort.Order.desc("_score"),
-                Sort.Order.desc("createdAt")
-        );
+        // 필터 조건이 있는지 확인
+        boolean hasFilters = (request.getTechStacks() != null && !request.getTechStacks().isEmpty()) ||
+                            (request.getTechParts() != null && !request.getTechParts().isEmpty()) ||
+                            (request.getStatuses() != null && !request.getStatuses().isEmpty()) ||
+                            (request.getKeyword() != null && !request.getKeyword().trim().isEmpty());
         
-        Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
-        Query searchQuery = new CriteriaQuery(finalCriteria).setPageable(pageable);
+        if (hasFilters) {
+            log.info("Applying filters - TechStacks: {}, TechParts: {}, Statuses: {}, Keyword: {}", 
+                    request.getTechStacks(), request.getTechParts(), request.getStatuses(), request.getKeyword());
+            
+            Map<Long, ProjectSearchDocument> uniqueProjects = new HashMap<>();
+            
+            // 먼저 모든 프로젝트를 가져온 후 조건에 맞는 것들만 필터링
+            Iterable<ProjectSearchDocument> allProjects = projectSearchRepository.findAll();
+            
+            for (ProjectSearchDocument project : allProjects) {
+                boolean matches = true;
+                
+                // 키워드 필터링 (제목이나 설명에 포함)
+                if (request.getKeyword() != null && !request.getKeyword().trim().isEmpty()) {
+                    String keyword = request.getKeyword().trim().toLowerCase();
+                    boolean keywordMatch = (project.getTitle() != null && project.getTitle().toLowerCase().contains(keyword)) ||
+                                         (project.getDescription() != null && project.getDescription().toLowerCase().contains(keyword));
+                    if (!keywordMatch) {
+                        matches = false;
+                    }
+                }
+                
+                // 기술 파트 필터링 (OR 로직 - 선택된 파트 중 하나라도 포함되면 매치)
+                if (matches && request.getTechParts() != null && !request.getTechParts().isEmpty()) {
+                    boolean techPartMatch = false;
+                    if (project.getTechParts() != null) {
+                        for (String requestedPart : request.getTechParts()) {
+                            if (project.getTechParts().contains(requestedPart)) {
+                                techPartMatch = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!techPartMatch) {
+                        matches = false;
+                    }
+                }
+                
+                // 기술 스택 필터링 (OR 로직 - 선택된 스택 중 하나라도 포함되면 매치)
+                if (matches && request.getTechStacks() != null && !request.getTechStacks().isEmpty()) {
+                    boolean techStackMatch = false;
+                    if (project.getTechStacks() != null) {
+                        for (String requestedStack : request.getTechStacks()) {
+                            if (project.getTechStacks().contains(requestedStack)) {
+                                techStackMatch = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!techStackMatch) {
+                        matches = false;
+                    }
+                }
+                
+                // 상태 필터링 (OR 로직 - 선택된 상태 중 하나와 매치)
+                if (matches && request.getStatuses() != null && !request.getStatuses().isEmpty()) {
+                    boolean statusMatch = project.getStatus() != null && 
+                                        request.getStatuses().contains(project.getStatus());
+                    if (!statusMatch) {
+                        matches = false;
+                    }
+                }
+                
+                if (matches) {
+                    uniqueProjects.put(project.getProjectId(), project);
+                }
+            }
+            
+            projects.addAll(uniqueProjects.values());
+            log.info("Filtered results: {} projects matched the criteria", projects.size());
+            
+        } else {
+            log.info("No filters applied - returning all projects");
+            // 필터가 없으면 모든 프로젝트 반환
+            projectSearchRepository.findAll().forEach(projects::add);
+        }
 
-        log.info("Executing project search query with final criteria");
-        SearchHits<ProjectSearchDocument> searchHits = elasticsearchOperations.search(searchQuery, ProjectSearchDocument.class);
+        log.info("Total projects before paging: {}", projects.size());
 
-        List<ProjectSearchRes> responses = searchHits.getSearchHits().stream()
-                .map(this::convertToProjectResponse)
+        // 페이징 적용
+        int start = request.getPage() * request.getSize();
+        int end = Math.min(start + request.getSize(), projects.size());
+        List<ProjectSearchDocument> pagedProjects = projects.subList(start, end);
+
+        List<ProjectSearchRes> responses = pagedProjects.stream()
+                .map(this::convertToProjectDocumentResponse)
                 .collect(Collectors.toList());
 
-        long totalElements = searchHits.getTotalHits();
+        long totalElements = projects.size();
         long searchTime = System.currentTimeMillis() - startTime;
 
         log.info("Project search completed: found {} results in {}ms", responses.size(), searchTime);
@@ -396,6 +413,25 @@ public class SearchService {
 
     private ProjectSearchRes convertToProjectResponse(SearchHit<ProjectSearchDocument> hit) {
         ProjectSearchDocument doc = hit.getContent();
+        return ProjectSearchRes.builder()
+                .projectId(doc.getProjectId())
+                .title(doc.getTitle())
+                .description(doc.getDescription())
+                .techParts(doc.getTechParts())
+                .techStacks(doc.getTechStacks())
+                .status(doc.getStatus())
+                .teamLeaderId(doc.getTeamLeaderId())
+                .teamLeaderNickname(doc.getTeamLeaderNickname())
+                .recruitCount(doc.getRecruitCount())
+                .viewCount(doc.getViewCount())
+                .recruitDeadline(doc.getRecruitDeadline())
+                .startDate(doc.getStartDate())
+                .endDate(doc.getEndDate())
+                .createdAt(doc.getCreatedAt())
+                .build();
+    }
+    
+    private ProjectSearchRes convertToProjectDocumentResponse(ProjectSearchDocument doc) {
         return ProjectSearchRes.builder()
                 .projectId(doc.getProjectId())
                 .title(doc.getTitle())

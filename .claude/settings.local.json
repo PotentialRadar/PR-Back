@@ -6,7 +6,9 @@
       "Bash(./gradlew:*)",
       "Bash(curl:*)",
       "Bash(/dev/null)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(cmd /c:*)",
+      "Bash(powershell:*)"
     ],
     "deny": [],
     "ask": [],

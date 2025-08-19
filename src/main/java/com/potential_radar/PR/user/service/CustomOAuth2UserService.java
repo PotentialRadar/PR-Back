@@ -16,6 +16,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -52,10 +53,14 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         return userRepository.findByEmail(userInfo.getEmail())
                 .orElseGet(() -> userRepository.save(User.builder()
                         .email(userInfo.getEmail())
-                        .nickname(userInfo.getName()) // 초기 닉네임 설정
+                        .nickname(generateRandomNickname())
                         .provider(Provider.valueOf(userInfo.getProvider().toUpperCase()))
                         .providerUserId(userInfo.getProviderId())
                         .build()));
+    }
+
+    private String generateRandomNickname() {
+        return "User" + UUID.randomUUID().toString().substring(0, 8);
     }
 
 

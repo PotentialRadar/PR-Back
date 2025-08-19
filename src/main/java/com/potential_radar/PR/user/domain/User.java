@@ -1,5 +1,6 @@
 package com.potential_radar.PR.user.domain;
 
+import com.potential_radar.PR.common.domain.TechPart;
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
@@ -49,6 +50,9 @@ public class User {
     @ColumnDefault("now()")
     private LocalDateTime updatedAt;
 
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private UserProfile userProfile;
+
     @PrePersist
     void prePersist() {
         this.createdAt = this.updatedAt = LocalDateTime.now();
@@ -66,5 +70,19 @@ public class User {
         this.nickname = nickname;
         this.provider = provider;
         this.providerUserId = providerUserId;
+    }
+
+    //== 연관관계 편의 메서드 ==//
+    public void initializeProfile(TechPart defaultTechPart) {
+        if (this.userProfile == null) {
+            this.userProfile = UserProfile.builder()
+                    .user(this)
+                    .techPart(defaultTechPart)
+                    .build();
+        }
+    }
+
+    public void setUserProfile(UserProfile userProfile) {
+        this.userProfile = userProfile;
     }
 }

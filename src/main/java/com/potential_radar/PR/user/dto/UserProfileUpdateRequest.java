@@ -17,6 +17,9 @@ public record UserProfileUpdateRequest(
         @Size(max = 500, message = "자기소개는 500자 이하여야 합니다")
         String bio,
 
+        @Size(max = 50, message = "직책은 50자 이하여야 합니다")
+        String jobTitle,
+
         @Pattern(regexp = "^\\d{10,11}$", message = "전화번호는 숫자만 10~11자리여야 합니다")
         String phone,
         

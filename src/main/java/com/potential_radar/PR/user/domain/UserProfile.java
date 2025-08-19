@@ -36,6 +36,9 @@ public class UserProfile {
     @Column
     private String bio;          // 자기소개
 
+    @Column(name = "job_title", length = 50, nullable = true)
+    private String jobTitle;
+
     @Column
     private String phone;
 
@@ -75,9 +78,9 @@ public class UserProfile {
     @Builder
     public UserProfile(User user, TechPart techPart, String profileImage, String bio,
                        String phone, String githubUrl, String linkedinUrl, String websiteUrl,
-                       String region, Boolean isPortfolioOpen, Boolean isContactOpen,
+                       String jobTitle, Boolean isPortfolioOpen, Boolean isContactOpen,
                        Boolean isSearchOpen, BigDecimal reputationScore, Integer reviewCount,
-                       String bioShort, ExperienceRange experienceRange) {
+                       ExperienceRange experienceRange) {
         this.user = user;
         this.techPart = techPart;
         this.profileImage = profileImage;
@@ -86,6 +89,8 @@ public class UserProfile {
         this.githubUrl = githubUrl;
         this.linkedinUrl = linkedinUrl;
         this.websiteUrl = websiteUrl;
+        this.jobTitle = jobTitle;
+
         if (isPortfolioOpen != null) this.isPortfolioOpen = isPortfolioOpen;
         if (isContactOpen   != null) this.isContactOpen   = isContactOpen;
         if (isSearchOpen    != null) this.isSearchOpen    = isSearchOpen;

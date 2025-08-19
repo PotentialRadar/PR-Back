@@ -67,8 +67,9 @@ public class TokenProvider {
     // JWT 토큰 유효성 검증 메서드
     public boolean validToken(String token) {
         try {
-            Jwts.parser()
+            Jwts.parserBuilder()
                     .setSigningKey(secretKey)
+                    .build()
                     .parseClaimsJws(token);
 
             return true;
@@ -108,8 +109,9 @@ public class TokenProvider {
 
     private Claims getClaims(String token) {
         try {
-            return Jwts.parser()
+            return Jwts.parserBuilder()
                     .setSigningKey(secretKey)
+                    .build()
                     .parseClaimsJws(token)
                     .getBody();
         } catch (JwtException e) {

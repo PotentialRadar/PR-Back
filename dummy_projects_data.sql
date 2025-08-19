@@ -8,23 +8,23 @@
 INSERT INTO project_recruitment 
   (project_id, team_leader_id, title, description, recruit_deadline, start_date, end_date, status, file_url, created_at, updated_at, view_count, recruit_count)
 VALUES
-  (1, 1, 'React 기반 쇼핑몰 개발', 'TypeScript와 React를 활용한 현대적인 이커머스 플랫폼 개발', '2024-08-15', '2024-08-25', '2024-12-15', 'RECRUITING', null, NOW(), NOW(), 45, 3),
-  (2, 2, 'Vue3 + Nuxt 포트폴리오 사이트', 'Nuxt3와 Vue3 Composition API를 활용한 개인 포트폴리오 웹사이트', '2024-08-20', '2024-09-01', '2024-11-30', 'RECRUITING', null, NOW(), NOW(), 67, 2),
-  (3, 3, 'Django REST API 서버 구축', 'Python Django를 활용한 RESTful API 서버와 관리자 페이지 개발', '2024-08-18', '2024-08-28', '2024-12-01', 'RECRUITING', null, NOW(), NOW(), 89, 4),
-  (4, 1, 'Spring Boot 마이크로서비스', 'MSA 아키텍처 기반 Spring Boot 서비스 개발 및 Docker 컨테이너화', '2024-08-22', '2024-09-05', '2025-01-15', 'RECRUITING', null, NOW(), NOW(), 123, 5),
-  (5, 2, 'Node.js 실시간 채팅 앱', 'Socket.io와 Express를 활용한 실시간 채팅 애플리케이션', '2024-08-25', '2024-09-10', '2024-12-20', 'RECRUITING', null, NOW(), NOW(), 78, 3),
-  (6, 3, 'React Native 투두 앱', 'TypeScript와 React Native를 활용한 크로스플랫폼 모바일 앱', '2024-08-30', '2024-09-15', '2024-11-25', 'RECRUITING', null, NOW(), NOW(), 92, 2),
-  (7, 1, 'Flutter 전자상거래 앱', 'Dart와 Flutter를 활용한 모바일 쇼핑 애플리케이션', '2024-09-01', '2024-09-20', '2024-12-30', 'RECRUITING', null, NOW(), NOW(), 105, 4),
-  (8, 2, 'FastAPI 비동기 웹서버', 'Python FastAPI를 활용한 고성능 비동기 웹 서버 및 API 개발', '2024-09-05', '2024-09-25', '2025-01-10', 'RECRUITING', null, NOW(), NOW(), 134, 3),
-  (9, 3, 'Angular 관리자 대시보드', 'Angular와 TypeScript로 구축하는 기업용 관리자 패널', '2024-09-10', '2024-10-01', '2025-02-28', 'RECRUITING', null, NOW(), NOW(), 67, 5),
-  (10, 1, 'SvelteKit 블로그 플랫폼', 'Svelte와 SvelteKit을 활용한 개인 블로그 및 CMS 시스템', '2024-09-12', '2024-10-05', '2024-12-25', 'RECRUITING', null, NOW(), NOW(), 43, 2),
-  (11, 2, 'Go 마이크로서비스 API', 'Golang과 Gin 프레임워크를 활용한 고성능 마이크로서비스', '2024-09-15', '2024-10-10', '2025-01-20', 'RECRUITING', null, NOW(), NOW(), 156, 4),
-  (12, 3, '.NET Core 웹 애플리케이션', 'C#과 .NET Core를 활용한 엔터프라이즈 웹 애플리케이션', '2024-09-18', '2024-10-15', '2025-02-15', 'RECRUITING', null, NOW(), NOW(), 98, 3),
-  (13, 1, 'Laravel CMS 시스템', 'PHP Laravel을 활용한 콘텐츠 관리 시스템 및 API 서버', '2024-09-20', '2024-10-20', '2025-01-30', 'RECRUITING', null, NOW(), NOW(), 87, 4),
-  (14, 2, 'Rust 고성능 웹서버', 'Rust와 Actix-web을 활용한 초고속 웹 서버 및 API 개발', '2024-09-25', '2024-11-01', '2025-03-01', 'RECRUITING', null, NOW(), NOW(), 76, 2),
-  (15, 3, 'Unity 2D 인디게임', 'Unity와 C#을 활용한 2D 플랫폼 액션 게임 개발', '2024-09-28', '2024-11-05', '2025-02-28', 'RECRUITING', null, NOW(), NOW(), 145, 5),
-  (16, 1, 'Kubernetes 클러스터 구축', 'Docker, Kubernetes, Terraform을 활용한 클라우드 인프라 구축', '2024-10-01', '2024-11-10', '2025-03-15', 'RECRUITING', null, NOW(), NOW(), 189, 3),
-  (17, 2, 'Python ML 추천시스템', 'TensorFlow와 scikit-learn을 활용한 AI 기반 상품 추천 시스템', '2024-10-05', '2024-11-15', '2025-04-01', 'RECRUITING', null, NOW(), NOW(), 167, 4);
+  (1, 1, 'React 기반 쇼핑몰 개발', 'TypeScript와 React를 활용한 현대적인 이커머스 플랫폼 개발', '2025-08-15', '2025-08-25', '2025-12-15', 'RECRUITING', null, NOW(), NOW(), 45, 3),
+  (2, 2, 'Vue3 + Nuxt 포트폴리오 사이트', 'Nuxt3와 Vue3 Composition API를 활용한 개인 포트폴리오 웹사이트', '2025-08-20', '2025-09-01', '2025-11-30', 'RECRUITING', null, NOW(), NOW(), 67, 2),
+  (3, 3, 'Django REST API 서버 구축', 'Python Django를 활용한 RESTful API 서버와 관리자 페이지 개발', '2025-08-18', '2025-08-28', '2025-12-01', 'RECRUITING', null, NOW(), NOW(), 89, 4),
+  (4, 1, 'Spring Boot 마이크로서비스', 'MSA 아키텍처 기반 Spring Boot 서비스 개발 및 Docker 컨테이너화', '2025-08-22', '2025-09-05', '2026-01-15', 'RECRUITING', null, NOW(), NOW(), 123, 5),
+  (5, 2, 'Node.js 실시간 채팅 앱', 'Socket.io와 Express를 활용한 실시간 채팅 애플리케이션', '2025-08-25', '2025-09-10', '2025-12-20', 'RECRUITING', null, NOW(), NOW(), 78, 3),
+  (6, 3, 'React Native 투두 앱', 'TypeScript와 React Native를 활용한 크로스플랫폼 모바일 앱', '2025-08-30', '2025-09-15', '2025-11-25', 'RECRUITING', null, NOW(), NOW(), 92, 2),
+  (7, 1, 'Flutter 전자상거래 앱', 'Dart와 Flutter를 활용한 모바일 쇼핑 애플리케이션', '2025-09-01', '2025-09-20', '2025-12-30', 'RECRUITING', null, NOW(), NOW(), 105, 4),
+  (8, 2, 'FastAPI 비동기 웹서버', 'Python FastAPI를 활용한 고성능 비동기 웹 서버 및 API 개발', '2025-09-05', '2025-09-25', '2026-01-10', 'RECRUITING', null, NOW(), NOW(), 134, 3),
+  (9, 3, 'Angular 관리자 대시보드', 'Angular와 TypeScript로 구축하는 기업용 관리자 패널', '2025-09-10', '2025-10-01', '2026-02-28', 'RECRUITING', null, NOW(), NOW(), 67, 5),
+  (10, 1, 'SvelteKit 블로그 플랫폼', 'Svelte와 SvelteKit을 활용한 개인 블로그 및 CMS 시스템', '2025-09-12', '2025-10-05', '2025-12-25', 'RECRUITING', null, NOW(), NOW(), 43, 2),
+  (11, 2, 'Go 마이크로서비스 API', 'Golang과 Gin 프레임워크를 활용한 고성능 마이크로서비스', '2025-09-15', '2025-10-10', '2026-01-20', 'RECRUITING', null, NOW(), NOW(), 156, 4),
+  (12, 3, '.NET Core 웹 애플리케이션', 'C#과 .NET Core를 활용한 엔터프라이즈 웹 애플리케이션', '2025-09-18', '2025-10-15', '2026-02-15', 'RECRUITING', null, NOW(), NOW(), 98, 3),
+  (13, 1, 'Laravel CMS 시스템', 'PHP Laravel을 활용한 콘텐츠 관리 시스템 및 API 서버', '2025-09-20', '2025-10-20', '2026-01-30', 'RECRUITING', null, NOW(), NOW(), 87, 4),
+  (14, 2, 'Rust 고성능 웹서버', 'Rust와 Actix-web을 활용한 초고속 웹 서버 및 API 개발', '2025-09-25', '2025-11-01', '2026-03-01', 'RECRUITING', null, NOW(), NOW(), 76, 2),
+  (15, 3, 'Unity 2D 인디게임', 'Unity와 C#을 활용한 2D 플랫폼 액션 게임 개발', '2025-09-28', '2025-11-05', '2026-02-28', 'RECRUITING', null, NOW(), NOW(), 145, 5),
+  (16, 1, 'Kubernetes 클러스터 구축', 'Docker, Kubernetes, Terraform을 활용한 클라우드 인프라 구축', '2025-10-01', '2025-11-10', '2026-03-15', 'RECRUITING', null, NOW(), NOW(), 189, 3),
+  (17, 2, 'Python ML 추천시스템', 'TensorFlow와 scikit-learn을 활용한 AI 기반 상품 추천 시스템', '2025-10-05', '2025-11-15', '2026-04-01', 'RECRUITING', null, NOW(), NOW(), 167, 4);
 
 -- 프로젝트별 기술스택 연결 데이터 (올바른 매핑)
 INSERT INTO project_tech_stack (project_id, tech_stack_name, recruit_count)

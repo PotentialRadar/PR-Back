@@ -116,7 +116,78 @@ INSERT INTO users (nickname, email, password, experience_range, is_portfolio_ope
 -- 사용자 데이터 확인
 SELECT 'Users created:', COUNT(*) FROM users WHERE user_id > 1;
 
--- 기술 스택 매핑은 별도로 실행하거나 애플리케이션에서 처리
+-- ========= 사용자별 기술 스택 매핑 =========
+-- user_tech_stack 테이블에 데이터를 삽입합니다.
+-- CTE(Common Table Expression)를 사용하여 각 유저와 기술 스택의 ID를 명시적으로 매핑합니다.
+
+INSERT INTO user_tech_stack (user_id, tech_stack_id, skill_level)
+SELECT u.user_id, ts.tech_stack_id, 3 -- skill_level은 3으로 통일
+FROM users u, tech_stack ts
+WHERE
+  -- Backend 개발자들
+  (u.nickname = '백엔드마스터' AND ts.name IN ('Java', 'Spring Boot', 'MySQL', 'Redis')) OR
+  (u.nickname = '스프링부트러버' AND ts.name IN ('Spring Boot', 'JPA', 'Kotlin', 'PostgreSQL')) OR
+  (u.nickname = '자바개발자' AND ts.name IN ('Java', 'Spring', 'MySQL', 'GitHub Actions')) OR
+  (u.nickname = '마이크로서비스전문가' AND ts.name IN ('Java', 'Spring Boot', 'Docker', 'Kubernetes', 'AWS')) OR
+  (u.nickname = '코틀린러버' AND ts.name IN ('Kotlin', 'Spring Boot', 'JPA', 'PostgreSQL')) OR
+  (u.nickname = '파이썬백엔드' AND ts.name IN ('Python', 'Django', 'FastAPI', 'MongoDB')) OR
+  (u.nickname = '고랑개발자' AND ts.name IN ('Go', 'Kubernetes', 'gRPC', 'Redis')) OR
+  (u.nickname = 'DB전문가' AND ts.name IN ('MySQL', 'PostgreSQL', 'MongoDB', 'Redis')) OR
+  (u.nickname = '노드개발자' AND ts.name IN ('Node.js', 'Express.js', 'TypeScript', 'MongoDB')) OR
+  (u.nickname = 'API마스터' AND ts.name IN ('Java', 'Spring Boot', 'GraphQL', 'AWS')) OR
+  (u.nickname = '러스트러버' AND ts.name IN ('Rust', 'Actix-web', 'PostgreSQL', 'Docker')) OR
+  (u.nickname = '.NET개발자' AND ts.name IN ('C#', '.NET', 'Azure', 'MS-SQL')) OR
+
+  -- Frontend 개발자들
+  (u.nickname = '리액트마스터' AND ts.name IN ('React', 'TypeScript', 'Next.js', 'GraphQL')) OR
+  (u.nickname = 'Vue전문가' AND ts.name IN ('Vue.js', 'JavaScript', 'Nuxt.js', 'Pinia')) OR
+  (u.nickname = '타입스크립트러버' AND ts.name IN ('TypeScript', 'React', 'Node.js', 'Webpack')) OR
+  (u.nickname = '앵귤러개발자' AND ts.name IN ('Angular', 'TypeScript', 'RxJS', 'Ngrx')) OR
+  (u.nickname = 'Next.js전문가' AND ts.name IN ('Next.js', 'React', 'Vercel', 'TypeScript')) OR
+  (u.nickname = 'UI/UX개발자' AND ts.name IN ('React', 'Figma', 'Storybook', 'CSS-in-JS')) OR
+  (u.nickname = '웹퍼포먼스전문가' AND ts.name IN ('JavaScript', 'Lighthouse', 'Webpack', 'Performance API')) OR
+  (u.nickname = 'CSS마스터' AND ts.name IN ('CSS3', 'Sass', 'Tailwind CSS', 'Styled-components')) OR
+  (u.nickname = '자바스크립트닌자' AND ts.name IN ('JavaScript', 'ES6+', 'Webpack', 'Babel')) OR
+  (u.nickname = '프론트엔드아키텍트' AND ts.name IN ('React', 'TypeScript', 'Micro-Frontends', 'Webpack')) OR
+  (u.nickname = '모바일웹전문가' AND ts.name IN ('React', 'PWA', 'Responsive Web Design', 'JavaScript')) OR
+  (u.nickname = 'PWA개발자' AND ts.name IN ('PWA', 'Service Worker', 'JavaScript', 'Webpack')) OR
+
+  -- Mobile 개발자들
+  (u.nickname = '아이폰개발자' AND ts.name IN ('Swift', 'iOS', 'Xcode', 'Combine')) OR
+  (u.nickname = '안드로이드마스터' AND ts.name IN ('Kotlin', 'Android', 'Jetpack Compose', 'Coroutines')) OR
+  (u.nickname = '크로스플랫폼전문가' AND ts.name IN ('React Native', 'Flutter', 'JavaScript', 'Dart')) OR
+  (u.nickname = '플러터개발자' AND ts.name IN ('Flutter', 'Dart', 'BLoC', 'Firebase')) OR
+  (u.nickname = 'RN개발자' AND ts.name IN ('React Native', 'TypeScript', 'Redux', 'React Navigation')) OR
+  (u.nickname = '스위프트러버' AND ts.name IN ('Swift', 'SwiftUI', 'RxSwift', 'Alamofire')) OR
+  (u.nickname = '코틀린모바일' AND ts.name IN ('Kotlin', 'Android', 'Ktor', 'Coroutines')) OR
+  (u.nickname = '하이브리드앱전문가' AND ts.name IN ('Ionic', 'Capacitor', 'Angular', 'TypeScript')) OR
+
+  -- DevOps 개발자들
+  (u.nickname = '쿠버네티스마스터' AND ts.name IN ('Kubernetes', 'Docker', 'Go', 'Prometheus')) OR
+  (u.nickname = '도커전문가' AND ts.name IN ('Docker', 'Docker Compose', 'CI/CD', 'Jenkins')) OR
+  (u.nickname = 'AWS아키텍트' AND ts.name IN ('AWS', 'Terraform', 'Kubernetes', 'Lambda')) OR
+  (u.nickname = 'CI/CD마스터' AND ts.name IN ('Jenkins', 'GitHub Actions', 'Docker', 'Kubernetes')) OR
+  (u.nickname = '인프라전문가' AND ts.name IN ('Terraform', 'Ansible', 'AWS', 'Linux')) OR
+  (u.nickname = '테라폼러버' AND ts.name IN ('Terraform', 'AWS', 'GCP', 'HCL')) OR
+  (u.nickname = '모니터링전문가' AND ts.name IN ('Prometheus', 'Grafana', 'ELK Stack', 'Datadog')) OR
+  (u.nickname = '클라우드엔지니어' AND ts.name IN ('AWS', 'GCP', 'Azure', 'Kubernetes')) OR
+
+  -- AI/ML 개발자들
+  (u.nickname = 'AI연구원' AND ts.name IN ('Python', 'TensorFlow', 'PyTorch', 'NumPy')) OR
+  (u.nickname = '머신러닝엔지니어' AND ts.name IN ('Python', 'Scikit-learn', 'Pandas', 'Docker')) OR
+  (u.nickname = '딥러닝전문가' AND ts.name IN ('PyTorch', 'TensorFlow', 'CUDA', 'Python')) OR
+  (u.nickname = '데이터사이언티스트' AND ts.name IN ('Python', 'Pandas', 'Jupyter', 'SQL')) OR
+  (u.nickname = 'NLP전문가' AND ts.name IN ('Python', 'Hugging Face', 'NLTK', 'PyTorch')) OR
+  (u.nickname = 'MLOps엔지니어' AND ts.name IN ('Kubeflow', 'MLflow', 'Docker', 'Kubernetes', 'AWS')) OR
+
+  -- Full Stack 개발자들
+  (u.nickname = '풀스택개발자' AND ts.name IN ('React', 'Node.js', 'Spring Boot', 'TypeScript', 'AWS')) OR
+  (u.nickname = '웹개발마스터' AND ts.name IN ('Java', 'Spring Boot', 'React', 'PostgreSQL')) OR
+  (u.nickname = '만능개발자' AND ts.name IN ('Python', 'Django', 'Vue.js', 'Docker', 'GCP')) OR
+  (u.nickname = '스타트업개발자' AND ts.name IN ('Next.js', 'Node.js', 'TypeScript', 'MongoDB', 'AWS'));
+
+-- 삽입된 데이터 확인
+SELECT 'User tech stacks inserted:', COUNT(*) FROM user_tech_stack WHERE user_id > 1;
 
 -- 데이터 확인 쿼리
 SELECT COUNT(*) as total_users FROM users WHERE user_id > 1;

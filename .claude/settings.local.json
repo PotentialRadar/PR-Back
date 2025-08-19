@@ -2,9 +2,14 @@
   "permissions": {
     "allow": [
       "Bash(rm:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(./gradlew:*)",
+      "Bash(curl:*)",
+      "Bash(/dev/null)",
+      "Bash(taskkill:*)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "defaultMode": "acceptEdits"
   }
 }

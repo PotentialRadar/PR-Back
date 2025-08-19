@@ -5,6 +5,7 @@ import com.potential_radar.PR.common.entity.TechStack;
 import jakarta.persistence.*;
 import lombok.*;
 
+@Entity
 @Getter
 @Setter
 @NoArgsConstructor

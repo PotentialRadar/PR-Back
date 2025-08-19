@@ -3,7 +3,7 @@
     "projectId": {
       "type": "long"
     },
-    "projectName": {
+    "title": {
       "type": "text",
       "analyzer": "standard",
       "fields": {
@@ -16,6 +16,13 @@
         }
       }
     },
+    "description": {
+      "type": "text",
+      "analyzer": "standard"
+    },
+    "techParts": {
+      "type": "keyword"
+    },
     "techStacks": {
       "type": "text",
       "analyzer": "tech_stack_analyzer",
@@ -25,20 +32,13 @@
         }
       }
     },
-    "requiredTechParts": {
-      "type": "keyword"
-    },
-    "description": {
-      "type": "text",
-      "analyzer": "standard"
-    },
     "status": {
       "type": "keyword"
     },
-    "ownerId": {
+    "teamLeaderId": {
       "type": "long"
     },
-    "ownerNickname": {
+    "teamLeaderNickname": {
       "type": "text",
       "analyzer": "standard",
       "fields": {
@@ -47,9 +47,23 @@
         }
       }
     },
-    "deadline": {
-      "type": "date",
-      "format": "date_optional_time"
+    "recruitCount": {
+      "type": "integer"
+    },
+    "viewCount": {
+      "type": "integer"
+    },
+    "recruitDeadline": {
+      "type": "text",
+      "index": false
+    },
+    "startDate": {
+      "type": "text",
+      "index": false
+    },
+    "endDate": {
+      "type": "text",
+      "index": false
     },
     "createdAt": {
       "type": "text",

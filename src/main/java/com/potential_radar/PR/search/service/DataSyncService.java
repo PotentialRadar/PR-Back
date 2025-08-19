@@ -53,12 +53,13 @@ public class DataSyncService {
     @Transactional(readOnly = true)
     public void syncAllProjectsToElasticsearch() {
         log.info("Starting project data synchronization to Elasticsearch...");
-        
-        List<ProjectRecruitment> projects = projectRecruitmentRepository.findAll();
+
+        // findAll() 대신 findAllWithTechStacks()를 사용하여 즉시 로딩
+        List<ProjectRecruitment> projects = projectRecruitmentRepository.findAllWithTechStacks();
         List<ProjectSearchDocument> projectDocs = projects.stream()
                 .map(this::convertProjectToDocument)
                 .collect(Collectors.toList());
-        
+
         projectSearchRepository.saveAll(projectDocs);
         log.info("Synchronized {} projects to Elasticsearch", projectDocs.size());
     }
@@ -88,8 +89,8 @@ public class DataSyncService {
                 document.getNickname(), document.getTechPart(), document.getTechStacks());
         return document;
     }
-    
-    
+
+
     private List<String> getUserTechStacks(User user) {
         // 실제 사용자의 기술 스택 연관관계에서 추출
         try {
@@ -99,9 +100,12 @@ public class DataSyncService {
                         .collect(Collectors.toList());
             }
         } catch (Exception e) {
+            // LazyInitializationException 등이 발생할 수 있으므로 로그를 남깁니다.
             log.warn("Failed to load tech stacks for user {}: {}", user.getUserId(), e.getMessage());
         }
-        return List.of("Java", "Spring"); // 기본값
+
+        // 기술 스택이 없는 경우, 빈 리스트를 반환합니다.
+        return new ArrayList<>();
     }
 
     public ProjectSearchDocument convertProjectToDocument(ProjectRecruitment project) {

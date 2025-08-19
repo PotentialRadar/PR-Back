@@ -8,6 +8,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
+import org.springframework.data.elasticsearch.annotations.InnerField;
 
 import java.util.List;
 
@@ -23,25 +24,25 @@ public class ProjectSearchDocument {
     @Field(type = FieldType.Long)
     private Long projectId;
 
-    @Field(type = FieldType.Text, analyzer = "nori")
+    @Field(type = FieldType.Text, analyzer = "nori", searchAnalyzer = "nori")
     private String title;
 
-    @Field(type = FieldType.Text, analyzer = "nori") 
+    @Field(type = FieldType.Text, analyzer = "nori", searchAnalyzer = "nori") 
     private String description;
 
-    @Field(type = FieldType.Keyword)
+    @Field(type = FieldType.Text, analyzer = "standard")
     private List<String> techParts; // 구하고 있는 기술 파트들
 
-    @Field(type = FieldType.Keyword)
+    @Field(type = FieldType.Text, analyzer = "standard")
     private List<String> techStacks; // 사용하는 기술 스택들
 
-    @Field(type = FieldType.Keyword)
+    @Field(type = FieldType.Keyword, normalizer = "lowercase")
     private String status; // RECRUITING, COMPLETED 등
 
     @Field(type = FieldType.Long)
     private Long teamLeaderId;
 
-    @Field(type = FieldType.Text)
+    @Field(type = FieldType.Text, analyzer = "nori", searchAnalyzer = "nori")
     private String teamLeaderNickname;
 
     @Field(type = FieldType.Integer)

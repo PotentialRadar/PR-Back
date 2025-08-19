@@ -31,4 +31,7 @@ public interface ProjectRecruitmentRepository extends JpaRepository<ProjectRecru
     
     // 모집중인 프로젝트만 조회
     List<ProjectRecruitment> findByStatus(ProjectStatus status);
+
+    @Query("SELECT p FROM ProjectRecruitment p JOIN FETCH p.techStacks")
+    List<ProjectRecruitment> findAllWithTechStacks();
 }

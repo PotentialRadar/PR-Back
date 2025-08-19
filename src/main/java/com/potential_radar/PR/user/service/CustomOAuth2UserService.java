@@ -1,11 +1,16 @@
 package com.potential_radar.PR.user.service;
 
+import com.potential_radar.PR.common.domain.TechPart;
+import com.potential_radar.PR.common.excetpion.NotFoundException;
 import com.potential_radar.PR.user.domain.Provider;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.oauth.Google2UserInfo;
 import com.potential_radar.PR.user.oauth.Kakao2UserInfo;
 import com.potential_radar.PR.user.oauth.OAuth2UserInfo;
+import com.potential_radar.PR.user.repository.TechPartRepository;
+import com.potential_radar.PR.user.repository.UserProfileRepository;
 import com.potential_radar.PR.user.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
@@ -22,8 +27,11 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     private final UserRepository userRepository;
+    private final UserProfileRepository userProfileRepository;
+    private final TechPartRepository techPartRepository;
 
     @Override
+    @Transactional
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
         OAuth2User oAuth2User = super.loadUser(userRequest);
 
@@ -51,12 +59,27 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private User saveOrUpdate(OAuth2UserInfo userInfo) {
         return userRepository.findByEmail(userInfo.getEmail())
-                .orElseGet(() -> userRepository.save(User.builder()
-                        .email(userInfo.getEmail())
-                        .nickname(generateRandomNickname())
-                        .provider(Provider.valueOf(userInfo.getProvider().toUpperCase()))
-                        .providerUserId(userInfo.getProviderId())
-                        .build()));
+                .map(existingUser -> {
+                    // 기존 사용자는 업데이트 없이 그대로 반환
+                    return existingUser;
+                })
+                .orElseGet(() -> {
+                    // 1. User 엔티티 생성 (아직 DB에 저장되지 않음)
+                    User newUser = User.builder()
+                            .email(userInfo.getEmail())
+                            .nickname(generateRandomNickname())
+                            .provider(Provider.valueOf(userInfo.getProvider().toUpperCase()))
+                            .providerUserId(userInfo.getProviderId())
+                            .build();
+
+                    // 2. UserProfile 생성 및 User와 연결
+                    TechPart defaultTechPart = techPartRepository.findById(11L)  // * Default : 11 Etc
+                            .orElseThrow(() -> new NotFoundException("기본 기술 분야를 찾을 수 없습니다"));
+                    newUser.initializeProfile(defaultTechPart); // User 엔티티의 헬퍼 메서드 사용
+                    
+                    // 3. User를 저장하면 UserProfile도 함께 저장됨 (Cascade)
+                    return userRepository.save(newUser);
+                });
     }
 
     private String generateRandomNickname() {

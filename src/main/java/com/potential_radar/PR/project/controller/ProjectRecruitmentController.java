@@ -46,6 +46,13 @@ public class ProjectRecruitmentController {
         return ResponseEntity.ok(response);
     }
 
+    // 사용자가 생성한 프로젝트 목록 조회
+    @GetMapping("/users/{userId}/created")
+    public ResponseEntity<List<ProjectRecruitmentResponse>> getProjectsCreatedByUser(@PathVariable Long userId) {
+        List<ProjectRecruitmentResponse> response = projectRecruitmentService.getProjectsCreatedByUser(userId);
+        return ResponseEntity.ok(response);
+    }
+
     // 구인글 수정
     @PutMapping("/{id}")
     public ResponseEntity<Void> updateProject(

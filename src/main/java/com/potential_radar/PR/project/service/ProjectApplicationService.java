@@ -6,6 +6,7 @@ import com.potential_radar.PR.common.excetpion.NotFoundException;
 import com.potential_radar.PR.project.domain.*;
 import com.potential_radar.PR.project.dto.ProjectApplicationResponseDTO;
 import com.potential_radar.PR.project.dto.ProjectApplyRequest;
+import com.potential_radar.PR.project.dto.ProjectRecruitmentResponse;
 import com.potential_radar.PR.project.repository.*;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.repository.UserRepository;
@@ -23,8 +24,23 @@ public class ProjectApplicationService {
 
     private final ProjectApplicationRepository ProjectApplicationRepository;
     private final ProjectRecruitmentRepository projectRecruitmentRepository;
-    private final ProjectMemberRepository projectMemberRepository; // ✅ 멤버 저장소
+    private final ProjectMemberRepository projectMemberRepository; //  멤버 저장소
     private final UserRepository userRepository;
+    private final ProjectRecruitmentService projectRecruitmentService; // ProjectRecruitmentService 주입
+
+    private ProjectApplicationResponseDTO convertToResponseDto(ProjectApplication application) {
+        return ProjectApplicationResponseDTO.builder()
+                .id(application.getId())
+                .userId(application.getUser().getUserId())
+                .userName(application.getUser().getNickname()) // 닉네임 추가
+                .techPart(application.getTechPart())
+                .applicationMessage(application.getApplicationMessage())
+                .status(application.getStatus().name())
+                .projectId(application.getProject().getProjectId())
+                .projectTitle(application.getProject().getTitle())
+                .projectStatus(application.getProject().getStatus().name())
+                .build();
+    }
 
     // 프로젝트 지원
     @Transactional
@@ -55,14 +71,16 @@ public class ProjectApplicationService {
     public List<ProjectApplicationResponseDTO> getProjectMembers(Long projectId) {
         List<ProjectApplication> members = ProjectApplicationRepository.findByProject_ProjectId(projectId);
         return members.stream()
-                .map(member -> ProjectApplicationResponseDTO.builder()
-                        .id(member.getId())
-                        .userId(member.getUser().getUserId())
-//                        .userName(member.getUser().getName())  * 이름 필드 삭제
-                        .techPart(member.getTechPart())
-                        .applicationMessage(member.getApplicationMessage())
-                        .status(member.getStatus().name())
-                        .build())
+                .map(this::convertToResponseDto)
+                .toList();
+    }
+
+    // 사용자가 지원한 프로젝트 목록
+    @Transactional(readOnly = true)
+    public List<ProjectRecruitmentResponse> getAppliedProjectsByUser(Long userId) {
+        List<ProjectApplication> applications = ProjectApplicationRepository.findByUser_UserIdWithUser(userId);
+        return applications.stream()
+                .map(application -> projectRecruitmentService.convertToResponseDto(application.getProject()))
                 .toList();
     }
 

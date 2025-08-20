@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +26,49 @@ public class ProjectRecruitmentService {
     private final ProjectCommentRepository projectCommentRepository;
     private final TechStackRepository techStackRepository; // New
     private final TechPartRepository techPartRepository;   // New
+
+    public ProjectRecruitmentResponse convertToResponseDto(ProjectRecruitment pr) {
+        // 스택
+        List<ProjectTechStackDTO> techStackDTOs = new ArrayList<>();
+        for (ProjectTechStack ts : pr.getTechStacks()) {
+            techStackDTOs.add(ProjectTechStackDTO.builder()
+                    .techStackName(ts.getTechStack().getName())
+                    .recruitCount(ts.getRecruitCount())
+                    .build());
+        }
+        // 파트
+        List<ProjectPartRecruitmentDTO> partDTOs = new ArrayList<>();
+        for (ProjectTechPart pt : pr.getTechParts()) {
+            partDTOs.add(ProjectPartRecruitmentDTO.builder()
+                    .partName(pt.getTechPart().getName())
+                    .recruitCount(pt.getRecruitCount())
+                    .build());
+        }
+
+        int appliedCount = projectApplicationRepository.countByProject_ProjectId(pr.getProjectId());
+        int acceptedCount = projectApplicationRepository.countByProject_ProjectIdAndStatus(
+                pr.getProjectId(), ProjectApplication.ApplicationStatus.ACCEPTED);
+        int remainingCount = pr.getRecruitCount() - acceptedCount;
+
+        return ProjectRecruitmentResponse.builder()
+                .projectId(pr.getProjectId())
+                .teamLeaderId(pr.getTeamLeader().getUserId())
+                .title(pr.getTitle())
+                .description(pr.getDescription())
+                .recruitDeadline(pr.getRecruitDeadline())
+                .startDate(pr.getStartDate())
+                .endDate(pr.getEndDate())
+                .fileUrl(pr.getFileUrl())
+                .status(pr.getStatus().name())
+                .viewCount(pr.getViewCount())
+                .recruitCount(pr.getRecruitCount())
+                .appliedCount(appliedCount)
+                .acceptedCount(acceptedCount)
+                .remainingCount(remainingCount)
+                .techStacks(techStackDTOs)
+                .recruitmentParts(partDTOs)
+                .build();
+    }
 
     // 구인글 생성
     @Transactional
@@ -108,7 +152,7 @@ public class ProjectRecruitmentService {
     //구인글 조회
     @Transactional
     public ProjectRecruitmentResponse getProject(Long id) {
-        ProjectRecruitment pr = projectRecruitmentRepository.findById(id)
+        ProjectRecruitment pr = projectRecruitmentRepository.findByIdWithTeamLeader(id)
                 .orElseThrow(() -> new NotFoundException("해당 구인글이 존재하지 않습니다."));
         pr.setViewCount(pr.getViewCount() == null ? 1 : pr.getViewCount() + 1);
 
@@ -159,51 +203,18 @@ public class ProjectRecruitmentService {
     @Transactional(readOnly = true)
     public List<ProjectRecruitmentResponse> getAllProjects() {
         List<ProjectRecruitment> projects = projectRecruitmentRepository.findAll();
-        List<ProjectRecruitmentResponse> responses = new ArrayList<>();
+        return projects.stream()
+                .map(this::convertToResponseDto)
+                .collect(Collectors.toList());
+    }
 
-        for (ProjectRecruitment pr : projects) {
-            // 스택
-            List<ProjectTechStackDTO> techStackDTOs = new ArrayList<>();
-            for (ProjectTechStack ts : pr.getTechStacks()) {
-                techStackDTOs.add(ProjectTechStackDTO.builder()
-                        .techStackName(ts.getTechStack().getName()) // Get name from TechStack entity
-                        .recruitCount(ts.getRecruitCount())
-                        .build());
-            }
-            // 파트
-            List<ProjectPartRecruitmentDTO> partDTOs = new ArrayList<>();
-            for (ProjectTechPart pt : pr.getTechParts()) {
-                partDTOs.add(ProjectPartRecruitmentDTO.builder()
-                        .partName(pt.getTechPart().getName()) // Get name from TechPart entity
-                        .recruitCount(pt.getRecruitCount())
-                        .build());
-            }
-
-            int appliedCount = projectApplicationRepository.countByProject_ProjectId(pr.getProjectId());
-            int acceptedCount = projectApplicationRepository.countByProject_ProjectIdAndStatus(
-                    pr.getProjectId(), ProjectApplication.ApplicationStatus.ACCEPTED);
-            int remainingCount = pr.getRecruitCount() - acceptedCount;
-
-            responses.add(ProjectRecruitmentResponse.builder()
-                    .projectId(pr.getProjectId())
-                    .teamLeaderId(pr.getTeamLeader().getUserId())
-                    .title(pr.getTitle())
-                    .description(pr.getDescription())
-                    .recruitDeadline(pr.getRecruitDeadline())
-                    .startDate(pr.getStartDate())
-                    .endDate(pr.getEndDate())
-                    .fileUrl(pr.getFileUrl())
-                    .status(pr.getStatus().name())
-                    .viewCount(pr.getViewCount())
-                    .recruitCount(pr.getRecruitCount())
-                    .appliedCount(appliedCount)
-                    .acceptedCount(acceptedCount)
-                    .remainingCount(remainingCount)
-                .techStacks(techStackDTOs)
-                .recruitmentParts(partDTOs)
-                    .build());
-        }
-        return responses;
+    // 사용자가 생성한 프로젝트 목록 조회
+    @Transactional(readOnly = true)
+    public List<ProjectRecruitmentResponse> getProjectsCreatedByUser(Long userId) {
+        List<ProjectRecruitment> projects = projectRecruitmentRepository.findByTeamLeader_UserId(userId);
+        return projects.stream()
+                .map(this::convertToResponseDto)
+                .collect(Collectors.toList());
     }
 
     // 구인글 수정 (전량 삭제 → 재삽입)

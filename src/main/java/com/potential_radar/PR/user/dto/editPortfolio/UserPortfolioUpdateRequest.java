@@ -1,19 +1,23 @@
 package com.potential_radar.PR.user.dto.editPortfolio;
 
+import com.potential_radar.PR.user.dto.education.UserEducationRequest;
+import com.potential_radar.PR.user.dto.experience.UserExperienceRequest;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
+
+import java.util.List;
 
 public record UserPortfolioUpdateRequest(
         @Size(max = 500, message = "자기소개는 500자 이하여야 합니다")
-        String bio
-
-        // 교육이력 (CRUD)
-
-        // 경력(CRUD),
-
-        // 기술스택
-
-        // 프로젝트
-
+        String bio,
+        
+        @Valid
+        List<UserEducationRequest> educations,
+        
+        @Valid
+        List<UserExperienceRequest> experiences
+        
+        // TODO: 기술스택 리스트
+        
 ) {
-
 }

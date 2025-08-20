@@ -1,4 +1,4 @@
-package com.potential_radar.PR.user.service;
+package com.potential_radar.PR.user.service.impl;
 
 import com.potential_radar.PR.common.excetpion.NotFoundException;
 import com.potential_radar.PR.config.jwt.TokenProvider;
@@ -10,6 +10,8 @@ import com.potential_radar.PR.user.domain.UserProfile;
 import com.potential_radar.PR.user.dto.editInfo.UpdatedUserProfileResponse;
 import com.potential_radar.PR.user.dto.editInfo.UserProfileUpdateRequest;
 import com.potential_radar.PR.user.repository.*;
+import com.potential_radar.PR.user.service.RefreshTokenService;
+import com.potential_radar.PR.user.service.UserService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;

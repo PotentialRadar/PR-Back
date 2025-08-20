@@ -30,6 +30,7 @@ public class User {
     private Long userId;
 
     // citext 매핑: columnDefinition 으로 지정 (Hibernate는 String으로 처리 가능)
+    // TODO : citext 필요 없지 않나?
     @Column(nullable = false, unique = true, columnDefinition = "citext")
     private String email;
 

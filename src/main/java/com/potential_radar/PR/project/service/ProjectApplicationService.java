@@ -1,8 +1,8 @@
 package com.potential_radar.PR.project.service;
 
-import com.potential_radar.PR.common.excetpion.AccessDeniedException;
-import com.potential_radar.PR.common.excetpion.DuplicateApplicationException;
-import com.potential_radar.PR.common.excetpion.NotFoundException;
+import com.potential_radar.PR.common.exception.AccessDeniedException;
+import com.potential_radar.PR.common.exception.DuplicateApplicationException;
+import com.potential_radar.PR.common.exception.NotFoundException;
 import com.potential_radar.PR.project.domain.*;
 import com.potential_radar.PR.project.dto.ProjectApplicationResponseDTO;
 import com.potential_radar.PR.project.dto.ProjectApplyRequest;

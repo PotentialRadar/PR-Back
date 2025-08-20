@@ -4,6 +4,7 @@ import os
 
 from app.router.recommendation_router import router as recommendation_router
 from app.router.team_recommendation_router import router as team_recommendation_router
+from app.routers.project_recommendation import router as project_recommendation_router
 from app.core.logging_config import setup_logging
 
 # 로깅 설정
@@ -27,8 +28,9 @@ app.add_middleware(
 )
 
 # 라우터 등록
-app.include_router(recommendation_router, prefix="/api", tags=["recommendations"])
+# app.include_router(recommendation_router, prefix="/api", tags=["recommendations"])
 app.include_router(team_recommendation_router, prefix="/api", tags=["team-recommendations"])
+app.include_router(project_recommendation_router, prefix="/api", tags=["project-recommendations"])
 
 
 @app.get("/", tags=["health"])

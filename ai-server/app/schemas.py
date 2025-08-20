@@ -115,3 +115,34 @@ class RecommendedMember(BaseModel):
     lastActiveDate: str = Field(..., description="마지막 활동일")
     isAvailable: bool = Field(default=True, description="현재 참여 가능 여부")
     currentProjectCount: int = Field(default=0, description="현재 참여 중인 프로젝트 수")
+
+# 프로젝트 추천 관련 스키마 (새로 추가)
+class RecommendProjectRequest(BaseModel):
+    userId: int
+    techStacks: List[UserTechStack]
+    experienceLevel: Optional[str] = "intermediate"
+    preferredCategories: Optional[List[str]] = []
+    maxResults: Optional[int] = 5
+
+class ProjectExplanation(BaseModel):
+    main_reason: str
+    matched_skills: List[str]
+    growth_opportunities: List[str]
+    simple_explanation: str
+    difficulty_level: str
+    learning_potential: float
+
+class RecommendedProject(BaseModel):
+    projectId: int
+    title: str
+    description: str
+    matchScore: float
+    projectTechStacks: List[str]
+    status: str
+    recruitDeadline: str
+    startDate: str
+    endDate: str
+    recruitCount: int
+    appliedCount: int
+    viewCount: int
+    explanation: Optional[ProjectExplanation]

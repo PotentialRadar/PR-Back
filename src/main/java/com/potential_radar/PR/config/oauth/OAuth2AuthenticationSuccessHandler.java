@@ -54,15 +54,19 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             return;
         }
 
-        // DB에서 유저 조회
+        // DB에서 유저 조회 (CustomOAuth2UserService에서 이미 생성했어야 함)
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> {
-                    log.error("❌ 가입된 유저가 없습니다: {}", email);
-                    return new OAuth2AuthenticationException("가입된 유저가 없습니다.");                });
+                    log.error("❌ OAuth2 로그인 후 유저를 찾을 수 없습니다: {}", email);
+                    return new OAuth2AuthenticationException("OAuth2 로그인 처리 중 오류가 발생했습니다.");
+                });
 
         // 로컬 로그인과 동일하게 Access Token과 Refresh Token을 모두 생성
         String accessToken = tokenProvider.generateAccessToken(user);
         String refreshToken = refreshTokenService.createAndSaveRefreshToken(user);
+        
+        log.info("🔑 생성된 AccessToken: {}", accessToken.substring(0, Math.min(50, accessToken.length())) + "...");
+        log.info("🔑 토큰 검증 결과: {}", tokenProvider.validToken(accessToken));
 
         // Refresh Token은 보안을 위해 HttpOnly 쿠키로 전달
         Cookie refreshTokenCookie = new Cookie("refresh_token", refreshToken);

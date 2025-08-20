@@ -33,14 +33,20 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
         }
 
+        // 1. User 엔티티 생성 (아직 DB에 저장되지 않음)
         User user = User.builder()
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
                 .nickname(request.nickname())
                 .provider(Provider.EMAIL)
                 .build();
+        
+        // 2. UserProfile 생성 및 User와 연결
+        TechPart defaultTechPart = techPartRepository.findById(11L)  // Defualt : 11 ETC
+                .orElseThrow(() -> new NotFoundException("기본 기술 분야를 찾을 수 없습니다"));
+        user.initializeProfile(defaultTechPart); // User 엔티티의 헬퍼 메서드 사용
 
-
+        // 3. User를 저장하면 UserProfile도 함께 저장됨 (Cascade)
         return userRepository.save(user);
     }
 
@@ -120,6 +126,10 @@ public class UserServiceImpl implements UserService {
         if (request.githubUrl() != null) userProfile.setGithubUrl(request.githubUrl());
         if (request.linkedinUrl() != null) userProfile.setLinkedinUrl(request.linkedinUrl());
         if (request.websiteUrl() != null) userProfile.setWebsiteUrl(request.websiteUrl());
+        if (request.jobTitle() != null) {
+            String jt = request.jobTitle().trim();
+            userProfile.setJobTitle(jt.isEmpty() ? null : jt);
+        }
         if (request.isPortfolioOpen() != null) userProfile.setPortfolioOpen(request.isPortfolioOpen());
         if (request.isContactOpen() != null) userProfile.setContactOpen(request.isContactOpen());
         if (request.isSearchOpen() != null) userProfile.setSearchOpen(request.isSearchOpen());

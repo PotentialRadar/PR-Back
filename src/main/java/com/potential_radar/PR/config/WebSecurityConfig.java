@@ -61,7 +61,7 @@ public class WebSecurityConfig {
                                 "/oauth2/**",
                                 "/login/oauth2/**",
                                 "/api/login/**",
-                                "/api/users/**",
+                                "/api/user/**",
                                 "/api/recommend/**"
                         )
                         .permitAll()

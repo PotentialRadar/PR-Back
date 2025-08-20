@@ -82,7 +82,7 @@ public class UserController {
         return ResponseEntity.ok(Map.of("message", "회원 탈퇴가 완료되었습니다"));
     }
 
-    @GetMapping("/users/{userId}/likes/projects")
+    @GetMapping("/user/{userId}/likes/projects")
     public ResponseEntity<List<ProjectRecruitmentResponse>> getLikedProjects(@PathVariable Long userId) {
         List<ProjectRecruitmentResponse> likedProjects = likeService.getLikedProjects(userId);
         return ResponseEntity.ok(likedProjects);

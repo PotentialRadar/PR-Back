@@ -1,4 +1,4 @@
-package com.potential_radar.PR.common.entity;
+package com.potential_radar.PR.tech.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -11,12 +11,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class TechStack {
-
+public class TechPart {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long techStackId;
+    private Long techPartId;
 
     @Column(nullable = false, unique = true)
-    private String name;  // React, Spring Boot, Python 등
+    private String name;
 }

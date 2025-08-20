@@ -1,11 +1,6 @@
 package com.potential_radar.PR.like.service;
 
-import com.potential_radar.PR.common.excetpion.NotFoundException;
-import com.potential_radar.PR.like.domain.Like;
-import com.potential_radar.PR.like.dto.LikeRequestDto;
-import com.potential_radar.PR.like.dto.LikeResponseDto;
-import com.potential_radar.PR.like.repository.LikeRepository;
-import com.potential_radar.PR.common.excetpion.NotFoundException;
+import com.potential_radar.PR.common.exception.NotFoundException;
 import com.potential_radar.PR.like.domain.Like;
 import com.potential_radar.PR.like.domain.TargetType;
 import com.potential_radar.PR.like.dto.LikeRequestDto;
@@ -13,8 +8,6 @@ import com.potential_radar.PR.like.dto.LikeResponseDto;
 import com.potential_radar.PR.like.repository.LikeRepository;
 import com.potential_radar.PR.project.domain.ProjectApplication;
 import com.potential_radar.PR.project.domain.ProjectRecruitment;
-import com.potential_radar.PR.project.domain.ProjectTechPart;
-import com.potential_radar.PR.project.domain.ProjectTechStack;
 import com.potential_radar.PR.project.dto.ProjectPartRecruitmentDTO;
 import com.potential_radar.PR.project.dto.ProjectRecruitmentResponse;
 import com.potential_radar.PR.project.dto.ProjectTechStackDTO;

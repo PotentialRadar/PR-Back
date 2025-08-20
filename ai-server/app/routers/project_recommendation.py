@@ -1,9 +1,11 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 import logging
+from sqlalchemy.orm import Session
 
 from app.schemas import RecommendProjectRequest, RecommendedProject
 from app.services.project_recommendation_service import project_recommendation_service
+from app.database import get_db
 
 # 로거 설정
 logging.basicConfig(level=logging.INFO)
@@ -17,7 +19,8 @@ async def recommend_projects(
     top_n: int = 5,
     min_score: float = 0.0,
     min_overlap: float = 0.1,
-    strict: bool = False
+    strict: bool = False,
+    db: Session = Depends(get_db)
 ):
     """
     사용자 기술스택을 기반으로 프로젝트 추천
@@ -45,7 +48,8 @@ async def recommend_projects(
         recommendations = project_recommendation_service.recommend_projects(
             request=request,
             top_n=top_n,
-            min_score=min_score
+            min_score=min_score,
+            db=db
         )
         
         logger.info(f"✅ 추천 완료 - {len(recommendations)}개 프로젝트 추천")

@@ -1,4 +1,4 @@
-package com.potential_radar.PR.common.excetpion;
+package com.potential_radar.PR.common.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

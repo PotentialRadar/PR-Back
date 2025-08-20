@@ -7,7 +7,7 @@ import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.oauth.Google2UserInfo;
 import com.potential_radar.PR.user.oauth.Kakao2UserInfo;
 import com.potential_radar.PR.user.oauth.OAuth2UserInfo;
-import com.potential_radar.PR.user.repository.TechPartRepository;
+import com.potential_radar.PR.common.repository.TechPartRepository;
 import com.potential_radar.PR.user.repository.UserProfileRepository;
 import com.potential_radar.PR.user.repository.UserRepository;
 import jakarta.transaction.Transactional;

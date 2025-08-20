@@ -2,9 +2,10 @@ package com.potential_radar.PR.project.service;
 
 import com.potential_radar.PR.common.domain.TechPart;
 import com.potential_radar.PR.common.domain.TechStack;
-import com.potential_radar.PR.common.excetpion.NotFoundException;
+import com.potential_radar.PR.common.exception.NotFoundException;
 import com.potential_radar.PR.common.repository.TechPartRepository;
 import com.potential_radar.PR.common.repository.TechStackRepository;
+
 import com.potential_radar.PR.project.domain.*;
 import com.potential_radar.PR.project.dto.*;
 import com.potential_radar.PR.project.repository.*;

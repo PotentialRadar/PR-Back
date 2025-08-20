@@ -1,7 +1,7 @@
 package com.potential_radar.PR.project.service;
 
-import com.potential_radar.PR.common.excetpion.AccessDeniedException;
-import com.potential_radar.PR.common.excetpion.NotFoundException;
+import com.potential_radar.PR.common.exception.AccessDeniedException;
+import com.potential_radar.PR.common.exception.NotFoundException;
 import com.potential_radar.PR.project.domain.ProjectComment;
 import com.potential_radar.PR.project.domain.ProjectRecruitment;
 import com.potential_radar.PR.project.dto.CommentRequestDto;

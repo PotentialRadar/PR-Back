@@ -23,7 +23,7 @@ public class ProjectRecommendationService {
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
     
-    @Value("${ai.server.url:http://localhost:8081}")
+    @Value("${python.api.host:http://localhost:8000}")
     private String aiServerUrl;
     
     public List<RecommendedProject> recommendProjects(

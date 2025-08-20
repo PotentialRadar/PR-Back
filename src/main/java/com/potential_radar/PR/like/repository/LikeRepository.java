@@ -3,7 +3,9 @@ package com.potential_radar.PR.like.repository;
 import com.potential_radar.PR.like.domain.Like;
 import com.potential_radar.PR.like.domain.TargetType;
 import com.potential_radar.PR.user.domain.User;
+
 import lombok.NonNull;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

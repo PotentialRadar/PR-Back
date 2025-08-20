@@ -3,7 +3,9 @@ from typing import List, Dict, Any
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from sqlalchemy.orm import Session
 from app.schemas import RecommendProjectRequest, RecommendedProject, ProjectExplanation
+from app.models import Project, ProjectTechStack
 
 class ProjectRecommendationService:
     def __init__(self):
@@ -235,6 +237,53 @@ class ProjectRecommendationService:
                 "status": "RECRUITING"
             }
         ]
+    
+    def get_projects_from_db(self, db: Session) -> List[Dict]:
+        """DB에서 실제 프로젝트 데이터를 조회"""
+        try:
+            projects = db.query(Project).all()
+            db_projects = []
+            
+            for project in projects:
+                # 프로젝트의 기술스택 조회
+                tech_stacks = [ts.tech_stack_name for ts in project.tech_stacks]
+                
+                # Mock 데이터 형식에 맞게 변환
+                project_data = {
+                    "projectId": project.project_id,
+                    "title": project.title,
+                    "description": project.description or "",
+                    "techStacks": tech_stacks,
+                    "category": self._determine_category(tech_stacks),
+                    "difficulty": "intermediate",  # 기본값, 추후 DB 컬럼 추가 가능
+                    "recruitCount": 3,  # 기본값, 추후 DB 컬럼 추가 가능
+                    "appliedCount": random.randint(1, 10),
+                    "viewCount": random.randint(50, 200),
+                    "recruitDeadline": "2025-12-31",  # 기본값
+                    "startDate": "2025-09-01",  # 기본값
+                    "endDate": "2025-12-31",  # 기본값
+                    "status": "RECRUITING"  # 기본값
+                }
+                db_projects.append(project_data)
+            
+            return db_projects
+        except Exception as e:
+            print(f"DB 조회 실패: {e}")
+            return self.mock_projects  # 실패시 Mock 데이터 사용
+    
+    def _determine_category(self, tech_stacks: List[str]) -> str:
+        """기술스택 기반으로 프로젝트 카테고리 결정"""
+        if not tech_stacks:
+            return "unknown"
+        
+        # 기술스택별 카테고리 점수 계산
+        category_scores = {}
+        for tech in tech_stacks:
+            category = self.tech_categories.get(tech, "unknown")
+            category_scores[category] = category_scores.get(category, 0) + 1
+        
+        # 가장 많이 등장한 카테고리 반환
+        return max(category_scores, key=category_scores.get) if category_scores else "unknown"
 
     def calculate_tech_match_score(self, user_techs: List[Dict], project_techs: List[str]) -> float:
         """사용자 기술스택과 프로젝트 기술스택 간의 매칭 점수 계산"""
@@ -349,13 +398,16 @@ class ProjectRecommendationService:
         )
 
     def recommend_projects(self, request: RecommendProjectRequest, 
-                         top_n: int = 5, min_score: float = 0.3) -> List[RecommendedProject]:
+                         top_n: int = 5, min_score: float = 0.3, db: Session = None) -> List[RecommendedProject]:
         """프로젝트 추천 메인 로직"""
         
         user_techs = [{"name": tech.name, "level": tech.level} for tech in request.techStacks]
         recommendations = []
         
-        for project in self.mock_projects:
+        # DB가 제공되면 실제 데이터 사용, 아니면 Mock 데이터 사용
+        projects = self.get_projects_from_db(db) if db else self.mock_projects
+        
+        for project in projects:
             # 기술 매칭 점수
             tech_score = self.calculate_tech_match_score(user_techs, project["techStacks"])
             

@@ -1,7 +1,7 @@
 package com.potential_radar.PR.project.controller;
 
 import com.potential_radar.PR.common.S3.S3Uploader;
-import com.potential_radar.PR.common.excetpion.NotFoundException;
+import com.potential_radar.PR.common.exception.NotFoundException;
 import com.potential_radar.PR.project.dto.ProjectRecruitmentRequest;
 import com.potential_radar.PR.project.dto.ProjectRecruitmentResponse;
 import com.potential_radar.PR.project.service.ProjectRecruitmentService;

@@ -1,7 +1,7 @@
 package com.potential_radar.PR.user.service;
 
 import com.potential_radar.PR.config.jwt.TokenProvider;
-import com.potential_radar.PR.common.excetpion.InvalidTokenException;
+import com.potential_radar.PR.common.exception.InvalidTokenException;
 import com.potential_radar.PR.user.domain.RefreshToken;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.repository.RefreshTokenRepository;

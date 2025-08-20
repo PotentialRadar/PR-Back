@@ -1,0 +1,31 @@
+### 프로젝트 검색 디버깅
+
+### 1. 프로젝트 동기화
+POST http://localhost:8082/api/search/sync
+
+### 2. 전체 프로젝트 데이터 확인
+GET http://localhost:8082/api/search/test/projects/all
+
+### 3. 프로젝트 수 확인
+GET http://localhost:8082/api/search/test/projects/count
+
+### 4. "크로스" 키워드 검색 (문제 상황)
+GET http://localhost:8082/api/search/projects?keyword=크로스
+
+### 5. "Flutter" 키워드 검색
+GET http://localhost:8082/api/search/projects?keyword=Flutter
+
+### 6. "Spring" 키워드 검색  
+GET http://localhost:8082/api/search/projects?keyword=Spring
+
+### 7. "백엔드" 키워드 검색
+GET http://localhost:8082/api/search/projects?keyword=백엔드
+
+### 8. "모바일" 키워드 검색
+GET http://localhost:8082/api/search/projects?keyword=모바일
+
+### 9. 빈 키워드로 검색 (기본 동작)
+GET http://localhost:8082/api/search/projects
+
+### 10. 제목에 있는 단어로 검색 - "프론트엔드"
+GET http://localhost:8082/api/search/projects?keyword=프론트엔드

@@ -25,12 +25,15 @@ public class ProjectSearchRes {
     private String endDate;
     private String createdAt;
     
+    // 검색 관련
+    private Double matchScore;
+    
     @Builder
     public ProjectSearchRes(Long projectId, String title, String description,
                            List<String> techParts, List<String> techStacks, String status,
                            Long teamLeaderId, String teamLeaderNickname, Integer recruitCount,
                            Integer viewCount, String recruitDeadline, String startDate,
-                           String endDate, String createdAt) {
+                           String endDate, String createdAt, Double matchScore) {
         this.projectId = projectId;
         this.title = title;
         this.description = description;
@@ -45,5 +48,6 @@ public class ProjectSearchRes {
         this.startDate = startDate;
         this.endDate = endDate;
         this.createdAt = createdAt;
+        this.matchScore = matchScore;
     }
 }

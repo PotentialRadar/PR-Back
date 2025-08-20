@@ -17,4 +17,8 @@ public class SearchResult<T> {
     private boolean hasNext;
     private boolean hasPrevious;
     private long searchTimeMs;
+    
+    // 캐시 관련 정보
+    private boolean fromCache;
+    private long actualResponseTimeMs;
 }

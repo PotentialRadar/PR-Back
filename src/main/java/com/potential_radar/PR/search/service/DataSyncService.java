@@ -8,6 +8,7 @@ import com.potential_radar.PR.user.repository.UserRepository;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.project.repository.ProjectRecruitmentRepository;
 import com.potential_radar.PR.project.domain.ProjectRecruitment;
+import com.potential_radar.PR.project.domain.ProjectTechPart;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -53,12 +54,13 @@ public class DataSyncService {
     @Transactional(readOnly = true)
     public void syncAllProjectsToElasticsearch() {
         log.info("Starting project data synchronization to Elasticsearch...");
-        
+
+        // MultipleBagFetchException을 피하기 위해 기본 조회 사용
         List<ProjectRecruitment> projects = projectRecruitmentRepository.findAll();
         List<ProjectSearchDocument> projectDocs = projects.stream()
                 .map(this::convertProjectToDocument)
                 .collect(Collectors.toList());
-        
+
         projectSearchRepository.saveAll(projectDocs);
         log.info("Synchronized {} projects to Elasticsearch", projectDocs.size());
     }
@@ -88,8 +90,8 @@ public class DataSyncService {
                 document.getNickname(), document.getTechPart(), document.getTechStacks());
         return document;
     }
-    
-    
+
+
     private List<String> getUserTechStacks(User user) {
         // 실제 사용자의 기술 스택 연관관계에서 추출
         try {
@@ -99,9 +101,12 @@ public class DataSyncService {
                         .collect(Collectors.toList());
             }
         } catch (Exception e) {
+            // LazyInitializationException 등이 발생할 수 있으므로 로그를 남깁니다.
             log.warn("Failed to load tech stacks for user {}: {}", user.getUserId(), e.getMessage());
         }
-        return List.of("Java", "Spring"); // 기본값
+
+        // 기술 스택이 없는 경우, 빈 리스트를 반환합니다.
+        return new ArrayList<>();
     }
 
     public ProjectSearchDocument convertProjectToDocument(ProjectRecruitment project) {
@@ -136,28 +141,32 @@ public class DataSyncService {
     }
     
     private List<String> getProjectTechParts(ProjectRecruitment project) {
-        // 실제로는 ProjectTechPart 연관관계에서 추출해야 하지만, 
-        // 현재는 간단하게 프로젝트 제목 기반으로 추출
-        String title = project.getTitle().toLowerCase();
-        List<String> techParts = new ArrayList<>();
+        // 실제 ProjectTechPart 연관관계에서 추출
+        try {
+            // Lazy Loading 강제 실행
+            List<ProjectTechPart> techParts = project.getTechParts();
+            if (techParts != null && !techParts.isEmpty()) {
+                // 실제 데이터 접근으로 Lazy Loading 트리거
+                return techParts.stream()
+                        .map(ptp -> {
+                            // TechPart도 Lazy Loading일 수 있으므로 안전하게 처리
+                            try {
+                                return ptp.getTechPart().getName();
+                            } catch (Exception e) {
+                                log.warn("Failed to access techPart name for project {}: {}", 
+                                        project.getProjectId(), e.getMessage());
+                                return null;
+                            }
+                        })
+                        .filter(name -> name != null)
+                        .collect(Collectors.toList());
+            }
+        } catch (Exception e) {
+            log.warn("Failed to load tech parts for project {}: {}", project.getProjectId(), e.getMessage());
+        }
         
-        if (title.contains("backend") || title.contains("백엔드") || title.contains("서버") || title.contains("api")) {
-            techParts.add("Backend");
-        }
-        if (title.contains("frontend") || title.contains("프론트") || title.contains("웹") || title.contains("react") || title.contains("vue")) {
-            techParts.add("Frontend");
-        }
-        if (title.contains("mobile") || title.contains("모바일") || title.contains("앱") || title.contains("ios") || title.contains("android")) {
-            techParts.add("Mobile");
-        }
-        if (title.contains("devops") || title.contains("인프라") || title.contains("배포") || title.contains("ci/cd")) {
-            techParts.add("DevOps");
-        }
-        if (title.contains("ai") || title.contains("ml") || title.contains("머신러닝") || title.contains("딥러닝")) {
-            techParts.add("AI/ML");
-        }
-        
-        return techParts.isEmpty() ? List.of("Full Stack") : techParts;
+        // 연관관계에서 가져올 수 없는 경우 빈 리스트 반환
+        return new ArrayList<>();
     }
     
     private List<String> getProjectTechStacks(ProjectRecruitment project) {
@@ -166,11 +175,12 @@ public class DataSyncService {
             if (project.getTechStacks() != null && !project.getTechStacks().isEmpty()) {
                 return project.getTechStacks().stream()
                         .map(pts -> pts.getTechStack().getName())
+                        .filter(name -> name != null)
                         .collect(Collectors.toList());
             }
         } catch (Exception e) {
             log.warn("Failed to load tech stacks for project {}: {}", project.getProjectId(), e.getMessage());
         }
-        return List.of("Java", "Spring Boot", "React"); // 기본값
+        return new ArrayList<>(); // 빈 리스트 반환
     }
 }

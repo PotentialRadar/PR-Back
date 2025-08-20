@@ -31,7 +31,7 @@ public class UserSearchDocument {
     private String techPart;
 
     // 커스텀 기술스택 분석기 사용
-    @Field(type = FieldType.Text, analyzer = "tech_stack_analyzer")
+    @Field(type = FieldType.Text, analyzer = "keyword")
     private List<String> techStacks;
 
     @Field(type = FieldType.Text, analyzer = "standard")

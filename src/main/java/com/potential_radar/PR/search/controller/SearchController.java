@@ -1,10 +1,13 @@
 package com.potential_radar.PR.search.controller;
 
+import com.potential_radar.PR.search.document.ProjectSearchDocument;
 import com.potential_radar.PR.user.domain.ExperienceRange;
 import com.potential_radar.PR.search.document.UserSearchDocument;
 import com.potential_radar.PR.search.dto.*;
 import com.potential_radar.PR.search.service.SearchService;
+import com.potential_radar.PR.search.service.DataSyncService;
 import com.potential_radar.PR.search.repository.UserSearchRepository;
+import com.potential_radar.PR.search.repository.ProjectSearchRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,7 +23,9 @@ import java.util.Map;
 public class SearchController {
 
     private final SearchService searchService;
+    private final DataSyncService dataSyncService;
     private final UserSearchRepository userSearchRepository;
+    private final ProjectSearchRepository projectSearchRepository;
 
     @GetMapping("/users")
     public ResponseEntity<SearchResult<UserSearchRes>> searchUsers(
@@ -100,6 +105,43 @@ public class SearchController {
         List<ProjectSearchDocument> projectList = new ArrayList<>();
         projects.forEach(projectList::add);
         return ResponseEntity.ok(Map.of("projects", projectList, "size", projectList.size()));
+    }
+
+    // 기술 태그 조회 엔드포인트
+    @GetMapping("/tags")
+    public ResponseEntity<TechTagsRes> getTechTags() {
+        TechTagsRes techTags = searchService.getTechTags();
+        return ResponseEntity.ok(techTags);
+    }
+
+    // 데이터 동기화 엔드포인트
+    @PostMapping("/sync")
+    public ResponseEntity<Map<String, String>> syncData() {
+        try {
+            dataSyncService.syncAllData();
+            return ResponseEntity.ok(Map.of("message", "Data synchronized successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Failed to sync data: " + e.getMessage()));
+        }
+    }
+
+    // 인덱스 재생성 엔드포인트 (개발용)
+    @PostMapping("/reindex")
+    public ResponseEntity<Map<String, String>> reindexData() {
+        try {
+            // 기존 인덱스 삭제
+            projectSearchRepository.deleteAll();
+            userSearchRepository.deleteAll();
+            
+            // 데이터 재동기화
+            dataSyncService.syncAllData();
+            
+            return ResponseEntity.ok(Map.of("message", "Reindexing completed successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Failed to reindex: " + e.getMessage()));
+        }
     }
     
 }

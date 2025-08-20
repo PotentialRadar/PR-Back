@@ -37,6 +37,15 @@ public interface ProjectRecruitmentRepository extends JpaRepository<ProjectRecru
     // 모집중인 프로젝트만 조회
     List<ProjectRecruitment> findByStatus(ProjectStatus status);
 
+    @Query("SELECT p FROM ProjectRecruitment p JOIN FETCH p.techStacks")
+    List<ProjectRecruitment> findAllWithTechStacks();
+
+    @Query("SELECT DISTINCT p FROM ProjectRecruitment p LEFT JOIN FETCH p.techStacks")
+    List<ProjectRecruitment> findAllWithTechStacksOnly();
+
+    @Query("SELECT DISTINCT p FROM ProjectRecruitment p LEFT JOIN FETCH p.techParts")
+    List<ProjectRecruitment> findAllWithTechPartsOnly();
+
     @Query("SELECT pr FROM ProjectRecruitment pr JOIN FETCH pr.teamLeader WHERE pr.projectId = :projectId")
     Optional<ProjectRecruitment> findByIdWithTeamLeader(@Param("projectId") Long projectId);
 

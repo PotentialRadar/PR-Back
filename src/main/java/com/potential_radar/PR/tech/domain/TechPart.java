@@ -1,4 +1,4 @@
-package com.potential_radar.PR.common.entity;
+package com.potential_radar.PR.tech.domain;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

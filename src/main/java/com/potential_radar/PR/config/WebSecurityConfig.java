@@ -5,6 +5,7 @@ import com.potential_radar.PR.config.jwt.TokenProvider;
 import com.potential_radar.PR.config.oauth.OAuth2AuthenticationSuccessHandler;
 import com.potential_radar.PR.user.service.CustomOAuth2UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -30,6 +31,9 @@ public class WebSecurityConfig {
     private final TokenProvider tokenProvider;
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2AuthenticationSuccessHandler oAuth2SuccessHandler;
+    
+    @Value("${ports.frontend}")
+    private String frontendPort;
 
 //    // 스프링 시큐리티 기능 비활성화
 //    @Bean
@@ -103,7 +107,7 @@ public class WebSecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("http://localhost:5173")); // 또는 setAllowedOrigins
+        configuration.setAllowedOriginPatterns(List.of("http://localhost:" + frontendPort)); // 또는 setAllowedOrigins
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH","DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of("Authorization", "Set-Cookie")); // JWT, 쿠키 헤더 허용 시

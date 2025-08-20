@@ -57,7 +57,7 @@ public class CommentService {
     // 댓글 목록 조회 (계층 구조)
     @Transactional(readOnly = true)
     public List<CommentResponseDto> getComments(Long projectId, Long currentUserId) {
-        ProjectRecruitment project = projectRepository.findById(projectId)
+        ProjectRecruitment project = projectRepository.findByIdWithTeamLeader(projectId)
                 .orElseThrow(() -> new NotFoundException("프로젝트를 찾을 수 없습니다."));
         Long teamLeaderId = project.getTeamLeader().getUserId();
 
@@ -112,7 +112,11 @@ public class CommentService {
 
         String content = comment.getContent();
         if (comment.isPrivate()) {
-            boolean canView = currentUserId != null && (currentUserId.equals(comment.getUser().getUserId()) || currentUserId.equals(teamLeaderId));
+            boolean canView = currentUserId != null && (
+                currentUserId.equals(comment.getUser().getUserId()) || // 현재 사용자가 이 댓글의 작성자인 경우
+                currentUserId.equals(teamLeaderId) || // 현재 사용자가 프로젝트 팀 리더인 경우
+                (comment.getParent() != null && currentUserId.equals(comment.getParent().getUser().getUserId())) // 현재 사용자가 부모 댓글의 작성자인 경우
+            );
             if (!canView) {
                 content = "비밀 댓글입니다.";
             }
@@ -133,7 +137,11 @@ public class CommentService {
     private CommentResponseDto convertToDto(ProjectComment comment, List<CommentResponseDto> children, Long currentUserId, Long teamLeaderId) {
         String content = comment.getContent();
         if (comment.isPrivate()) {
-            boolean canView = currentUserId != null && (currentUserId.equals(comment.getUser().getUserId()) || currentUserId.equals(teamLeaderId));
+            boolean canView = currentUserId != null && (
+                currentUserId.equals(comment.getUser().getUserId()) || // 현재 사용자가 이 댓글의 작성자인 경우
+                currentUserId.equals(teamLeaderId) || // 현재 사용자가 프로젝트 팀 리더인 경우
+                (comment.getParent() != null && currentUserId.equals(comment.getParent().getUser().getUserId())) // 현재 사용자가 부모 댓글의 작성자인 경우
+            );
             if (!canView) {
                 content = "비밀 댓글입니다.";
             }

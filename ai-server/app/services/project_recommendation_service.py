@@ -245,8 +245,8 @@ class ProjectRecommendationService:
             db_projects = []
             
             for project in projects:
-                # 프로젝트의 기술스택 조회
-                tech_stacks = [ts.tech_stack_name for ts in project.tech_stacks]
+                # 프로젝트의 기술스택 조회 (관계를 통해 tech_stack.tech_stack_name 가져오기)
+                tech_stacks = [ts.tech_stack.tech_stack_name for ts in project.tech_stacks]
                 
                 # Mock 데이터 형식에 맞게 변환
                 project_data = {

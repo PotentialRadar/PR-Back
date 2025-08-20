@@ -27,123 +27,123 @@ VALUES
   (17, 2, 'Python ML 추천시스템', 'TensorFlow와 scikit-learn을 활용한 AI 기반 상품 추천 시스템', '2025-10-05', '2025-11-15', '2026-04-01', 'RECRUITING', null, NOW(), NOW(), 167, 4);
 
 -- 프로젝트별 기술스택 연결 데이터 (올바른 매핑)
-INSERT INTO project_tech_stack (project_id, tech_stack_name, recruit_count)
+INSERT INTO project_tech_stack (project_id, tech_stack_id, recruit_count)
 VALUES
   -- 프로젝트 1: React 기반 쇼핑몰 개발
-  (1, 'React', 1),
-  (1, 'TypeScript', 1),
-  (1, 'Node.js', 1),
-  (1, 'Express', 1),
-  (1, 'MongoDB', 1),
+  (1, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'React'), 1),
+  (1, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'TypeScript'), 1),
+  (1, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Node.js'), 1),
+  (1, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Express'), 1),
+  (1, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'MongoDB'), 1),
   
   -- 프로젝트 2: Vue3 + Nuxt 포트폴리오 사이트
-  (2, 'Vue.js', 1),
-  (2, 'Nuxt.js', 1),
-  (2, 'TypeScript', 1),
-  (2, 'Tailwind CSS', 1),
+  (2, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Vue.js'), 1),
+  (2, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Nuxt.js'), 1),
+  (2, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'TypeScript'), 1),
+  (2, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Tailwind CSS'), 1),
   
   -- 프로젝트 3: Django REST API 서버 구축
-  (3, 'Python', 2),
-  (3, 'Django', 1),
-  (3, 'PostgreSQL', 1),
-  (3, 'Redis', 1),
-  (3, 'Docker', 1),
+  (3, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Python'), 2),
+  (3, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Django'), 1),
+  (3, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'PostgreSQL'), 1),
+  (3, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Redis'), 1),
+  (3, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Docker'), 1),
   
   -- 프로젝트 4: Spring Boot 마이크로서비스
-  (4, 'Java', 2),
-  (4, 'Spring Boot', 2),
-  (4, 'Docker', 1),
-  (4, 'Kubernetes', 1),
-  (4, 'PostgreSQL', 1),
+  (4, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Java'), 2),
+  (4, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Spring Boot'), 2),
+  (4, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Docker'), 1),
+  (4, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Kubernetes'), 1),
+  (4, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'PostgreSQL'), 1),
   
   -- 프로젝트 5: Node.js 실시간 채팅 앱
-  (5, 'Node.js', 1),
-  (5, 'Express', 1),
-  (5, 'Socket.io', 1),
-  (5, 'MongoDB', 1),
-  (5, 'Redis', 1),
+  (5, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Node.js'), 1),
+  (5, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Express'), 1),
+  (5, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Socket.io'), 1),
+  (5, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'MongoDB'), 1),
+  (5, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Redis'), 1),
   
   -- 프로젝트 6: React Native 투두 앱
-  (6, 'React Native', 1),
-  (6, 'TypeScript', 1),
-  (6, 'Expo', 1),
-  (6, 'Firebase', 1),
+  (6, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'React Native'), 1),
+  (6, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'TypeScript'), 1),
+  (6, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Expo'), 1),
+  (6, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Firebase'), 1),
   
   -- 프로젝트 7: Flutter 전자상거래 앱
-  (7, 'Flutter', 2),
-  (7, 'Dart', 2),
-  (7, 'Firebase', 1),
-  (7, 'SQLite', 1),
+  (7, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Flutter'), 2),
+  (7, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Dart'), 2),
+  (7, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Firebase'), 1),
+  (7, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'SQLite'), 1),
   
   -- 프로젝트 8: FastAPI 비동기 웹서버
-  (8, 'Python', 1),
-  (8, 'FastAPI', 1),
-  (8, 'SQLAlchemy', 1),
-  (8, 'PostgreSQL', 1),
-  (8, 'Redis', 1),
+  (8, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Python'), 1),
+  (8, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'FastAPI'), 1),
+  (8, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'SQLAlchemy'), 1),
+  (8, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'PostgreSQL'), 1),
+  (8, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Redis'), 1),
   
   -- 프로젝트 9: Angular 관리자 대시보드
-  (9, 'Angular', 2),
-  (9, 'TypeScript', 1),
-  (9, 'RxJS', 1),
-  (9, 'Material UI', 1),
-  (9, 'Chart.js', 1),
+  (9, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Angular'), 2),
+  (9, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'TypeScript'), 1),
+  (9, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'RxJS'), 1),
+  (9, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Material UI'), 1),
+  (9, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Chart.js'), 1),
   
   -- 프로젝트 10: SvelteKit 블로그 플랫폼
-  (10, 'Svelte', 1),
-  (10, 'SvelteKit', 1),
-  (10, 'TypeScript', 1),
-  (10, 'Prisma', 1),
-  (10, 'SQLite', 1),
+  (10, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Svelte'), 1),
+  (10, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'SvelteKit'), 1),
+  (10, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'TypeScript'), 1),
+  (10, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Prisma'), 1),
+  (10, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'SQLite'), 1),
   
   -- 프로젝트 11: Go 마이크로서비스 API
-  (11, 'Go', 2),
-  (11, 'Gin', 1),
-  (11, 'gRPC', 1),
-  (11, 'PostgreSQL', 1),
-  (11, 'Docker', 1),
+  (11, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Go'), 2),
+  (11, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Gin'), 1),
+  (11, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'gRPC'), 1),
+  (11, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'PostgreSQL'), 1),
+  (11, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Docker'), 1),
   
   -- 프로젝트 12: .NET Core 웹 애플리케이션
-  (12, 'C#', 1),
-  (12, '.NET Core', 1),
-  (12, 'Entity Framework', 1),
-  (12, 'SQL Server', 1),
-  (12, 'Azure', 1),
+  (12, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'C#'), 1),
+  (12, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = '.NET Core'), 1),
+  (12, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Entity Framework'), 1),
+  (12, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'SQL Server'), 1),
+  (12, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Azure'), 1),
   
   -- 프로젝트 13: Laravel CMS 시스템
-  (13, 'PHP', 2),
-  (13, 'Laravel', 1),
-  (13, 'MySQL', 1),
-  (13, 'Eloquent ORM', 1),
-  (13, 'Blade', 1),
+  (13, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'PHP'), 2),
+  (13, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Laravel'), 1),
+  (13, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'MySQL'), 1),
+  (13, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Eloquent ORM'), 1),
+  (13, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Blade'), 1),
   
   -- 프로젝트 14: Rust 고성능 웹서버
-  (14, 'Rust', 1),
-  (14, 'Actix-web', 1),
-  (14, 'Diesel', 1),
-  (14, 'PostgreSQL', 1),
-  (14, 'Redis', 1),
+  (14, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Rust'), 1),
+  (14, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Actix-web'), 1),
+  (14, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Diesel'), 1),
+  (14, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'PostgreSQL'), 1),
+  (14, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Redis'), 1),
   
   -- 프로젝트 15: Unity 2D 인디게임
-  (15, 'Unity', 2),
-  (15, 'C#', 1),
-  (15, 'Visual Scripting', 1),
-  (15, 'Blender', 1),
+  (15, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Unity'), 2),
+  (15, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'C#'), 1),
+  (15, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Visual Scripting'), 1),
+  (15, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Blender'), 1),
   
   -- 프로젝트 16: Kubernetes 클러스터 구축
-  (16, 'Docker', 1),
-  (16, 'Kubernetes', 1),
-  (16, 'Terraform', 1),
-  (16, 'AWS', 1),
-  (16, 'Jenkins', 1),
+  (16, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Docker'), 1),
+  (16, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Kubernetes'), 1),
+  (16, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Terraform'), 1),
+  (16, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'AWS'), 1),
+  (16, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Jenkins'), 1),
   
   -- 프로젝트 17: Python ML 추천시스템
-  (17, 'Python', 2),
-  (17, 'TensorFlow', 1),
-  (17, 'scikit-learn', 1),
-  (17, 'Pandas', 1),
-  (17, 'NumPy', 1),
-  (17, 'FastAPI', 1);
+  (17, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Python'), 2),
+  (17, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'TensorFlow'), 1),
+  (17, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'scikit-learn'), 1),
+  (17, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'Pandas'), 1),
+  (17, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'NumPy'), 1),
+  (17, (SELECT tech_stack_id FROM tech_stack WHERE tech_stack_name = 'FastAPI'), 1);
 
 -- 데이터 확인 쿼리
 -- SELECT p.project_id, p.title, string_agg(pts.tech_stack_name, ', ') as tech_stacks

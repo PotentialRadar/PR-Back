@@ -11,24 +11,27 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/api/user")
 @RequiredArgsConstructor
+@Slf4j
 public class AuthController {
 
     private final UserService userService;
     private final EmailAuthService emailAuthService;
 
     @PostMapping("/send-code")
-    public ResponseEntity<Void> sendVerificationCode(@Valid @RequestBody EmailRequest request) {
-        emailAuthService.sendVerificationCode(request.getEmail());
+    public ResponseEntity<?> sendVerificationCode(@Valid @RequestBody EmailRequest request) {
+        emailAuthService.validateAndSendCode(request.getEmail());
         return ResponseEntity.ok().build();
     }
 
@@ -39,21 +42,26 @@ public class AuthController {
     }
 
     @GetMapping("/check-nickname")
-    public ResponseEntity<Map<String, Boolean>> checkNickname(@RequestParam @NotBlank @Size(min = 2, max = 20) String nickname) {        boolean duplicate = userService.existsByNickName(nickname);
+    public ResponseEntity<Map<String, Boolean>> checkNickname(@RequestParam @NotBlank @Size(min = 2, max = 20) String nickname) {        boolean duplicate = userService.existsbynickname(nickname);
         return ResponseEntity.ok(Map.of("duplicate", duplicate));
 
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal CustomUserDetails principal) {
+    public ResponseEntity<?> getCurrentUser(Principal principal) {
+        log.info("🔍 /users/me 호출됨 - Principal: {}", principal);
+        
         if (principal == null) {
+            log.error("❌ Principal이 null입니다");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("인증되지 않았습니다");
         }
 
-        User user = userService.findByEmail(principal.getUsername());
+        log.info("✅ Principal 인증 성공: {}", principal.getName());
+        User user = userService.findByEmail(principal.getName());
 
         return ResponseEntity.ok(new UserInfoResponse(user));
     }
+
 
 
 }

@@ -1,30 +1,41 @@
 package com.potential_radar.PR.project.domain;
 
-import com.potential_radar.PR.common.entity.TechPart;
-import com.potential_radar.PR.common.entity.TechStack;
+import com.potential_radar.PR.common.domain.TechPart;
 import jakarta.persistence.*;
 import lombok.*;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@Entity
+@Table(
+        name = "project_tech_part",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_project_part",
+                columnNames = {"project_id", "tech_part_id"} // ← part_name(X) tech_part_id(O)
+        ),
+        indexes = {
+                @Index(name = "idx_ptp_project", columnList = "project_id"),
+                @Index(name = "idx_ptp_part",    columnList = "tech_part_id")
+        }
+)
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class ProjectTechPart {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long projectTechPartId;
+    private Long id;
 
-    // 연관관계
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "project_id")
+    // 프로젝트 다대일
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "project_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_ptp_project"))
     private ProjectRecruitment project;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tech_part_id")
-    private TechPart techPart; // 예: 백엔드, 프론트엔드, 모바일 등
+    // FRONTEND / BACKEND / DEVOPS
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "tech_part_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_ptp_part"))
+    private TechPart techPart;
 
-    @Column(nullable = false)
-    private Integer recruitCount; // 기술별 정원
+    // 파트별 모집 정원
+    @Column(name = "recruit_count", nullable = false)
+    private Integer recruitCount;
 }

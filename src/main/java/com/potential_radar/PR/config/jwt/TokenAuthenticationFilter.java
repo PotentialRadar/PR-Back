@@ -38,13 +38,15 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
                 Authentication authentication = tokenProvider.getAuthentication(token);
                 if (authentication != null) {
                     SecurityContextHolder.getContext().setAuthentication(authentication);
-                    log.debug("✅ JWT 인증 성공: {}", authentication.getName());
+                    log.info("✅ JWT 인증 성공: {}", authentication.getName());
                 }
             } catch (Exception e) {
-                log.warn("⚠️ JWT 인증 중 예외 발생: {}", e.getMessage());
+                log.error("⚠️ JWT 인증 중 예외 발생: {}", e.getMessage(), e);
             }
         } else if (token != null) {
-            log.warn("❌ 유효하지 않은 JWT 토큰");
+            log.error("❌ 유효하지 않은 JWT 토큰: {}", token.substring(0, Math.min(20, token.length())) + "...");
+        } else {
+            log.debug("🔍 토큰이 없습니다");
         }
 
         filterChain.doFilter(request, response);

@@ -30,8 +30,4 @@ public class EmailVerification {
         this.code = code;
         this.createdAt = LocalDateTime.now();
     }
-
-    public boolean isExpired() {
-        return createdAt.isBefore(LocalDateTime.now().minusMinutes(3));
-    }
 }

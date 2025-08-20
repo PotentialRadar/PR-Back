@@ -5,6 +5,7 @@ import com.potential_radar.PR.config.jwt.TokenProvider;
 import com.potential_radar.PR.config.oauth.OAuth2AuthenticationSuccessHandler;
 import com.potential_radar.PR.user.service.CustomOAuth2UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -31,6 +32,9 @@ public class WebSecurityConfig {
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2AuthenticationSuccessHandler oAuth2SuccessHandler;
 
+    @Value("${ports.frontend}")
+    private String frontendPort;
+
 //    // 스프링 시큐리티 기능 비활성화
 //    @Bean
 //    public WebSecurityCustomizer configure() {
@@ -47,12 +51,22 @@ public class WebSecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf->csrf.disable())
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/login", "/api/signup", "/api/token",
-                                "/oauth2/**", "/login/oauth2/**", "/api/login/**",
-                                "/api/users/**", "[/test/**", "/api/search/**")
-                       .permitAll()
+                        .requestMatchers(
+                                "/api/login",
+                                "/api/signup",
+                                "/api/token",
+                                "/oauth2/**",
+                                "/login/oauth2/**",
+                                "/api/login/**",
+                                "/api/users/**",
+                                "/api/recommend/**",
+                                "/test/**",
+                                "/api/search/**"
+                        )
+                        .permitAll()
                         .requestMatchers("/api/projects/**").permitAll()
                         .anyRequest().authenticated())
                 .oauth2Login(oauth -> oauth
@@ -93,15 +107,13 @@ public class WebSecurityConfig {
     }
 
     @Bean
-    public CorsConfigurationSource configurationSource(){
+    public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-
-        // 🔁 여기만 변경
-        configuration.setAllowedOriginPatterns(List.of("http://localhost:5173")); // or "*"
-
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedOriginPatterns(List.of("http://localhost:" + frontendPort)); // 또는 setAllowedOrigins
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH","DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
-        configuration.setAllowCredentials(true); // ✅ 쿠키 전달 위해 반드시 필요
+        configuration.setExposedHeaders(List.of("Authorization", "Set-Cookie")); // JWT, 쿠키 헤더 허용 시
+        configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

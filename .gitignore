@@ -1,3 +1,4 @@
+# Build files
 HELP.md
 .gradle
 build/
@@ -36,8 +37,50 @@ out/
 ### VS Code ###
 .vscode/
 
+### Configuration - IMPORTANT ###
+# Spring Boot config
 src/main/resources/application.yml
+# Python config
+.env
+
+### OS Files ###
 .DS_Store
 ._.DS_Store
 **/.DS_Store
 **/._.DS_Store
+
+### Python ###
+# Virtual Environment
+venv/
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# AI Server specific
+ai-server/venv/
+ai-server/**/__pycache__/
+
+### AI Model Files ###
+# Trained models (use Git LFS or exclude)
+*.pkl
+# Training data
+training_data_enhanced.csv
+# Model backups
+*_backup.pkl
+*_enhanced.pkl
+
+### Development Files ###
+# Test files (temporary)
+test_*.py
+test_*.sh
+test_*.sql
+
+# IDE files
+*.iml
+
+### Logs ###
+*.log
+logs/

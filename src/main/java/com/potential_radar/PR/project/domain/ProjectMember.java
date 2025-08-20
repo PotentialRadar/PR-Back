@@ -4,10 +4,11 @@ import com.potential_radar.PR.user.domain.User;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Entity
-@Table(name = "project_member",    uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"project_id", "user_id"})
-})
+@Table(name = "project_member",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"project_id", "user_id"}))
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class ProjectMember {
 
@@ -17,28 +18,31 @@ public class ProjectMember {
 
     // 프로젝트
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "project_id")
+    @JoinColumn(name = "project_id", nullable = false)
     private ProjectRecruitment project;
 
-    // 지원자(유저)
+    // 멤버(유저)
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "tech_stack")
-    private String techStack;
-
-    @Column(name = "application_message", length = 255)
-    private String applicationMessage;
-
-    // 상태(지원, 합류 등)
+    // 역할: 팀리더/일반멤버
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private MemberStatus status = MemberStatus.APPLIED;
+    private Role role;
 
-    public enum MemberStatus {
-        APPLIED,   // 지원중
-        ACCEPTED,  // 합류됨
-        REJECTED   // 거절
+    // 어떤 파트로 합류했는지 (선택)
+    @Column(name = "tech_part")
+    private String techPart;
+
+    @Column(name = "joined_at", updatable = false)
+    private LocalDateTime joinedAt;
+
+    @PrePersist
+    public void onCreate() {
+        if (joinedAt == null) joinedAt = LocalDateTime.now();
+        if (role == null) role = Role.MEMBER;
     }
+
+    public enum Role { LEADER, MEMBER }
 }

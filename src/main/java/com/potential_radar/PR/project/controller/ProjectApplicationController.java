@@ -1,13 +1,15 @@
 package com.potential_radar.PR.project.controller;
 
-import com.potential_radar.PR.common.excetpion.NotFoundException;
-import com.potential_radar.PR.project.domain.ProjectMember;
+import com.potential_radar.PR.common.exception.AccessDeniedException;
+import com.potential_radar.PR.common.exception.NotFoundException;
 import com.potential_radar.PR.project.domain.ProjectRecruitment;
+import com.potential_radar.PR.project.dto.ProjectApplicationResponseDTO;
+import com.potential_radar.PR.project.dto.ProjectRecruitmentResponse;
 import com.potential_radar.PR.project.dto.ProjectApplyRequest;
-import com.potential_radar.PR.project.dto.ProjectMemberResponseDTO;
-import com.potential_radar.PR.project.dto.ProjectMemberStatusUpdateRequest;
+import com.potential_radar.PR.project.dto.ProjectApplicationStatusUpdateRequest;
+import com.potential_radar.PR.project.dto.ProjectRecruitmentResponse;
 import com.potential_radar.PR.project.repository.ProjectRecruitmentRepository;
-import com.potential_radar.PR.project.service.ProjectMemberService;
+import com.potential_radar.PR.project.service.ProjectApplicationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,9 +19,9 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
-public class ProjectMemberController {
+public class ProjectApplicationController {
 
-    private final ProjectMemberService projectMemberService;
+    private final ProjectApplicationService projectApplicationService;
     private final ProjectRecruitmentRepository projectRecruitmentRepository;
 
     // [POST] 프로젝트 지원 (body로 받음)
@@ -27,13 +29,13 @@ public class ProjectMemberController {
     public ResponseEntity<String> applyProject(
             @PathVariable Long projectId,
             @RequestBody ProjectApplyRequest request) {  // Body로 받도록 변경!
-        projectMemberService.applyProject(projectId, request);
+        projectApplicationService.applyProject(projectId, request);
         return ResponseEntity.ok("프로젝트 지원 완료");
     }
 
     // 프로젝트 지원자 목록 조회
     @GetMapping("/{projectId}/members")
-    public ResponseEntity<List<ProjectMemberResponseDTO>> getProjectMembers(
+    public ResponseEntity<List<ProjectApplicationResponseDTO>> getProjectMembers(
             @PathVariable Long projectId,
             @RequestParam Long userId) {
         // 1. 프로젝트 조회
@@ -43,11 +45,18 @@ public class ProjectMemberController {
         // 2. 팀리더 검사 (userId가 teamLeader의 userId와 같은지)
         if (!project.getTeamLeader().getUserId().equals(userId)) {
             // 403 Forbidden
-            throw new IllegalArgumentException("팀장만 지원자 목록을 볼 수 있습니다."); // 또는 커스텀 예외 던져도 됨
+            throw new AccessDeniedException("팀장만 지원자 목록을 볼 수 있습니다."); // 또는 커스텀 예외 던져도 됨
         }
 
         // 3. 지원자 목록 조회
-        List<ProjectMemberResponseDTO> response = projectMemberService.getProjectMembers(projectId);
+        List<ProjectApplicationResponseDTO> response = projectApplicationService.getProjectMembers(projectId);
+        return ResponseEntity.ok(response);
+    }
+
+    // 사용자가 지원한 프로젝트 목록 조회
+    @GetMapping("/users/{userId}/applied")
+    public ResponseEntity<List<ProjectRecruitmentResponse>> getAppliedProjectsByUser(@PathVariable Long userId) {
+        List<ProjectRecruitmentResponse> response = projectApplicationService.getAppliedProjectsByUser(userId);
         return ResponseEntity.ok(response);
     }
 
@@ -57,9 +66,9 @@ public class ProjectMemberController {
             @PathVariable Long projectId,
             @PathVariable Long memberId,
             @RequestParam Long userId,      // 팀장 ID
-            @RequestBody ProjectMemberStatusUpdateRequest request
+            @RequestBody ProjectApplicationStatusUpdateRequest request
     ) {
-        projectMemberService.updateMemberStatus(projectId, memberId, userId, request.getStatus());
+        projectApplicationService.updateMemberStatus(projectId, memberId, userId, request.getStatus());
         return ResponseEntity.ok("지원자 상태가 변경되었습니다.");
     }
 

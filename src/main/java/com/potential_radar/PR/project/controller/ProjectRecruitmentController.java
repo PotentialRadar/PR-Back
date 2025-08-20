@@ -1,16 +1,19 @@
 package com.potential_radar.PR.project.controller;
 
 import com.potential_radar.PR.common.S3.S3Uploader;
-import com.potential_radar.PR.common.excetpion.NotFoundException;
+import com.potential_radar.PR.common.exception.NotFoundException;
 import com.potential_radar.PR.project.dto.ProjectRecruitmentRequest;
 import com.potential_radar.PR.project.dto.ProjectRecruitmentResponse;
 import com.potential_radar.PR.project.service.ProjectRecruitmentService;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.repository.UserRepository;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/projects")
@@ -22,17 +25,31 @@ public class ProjectRecruitmentController {
 
     // 구인글 등록
     @PostMapping
-    public ResponseEntity<Long> createProject(@RequestBody ProjectRecruitmentRequest request, @RequestParam("userId") Long userId) {
+    public ResponseEntity<Long> createProject(@Valid @RequestBody ProjectRecruitmentRequest request, @RequestParam("userId") Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("해당 유저가 존재하지 않습니다."));
         Long id = projectRecruitmentService.createProject(request, user);
         return ResponseEntity.ok(id);
     }
 
+    // 프로젝트 전체 조회
+    @GetMapping
+    public ResponseEntity<List<ProjectRecruitmentResponse>> getAllProjects() {
+        List<ProjectRecruitmentResponse> response = projectRecruitmentService.getAllProjects();
+        return ResponseEntity.ok(response);
+    }
+
     // 구인글 단일 조회
     @GetMapping("/{id}")
     public ResponseEntity<ProjectRecruitmentResponse> getProject(@PathVariable Long id) {
         ProjectRecruitmentResponse response = projectRecruitmentService.getProject(id);
+        return ResponseEntity.ok(response);
+    }
+
+    // 사용자가 생성한 프로젝트 목록 조회
+    @GetMapping("/users/{userId}/created")
+    public ResponseEntity<List<ProjectRecruitmentResponse>> getProjectsCreatedByUser(@PathVariable Long userId) {
+        List<ProjectRecruitmentResponse> response = projectRecruitmentService.getProjectsCreatedByUser(userId);
         return ResponseEntity.ok(response);
     }
 

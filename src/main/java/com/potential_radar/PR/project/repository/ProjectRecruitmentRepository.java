@@ -9,6 +9,11 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
+import java.util.Optional;
 
 public interface ProjectRecruitmentRepository extends JpaRepository<ProjectRecruitment, Long> {
     
@@ -31,4 +36,9 @@ public interface ProjectRecruitmentRepository extends JpaRepository<ProjectRecru
     
     // 모집중인 프로젝트만 조회
     List<ProjectRecruitment> findByStatus(ProjectStatus status);
+
+    @Query("SELECT pr FROM ProjectRecruitment pr JOIN FETCH pr.teamLeader WHERE pr.projectId = :projectId")
+    Optional<ProjectRecruitment> findByIdWithTeamLeader(@Param("projectId") Long projectId);
+
+    List<ProjectRecruitment> findByTeamLeader_UserId(Long teamLeaderId);
 }

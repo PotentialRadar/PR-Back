@@ -9,6 +9,8 @@ import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -57,6 +59,33 @@ public class User {
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private UserProfile userProfile;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<UserEducation> educations = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<UserExperience> experiences = new ArrayList<>();
+
+    // 편의 메서드
+    public void addEducation(UserEducation education) {
+        educations.add(education);
+        education.setUser(this);
+    }
+
+    public void removeEducation(UserEducation education) {
+        educations.remove(education);
+        education.setUser(null);
+    }
+
+    public void addExperience(UserExperience experience) {
+        experiences.add(experience);
+        experience.setUser(this);
+    }
+
+    public void removeExperience(UserExperience experience) {
+        experiences.remove(experience);
+        experience.setUser(null);
+    }
 
     @PrePersist
     void prePersist() {

@@ -7,6 +7,8 @@ import com.potential_radar.PR.user.dto.*;
 import com.potential_radar.PR.user.domain.Provider;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.domain.UserProfile;
+import com.potential_radar.PR.user.dto.editInfo.UpdatedUserProfileResponse;
+import com.potential_radar.PR.user.dto.editInfo.UserProfileUpdateRequest;
 import com.potential_radar.PR.user.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -89,11 +91,11 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserProfileResponse getUserProfile(String email) {
+    public UpdatedUserProfileResponse getUserProfile(String email) {
         User user = findByEmail(email);
         UserProfile userProfile = userProfileRepository.findByUser(user)
                 .orElseThrow(() -> new NotFoundException("사용자 프로필을 찾을 수 없습니다"));
-        return new UserProfileResponse(userProfile, user);
+        return new UpdatedUserProfileResponse(userProfile, user);
     }
 
 
@@ -120,7 +122,6 @@ public class UserServiceImpl implements UserService {
         
         // 프로필 정보 업데이트
         if (request.profileImage() != null) user.setProfileImage(request.profileImage());
-        if (request.bio() != null) userProfile.setBio(request.bio());
         if (request.phone() != null) userProfile.setPhone(request.phone());
         if (request.githubUrl() != null) userProfile.setGithubUrl(request.githubUrl());
         if (request.linkedinUrl() != null) userProfile.setLinkedinUrl(request.linkedinUrl());

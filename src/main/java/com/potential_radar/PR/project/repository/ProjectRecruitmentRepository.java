@@ -34,4 +34,10 @@ public interface ProjectRecruitmentRepository extends JpaRepository<ProjectRecru
 
     @Query("SELECT p FROM ProjectRecruitment p JOIN FETCH p.techStacks")
     List<ProjectRecruitment> findAllWithTechStacks();
+
+    @Query("SELECT DISTINCT p FROM ProjectRecruitment p LEFT JOIN FETCH p.techStacks")
+    List<ProjectRecruitment> findAllWithTechStacksOnly();
+    
+    @Query("SELECT DISTINCT p FROM ProjectRecruitment p LEFT JOIN FETCH p.techParts")
+    List<ProjectRecruitment> findAllWithTechPartsOnly();
 }

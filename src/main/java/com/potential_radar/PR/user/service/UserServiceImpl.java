@@ -93,7 +93,7 @@ public class UserServiceImpl implements UserService {
         User user = findByEmail(email);
         UserProfile userProfile = userProfileRepository.findByUser(user)
                 .orElseThrow(() -> new NotFoundException("사용자 프로필을 찾을 수 없습니다"));
-        return new UserProfileResponse(userProfile);
+        return new UserProfileResponse(userProfile, user);
     }
 
 
@@ -119,7 +119,7 @@ public class UserServiceImpl implements UserService {
         }
         
         // 프로필 정보 업데이트
-        if (request.profileImage() != null) userProfile.setProfileImage(request.profileImage());
+        if (request.profileImage() != null) user.setProfileImage(request.profileImage());
         if (request.bio() != null) userProfile.setBio(request.bio());
         if (request.phone() != null) userProfile.setPhone(request.phone());
         if (request.githubUrl() != null) userProfile.setGithubUrl(request.githubUrl());

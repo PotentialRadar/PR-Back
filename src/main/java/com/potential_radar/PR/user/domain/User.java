@@ -5,11 +5,13 @@ import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.time.LocalDateTime;
 
 @Getter
+@Setter
 @NoArgsConstructor
 @Entity
 @Table(
@@ -42,6 +44,9 @@ public class User {
     @Column(name = "provider_user_id")
     private String providerUserId;
 
+    @Column(columnDefinition = "text")
+    private String profileImage;
+
     @Column(nullable = false)
     @ColumnDefault("now()")
     private LocalDateTime createdAt;
@@ -64,12 +69,13 @@ public class User {
 
     @Builder
     public User(String email, String password, String nickname,
-                Provider provider, String providerUserId) {
+                Provider provider, String providerUserId, String profileImage) {
         this.email = email;
         this.password = password;
         this.nickname = nickname;
         this.provider = provider;
         this.providerUserId = providerUserId;
+        this.profileImage=profileImage;
     }
 
     //== 연관관계 편의 메서드 ==//
@@ -82,7 +88,4 @@ public class User {
         }
     }
 
-    public void setUserProfile(UserProfile userProfile) {
-        this.userProfile = userProfile;
-    }
 }

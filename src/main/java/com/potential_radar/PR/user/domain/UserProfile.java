@@ -30,9 +30,6 @@ public class UserProfile {
             foreignKey = @ForeignKey(name = "fk_profile_techpart"))
     private TechPart techPart;
 
-    @Column(columnDefinition = "text")
-    private String profileImage;
-
     @Column
     private String bio;          // 자기소개
 
@@ -76,14 +73,13 @@ public class UserProfile {
     private ExperienceRange experienceRange = ExperienceRange.FRESHER;
 
     @Builder
-    public UserProfile(User user, TechPart techPart, String profileImage, String bio,
+    public UserProfile(User user, TechPart techPart, String bio,
                        String phone, String githubUrl, String linkedinUrl, String websiteUrl,
                        String jobTitle, Boolean isPortfolioOpen, Boolean isContactOpen,
                        Boolean isSearchOpen, BigDecimal reputationScore, Integer reviewCount,
                        ExperienceRange experienceRange) {
         this.user = user;
         this.techPart = techPart;
-        this.profileImage = profileImage;
         this.bio = bio;
         this.phone = phone;
         this.githubUrl = githubUrl;

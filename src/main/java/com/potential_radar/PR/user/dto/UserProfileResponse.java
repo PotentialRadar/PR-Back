@@ -1,6 +1,7 @@
 package com.potential_radar.PR.user.dto;
 
 import com.potential_radar.PR.user.domain.ExperienceRange;
+import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.domain.UserProfile;
 
 import java.math.BigDecimal;
@@ -24,13 +25,13 @@ public record UserProfileResponse(
         int reviewCount,
         ExperienceRange experienceRange
 ) {
-    public UserProfileResponse(UserProfile userProfile) {
+    public UserProfileResponse(UserProfile userProfile, User user) {
         this(
                 userProfile.getUser().getUserId(),
                 userProfile.getUser().getNickname(),
                 userProfile.getUser().getEmail(),
                 userProfile.getTechPart() != null ? userProfile.getTechPart().getName() : null,
-                userProfile.getProfileImage(),
+                user.getProfileImage(),
                 userProfile.getBio(),
                 userProfile.getPhone(),
                 userProfile.getJobTitle(),

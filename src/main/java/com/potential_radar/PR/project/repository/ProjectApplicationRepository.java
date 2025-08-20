@@ -17,4 +17,9 @@ public interface ProjectApplicationRepository extends JpaRepository<ProjectAppli
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("delete from ProjectApplication a where a.project.projectId = :projectId")
     void deleteAllByProjectId(@Param("projectId") Long projectId);
+
+    List<ProjectApplication> findByUser_UserId(Long userId);
+
+    @Query("SELECT pa FROM ProjectApplication pa JOIN FETCH pa.user JOIN FETCH pa.project WHERE pa.user.userId = :userId")
+    List<ProjectApplication> findByUser_UserIdWithUser(@Param("userId") Long userId);
 }

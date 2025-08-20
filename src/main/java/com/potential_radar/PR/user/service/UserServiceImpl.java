@@ -1,6 +1,7 @@
 package com.potential_radar.PR.user.service;
 
 import com.potential_radar.PR.common.excetpion.NotFoundException;
+import com.potential_radar.PR.common.repository.TechPartRepository;
 import com.potential_radar.PR.config.jwt.TokenProvider;
 import com.potential_radar.PR.common.domain.TechPart;
 import com.potential_radar.PR.user.dto.*;

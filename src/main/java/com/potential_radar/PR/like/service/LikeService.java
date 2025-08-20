@@ -83,14 +83,14 @@ public class LikeService {
         for (ProjectRecruitment pr : projects) {
             List<ProjectTechStackDTO> techStackDTOs = pr.getTechStacks().stream()
                     .map(ts -> ProjectTechStackDTO.builder()
-                            .techStackName(ts.getTechStackName())
+                            .techStackName(ts.getTechStack().getName()) // Get name from TechStack entity
                             .recruitCount(ts.getRecruitCount())
                             .build())
                     .collect(Collectors.toList());
 
             List<ProjectPartRecruitmentDTO> partDTOs = pr.getTechParts().stream()
                     .map(pt -> ProjectPartRecruitmentDTO.builder()
-                            .partName(pt.getPartName())
+                            .partName(pt.getTechPart().getName()) // Get name from TechPart entity
                             .recruitCount(pt.getRecruitCount())
                             .build())
                     .collect(Collectors.toList());

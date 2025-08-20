@@ -7,6 +7,7 @@ import com.potential_radar.PR.project.dto.ProjectRecruitmentResponse;
 import com.potential_radar.PR.project.service.ProjectRecruitmentService;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.repository.UserRepository;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -24,7 +25,7 @@ public class ProjectRecruitmentController {
 
     // 구인글 등록
     @PostMapping
-    public ResponseEntity<Long> createProject(@RequestBody ProjectRecruitmentRequest request, @RequestParam("userId") Long userId) {
+    public ResponseEntity<Long> createProject(@Valid @RequestBody ProjectRecruitmentRequest request, @RequestParam("userId") Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("해당 유저가 존재하지 않습니다."));
         Long id = projectRecruitmentService.createProject(request, user);
@@ -45,6 +46,13 @@ public class ProjectRecruitmentController {
         return ResponseEntity.ok(response);
     }
 
+    // 사용자가 생성한 프로젝트 목록 조회
+    @GetMapping("/users/{userId}/created")
+    public ResponseEntity<List<ProjectRecruitmentResponse>> getProjectsCreatedByUser(@PathVariable Long userId) {
+        List<ProjectRecruitmentResponse> response = projectRecruitmentService.getProjectsCreatedByUser(userId);
+        return ResponseEntity.ok(response);
+    }
+
     // 구인글 수정
     @PutMapping("/{id}")
     public ResponseEntity<Void> updateProject(
@@ -56,7 +64,6 @@ public class ProjectRecruitmentController {
     }
 
     // 구인글 삭제
-
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProject(@PathVariable Long id) {
         projectRecruitmentService.deleteProject(id);

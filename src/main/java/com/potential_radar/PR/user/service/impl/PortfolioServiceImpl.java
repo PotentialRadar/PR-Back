@@ -1,19 +1,25 @@
 package com.potential_radar.PR.user.service.impl;
 
+import com.potential_radar.PR.techStack.domain.TechStack;
+import com.potential_radar.PR.techStack.repository.TechStackRepository;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.domain.UserEducation;
 import com.potential_radar.PR.user.domain.UserExperience;
 import com.potential_radar.PR.user.domain.UserProfile;
+import com.potential_radar.PR.user.domain.UserTechStack;
 import com.potential_radar.PR.user.dto.editPortfolio.UpdatedUserPortfolioResponse;
 import com.potential_radar.PR.user.dto.editPortfolio.UserPortfolioUpdateRequest;
 import com.potential_radar.PR.user.dto.education.UserEducationRequest;
 import com.potential_radar.PR.user.dto.education.UserEducationResponse;
 import com.potential_radar.PR.user.dto.experience.UserExperienceRequest;
 import com.potential_radar.PR.user.dto.experience.UserExperienceResponse;
+import com.potential_radar.PR.user.dto.techStack.UserTechStackRequest;
+import com.potential_radar.PR.user.dto.techStack.UserTechStackResponse;
 import com.potential_radar.PR.user.repository.UserEducationRepository;
 import com.potential_radar.PR.user.repository.UserExperienceRepository;
 import com.potential_radar.PR.user.repository.UserProfileRepository;
 import com.potential_radar.PR.user.repository.UserRepository;
+import com.potential_radar.PR.user.repository.UserTechStackRepository;
 import com.potential_radar.PR.user.service.PortfolioService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,6 +36,8 @@ public class PortfolioServiceImpl implements PortfolioService {
     private final UserProfileRepository userProfileRepository;
     private final UserEducationRepository educationRepository;
     private final UserExperienceRepository experienceRepository;
+    private final UserTechStackRepository techStackRepository;
+    private final TechStackRepository stackRepository;
     
     @Override
     public UpdatedUserPortfolioResponse getPortfolio(String email) {
@@ -50,6 +58,12 @@ public class PortfolioServiceImpl implements PortfolioService {
                 .map(UserExperienceResponse::from)
                 .toList();
         
+        List<UserTechStackResponse> techStacks = techStackRepository
+                .findByUserWithTechStack(user)
+                .stream()
+                .map(UserTechStackResponse::from)
+                .toList();
+        
         return new UpdatedUserPortfolioResponse(
                 user.getUserId(),
                 user.getProfileImage(),
@@ -58,7 +72,8 @@ public class PortfolioServiceImpl implements PortfolioService {
                 profile != null ? profile.getJobTitle() : null,
                 profile != null ? profile.getBio() : null,
                 educations,
-                experiences
+                experiences,
+                techStacks
         );
     }
     
@@ -109,6 +124,24 @@ public class PortfolioServiceImpl implements PortfolioService {
                         .summary(expReq.summary())
                         .build();
                 user.addExperience(experience);
+            }
+        }
+        
+        // 4. 기존 기술 스택 정보 삭제 후 새로 추가
+        techStackRepository.deleteAll(user.getUserTechStacks());
+        user.getUserTechStacks().clear();
+        
+        if (request.techStacks() != null) {
+            for (UserTechStackRequest techReq : request.techStacks()) {
+                TechStack techStack = stackRepository.findById(techReq.getStackId())
+                        .orElseThrow(() -> new IllegalArgumentException("기술 스택을 찾을 수 없습니다: " + techReq.getStackId()));
+                
+                UserTechStack userTechStack = UserTechStack.builder()
+                        .user(user)
+                        .stack(techStack)
+                        .skillLevel(techReq.getSkillLevel())
+                        .build();
+                user.getUserTechStacks().add(userTechStack);
             }
         }
         

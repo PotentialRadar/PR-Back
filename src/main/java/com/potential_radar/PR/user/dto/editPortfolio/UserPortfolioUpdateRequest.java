@@ -2,6 +2,7 @@ package com.potential_radar.PR.user.dto.editPortfolio;
 
 import com.potential_radar.PR.user.dto.education.UserEducationRequest;
 import com.potential_radar.PR.user.dto.experience.UserExperienceRequest;
+import com.potential_radar.PR.user.dto.techStack.UserTechStackRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 
@@ -15,9 +16,10 @@ public record UserPortfolioUpdateRequest(
         List<UserEducationRequest> educations,
         
         @Valid
-        List<UserExperienceRequest> experiences
+        List<UserExperienceRequest> experiences,
         
-        // TODO: 기술스택 리스트
+        @Valid
+        List<UserTechStackRequest> techStacks
         
 ) {
 }

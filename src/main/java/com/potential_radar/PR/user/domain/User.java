@@ -1,6 +1,7 @@
 package com.potential_radar.PR.user.domain;
 
 import com.potential_radar.PR.common.domain.TechPart;
+import com.potential_radar.PR.techStack.domain.TechStack;
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
@@ -66,6 +67,18 @@ public class User {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<UserExperience> experiences = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<UserTechStack> userTechStacks = new ArrayList<>();
+
+    public void addTechStack(TechStack stack, Integer level) {
+        UserTechStack uts = UserTechStack.builder()
+                .user(this)
+                .stack(stack)
+                .skillLevel(level)
+                .build();
+        userTechStacks.add(uts);
+    }
 
     // 편의 메서드
     public void addEducation(UserEducation education) {

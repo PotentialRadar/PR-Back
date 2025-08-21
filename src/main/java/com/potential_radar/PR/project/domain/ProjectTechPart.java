@@ -1,6 +1,6 @@
 package com.potential_radar.PR.project.domain;
 
-import com.potential_radar.PR.common.domain.TechPart;
+import com.potential_radar.PR.tech.domain.TechPart;
 import jakarta.persistence.*;
 import lombok.*;
 

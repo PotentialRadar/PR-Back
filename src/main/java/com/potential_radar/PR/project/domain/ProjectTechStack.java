@@ -1,6 +1,6 @@
 package com.potential_radar.PR.project.domain;
 
-import com.potential_radar.PR.common.domain.TechStack;
+import com.potential_radar.PR.tech.domain.TechStack;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -18,7 +18,6 @@ import lombok.*;
 )
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class ProjectTechStack {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

@@ -1,0 +1,64 @@
+{
+  "properties": {
+    "userId": {
+      "type": "long"
+    },
+    "nickname": {
+      "type": "text",
+      "analyzer": "standard",
+      "fields": {
+        "keyword": {
+          "type": "keyword"
+        },
+        "ngram": {
+          "type": "text",
+          "analyzer": "standard"
+        }
+      }
+    },
+    "techPart": {
+      "type": "keyword"
+    },
+    "techStacks": {
+      "type": "text",
+      "analyzer": "tech_stack_analyzer",
+      "fields": {
+        "keyword": {
+          "type": "keyword"
+        }
+      }
+    },
+    "introduction": {
+      "type": "text",
+      "analyzer": "standard"
+    },
+    "profileImage": {
+      "type": "keyword",
+      "index": false
+    },
+    "githubUrl": {
+      "type": "keyword",
+      "index": false
+    },
+    "experienceRange": {
+      "type": "keyword"
+    },
+    "isSearchable": {
+      "type": "boolean"
+    },
+    "isPortfolioOpen": {
+      "type": "boolean"
+    },
+    "isSearchOpen": {
+      "type": "boolean"
+    },
+    "createdAt": {
+      "type": "text",
+      "index": false
+    },
+    "updatedAt": {
+      "type": "text",
+      "index": false
+    }
+  }
+}

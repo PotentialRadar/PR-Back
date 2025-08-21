@@ -441,8 +441,14 @@ public class TestDataInitializer implements CommandLineRunner {
                 .endDate(endDate)
                 .status(ProjectStatus.values()[random.nextInt(ProjectStatus.values().length)])
                 .viewCount(random.nextInt(500))
+                .recruitCount(random.nextInt(5) + 3)
                 .build();
-            
+
+
+            // save 이전에 createdAt 값을 직접 설정
+            project.setCreatedAt(LocalDateTime.now().minusDays(random.nextInt(365)));
+
+
             project = projectRecruitmentRepository.save(project);
             
             // 프로젝트 기술 파트 연결 (1-3개 랜덤 선택)

@@ -20,9 +20,9 @@ public interface UserService {
 
     // 개인정보 관련 메서드
     UserProfileResponse getUserProfile(String email);
-    
+
     void updateUserProfile(String email, UserProfileUpdateRequest request);
-    
+
     void deleteUser(String email);
 
 }

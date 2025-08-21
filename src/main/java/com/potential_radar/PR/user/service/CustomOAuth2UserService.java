@@ -1,7 +1,7 @@
 package com.potential_radar.PR.user.service;
 
 import com.potential_radar.PR.common.domain.TechPart;
-import com.potential_radar.PR.common.excetpion.NotFoundException;
+import com.potential_radar.PR.common.exception.NotFoundException;
 import com.potential_radar.PR.user.domain.Provider;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.oauth.Google2UserInfo;

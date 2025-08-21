@@ -1,5 +1,8 @@
 package com.potential_radar.PR.recommendation.service;
 
+import com.potential_radar.PR.common.exception.RecommendationServiceException;
+import com.potential_radar.PR.project.domain.ProjectRecruitment;
+import com.potential_radar.PR.project.repository.ProjectApplicationRepository;
 import com.potential_radar.PR.project.repository.ProjectRecruitmentRepository;
 import com.potential_radar.PR.recommendation.domain.RecommendationHistory;
 import com.potential_radar.PR.recommendation.dto.RecommendRequest;
@@ -29,6 +32,7 @@ public class RecommendationService {
     private final RecommendationHistoryRepository recommendationHistoryRepository;
     private final UserRepository userRepository;
     private final ProjectRecruitmentRepository projectRecruitmentRepository;
+    private final ProjectApplicationRepository projectApplicationRepository;
 
     // AI 모델 버전을 명시적으로 관리합니다.
     private static final String CURRENT_MODEL_VERSION = "1.0-hybrid";
@@ -37,11 +41,13 @@ public class RecommendationService {
                                  @Value("${python.api.host:http://localhost:8000}") String pythonApiHost,
                                  RecommendationHistoryRepository recommendationHistoryRepository,
                                  UserRepository userRepository,
-                                 ProjectRecruitmentRepository projectRecruitmentRepository) {
+                                 ProjectRecruitmentRepository projectRecruitmentRepository,
+                                 ProjectApplicationRepository projectApplicationRepository) {
         this.pythonApiHost = pythonApiHost;
         this.recommendationHistoryRepository = recommendationHistoryRepository;
         this.userRepository = userRepository;
         this.projectRecruitmentRepository = projectRecruitmentRepository;
+        this.projectApplicationRepository = projectApplicationRepository;
         this.webClient = webClientBuilder.baseUrl(pythonApiHost).build();
     }
 
@@ -99,6 +105,8 @@ public class RecommendationService {
 
             // AI 서버로부터 받은 추천 결과를 DB에 이력으로 저장
             if (recommendedProjects != null && !recommendedProjects.isEmpty()) {
+                // 추가 프로젝트 정보 설정
+                enrichProjectResponses(recommendedProjects);
                 saveRecommendationHistories(request.getUserId(), recommendedProjects);
             }
 
@@ -134,6 +142,25 @@ public class RecommendationService {
         if (!histories.isEmpty()) {
             recommendationHistoryRepository.saveAll(histories);
             log.info("{}개의 추천 이력을 저장했습니다. (사용자 ID: {})", histories.size(), userId);
+        }
+    }
+
+    /**
+     * 추천된 프로젝트 목록에 추가 정보 설정
+     */
+    private void enrichProjectResponses(List<RecommendedProjectResponse> responses) {
+        for (RecommendedProjectResponse response : responses) {
+            projectRecruitmentRepository.findById(response.getProjectId()).ifPresent(project -> {
+                // 기본 프로젝트 정보 설정
+                response.setStartDate(project.getStartDate());
+                response.setEndDate(project.getEndDate());
+                response.setRecruitCount(project.getRecruitCount());
+                response.setRecruitDeadline(project.getRecruitDeadline());
+                
+                // 지원자 수 계산
+                int appliedCount = projectApplicationRepository.countByProject_ProjectId(project.getProjectId());
+                response.setAppliedCount(appliedCount);
+            });
         }
     }
 }

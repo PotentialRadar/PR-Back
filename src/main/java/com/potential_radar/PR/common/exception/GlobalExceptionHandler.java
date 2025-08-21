@@ -58,6 +58,20 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(RecommendationServiceException.class)
+    public ResponseEntity<ErrorResponse> handleRecommendationServiceException(RecommendationServiceException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(
+                new ErrorResponse(ex.getMessage())
+        );
+    }
+
+    @ExceptionHandler(InvitationException.class)
+    public ResponseEntity<ErrorResponse> handleInvitationException(InvitationException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ErrorResponse(ex.getMessage())
+        );
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();

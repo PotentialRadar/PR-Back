@@ -1,5 +1,6 @@
 package com.potential_radar.PR.invitation.domain;
 
+import com.potential_radar.PR.common.domain.BaseTimeEntity;
 import com.potential_radar.PR.project.domain.ProjectRecruitment;
 import com.potential_radar.PR.user.domain.User;
 import jakarta.persistence.*;
@@ -7,9 +8,6 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
@@ -17,8 +15,7 @@ import java.time.LocalDateTime;
 @Table(name = "team_invitations")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@EntityListeners(AuditingEntityListener.class)
-public class TeamInvitation {
+public class TeamInvitation extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -43,14 +40,6 @@ public class TeamInvitation {
 
     @Column(name = "message", length = 500)
     private String message; // 초대 메시지
-
-    @CreatedDate
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
-
-    @LastModifiedDate
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
 
     @Column(name = "responded_at")
     private LocalDateTime respondedAt; // 응답 시간

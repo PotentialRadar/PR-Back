@@ -1,5 +1,6 @@
 package com.potential_radar.PR.recommendation.controller;
 
+import com.potential_radar.PR.common.exception.RecommendationServiceException;
 import com.potential_radar.PR.recommendation.dto.RecommendProjectRequest;
 import com.potential_radar.PR.recommendation.dto.RecommendedProject;
 import com.potential_radar.PR.recommendation.service.ProjectRecommendationService;
@@ -14,7 +15,6 @@ import java.util.List;
 @RequestMapping("/api/recommend")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "http://localhost:5173")
 public class ProjectRecommendationController {
     
     private final ProjectRecommendationService projectRecommendationService;
@@ -40,7 +40,7 @@ public class ProjectRecommendationController {
             
         } catch (Exception e) {
             log.error("❌ 프로젝트 추천 실패: ", e);
-            return ResponseEntity.ok(projectRecommendationService.getMockRecommendedProjects(topN));
+            throw new RecommendationServiceException("프로젝트 추천 서비스에 일시적인 문제가 발생했습니다.", e);
         }
     }
     
@@ -57,7 +57,7 @@ public class ProjectRecommendationController {
             
         } catch (Exception e) {
             log.error("❌ 인기 프로젝트 조회 실패: ", e);
-            return ResponseEntity.ok(projectRecommendationService.getMockRecommendedProjects(limit));
+            throw new RecommendationServiceException("인기 프로젝트 조회 서비스에 일시적인 문제가 발생했습니다.", e);
         }
     }
 }

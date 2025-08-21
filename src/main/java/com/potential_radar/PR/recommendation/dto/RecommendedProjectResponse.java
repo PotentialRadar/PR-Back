@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Data
@@ -17,4 +18,11 @@ public class RecommendedProjectResponse {
 
     private List<String> projectTechStacks;
     private RecommendationExplanation explanation;
+    
+    // 프론트엔드에서 필요한 추가 필드들
+    private LocalDate startDate;
+    private LocalDate endDate;
+    private Integer recruitCount;
+    private Integer appliedCount;
+    private LocalDate recruitDeadline;
 }

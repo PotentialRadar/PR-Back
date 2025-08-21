@@ -49,37 +49,7 @@ public class TeamMemberRecommendationService {
             
         } catch (Exception e) {
             log.error("❌ 팀원 추천 서비스 오류: {}", e.getMessage(), e);
-            
-            // Fallback: 목업 데이터 반환
-            log.warn("⚠️ Fallback: 목업 데이터로 응답");
-            return getMockRecommendedMembers();
+            throw new RuntimeException("팀원 추천 서비스에 일시적인 문제가 발생했습니다", e);
         }
-    }
-
-
-    private List<RecommendedMember> getMockRecommendedMembers() {
-        // 임시 목업 데이터 - AI 서버 연동 실패시 사용
-        return List.of(
-                createMockMember(1L, "김개발자", 0.87),
-                createMockMember(3L, "이백엔드", 0.73),
-                createMockMember(4L, "정모바일", 0.65),
-                createMockMember(5L, "최AI", 0.78)
-        );
-    }
-
-    private RecommendedMember createMockMember(Long userId, String name, double matchScore) {
-        RecommendedMember member = new RecommendedMember();
-        member.setUserId(userId);
-        member.setName(name);
-        member.setMatchScore(matchScore);
-        member.setEmail(name.toLowerCase() + "@example.com");
-        member.setProfileImage("https://api.dicebear.com/7.x/avataaars/svg?seed=" + userId);
-        member.setExperience("3-5년");
-        member.setIsAvailable(true);
-        member.setCurrentProjectCount(1);
-        member.setCompletedProjects(5);
-        member.setAverageRating(4.5);
-        member.setLastActiveDate("2025-08-18");
-        return member;
     }
 }

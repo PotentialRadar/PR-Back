@@ -2,14 +2,19 @@ package com.potential_radar.PR.project.controller;
 
 import com.potential_radar.PR.common.S3.S3Uploader;
 import com.potential_radar.PR.common.exception.NotFoundException;
+import com.potential_radar.PR.project.dto.ProjectMemberResponseDTO;
 import com.potential_radar.PR.project.dto.ProjectRecruitmentRequest;
 import com.potential_radar.PR.project.dto.ProjectRecruitmentResponse;
+import com.potential_radar.PR.project.dto.ProjectStatusUpdateRequest;
 import com.potential_radar.PR.project.service.ProjectRecruitmentService;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.repository.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -22,6 +27,22 @@ public class ProjectRecruitmentController {
     private final ProjectRecruitmentService projectRecruitmentService;
     private final S3Uploader s3Uploader;
     private final UserRepository userRepository;
+
+    /**
+     * Authentication 객체에서 사용자 이메일을 추출하는 헬퍼 메서드
+     */
+    private String getUserEmailFromAuthentication(Authentication authentication) {
+        if (authentication == null) {
+            return null;
+        }
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof UserDetails) {
+            return ((UserDetails) principal).getUsername();
+        } else if (principal instanceof String) {
+            return (String) principal;
+        }
+        return null;
+    }
 
     // 구인글 등록
     @PostMapping
@@ -61,6 +82,35 @@ public class ProjectRecruitmentController {
     ) {
         projectRecruitmentService.updateProject(id, request);
         return ResponseEntity.ok().build();
+    }
+
+    // 구인글 상태 변경
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<Void> updateProjectStatus(
+            @PathVariable Long id,
+            @RequestBody ProjectStatusUpdateRequest request,
+            @RequestParam Long userId) {
+        projectRecruitmentService.updateProjectStatus(id, request.getStatus(), userId);
+        return ResponseEntity.ok().build();
+    }
+
+    // 확정된 프로젝트 멤버 목록 조회
+    @GetMapping("/{projectId}/confirmed-members") // New endpoint
+    public ResponseEntity<List<ProjectMemberResponseDTO>> getConfirmedProjectMembers(
+            @PathVariable Long projectId,
+            Authentication authentication) {
+
+        String userEmail = getUserEmailFromAuthentication(authentication);
+        if (userEmail == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        User currentUser = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new UsernameNotFoundException("DB에서 사용자 정보를 찾을 수 없습니다: " + userEmail));
+        Long currentUserId = currentUser.getUserId();
+
+        List<ProjectMemberResponseDTO> members = projectRecruitmentService.getConfirmedProjectMembers(projectId, currentUserId);
+        return ResponseEntity.ok(members);
     }
 
     // 구인글 삭제

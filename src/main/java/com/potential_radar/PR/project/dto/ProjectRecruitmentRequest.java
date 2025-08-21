@@ -1,6 +1,7 @@
 package com.potential_radar.PR.project.dto;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import java.time.LocalDate;
 import java.util.List;
@@ -11,6 +12,7 @@ public class ProjectRecruitmentRequest {
     private String description;
     private LocalDate recruitDeadline;
     private LocalDate startDate;
+    @NotNull
     private LocalDate endDate;
     private String fileUrl;
     private String status;

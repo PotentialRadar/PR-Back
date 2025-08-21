@@ -1,14 +1,13 @@
 package com.potential_radar.PR.user.service;
 
-import com.potential_radar.PR.tech.domain.TechPart;
-import com.potential_radar.PR.user.domain.User;
+import com.potential_radar.PR.common.domain.TechPart;
 import com.potential_radar.PR.common.exception.NotFoundException;
 import com.potential_radar.PR.user.domain.Provider;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.oauth.Google2UserInfo;
 import com.potential_radar.PR.user.oauth.Kakao2UserInfo;
 import com.potential_radar.PR.user.oauth.OAuth2UserInfo;
-import com.potential_radar.PR.tech.repository.TechPartRepository;
+import com.potential_radar.PR.common.repository.TechPartRepository;
 import com.potential_radar.PR.user.repository.UserProfileRepository;
 import com.potential_radar.PR.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
@@ -77,7 +76,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                     TechPart defaultTechPart = techPartRepository.findById(11L)  // * Default : 11 Etc
                             .orElseThrow(() -> new NotFoundException("기본 기술 분야를 찾을 수 없습니다"));
                     newUser.initializeProfile(defaultTechPart); // User 엔티티의 헬퍼 메서드 사용
-
+                    
                     // 3. User를 저장하면 UserProfile도 함께 저장됨 (Cascade)
                     return userRepository.save(newUser);
                 });

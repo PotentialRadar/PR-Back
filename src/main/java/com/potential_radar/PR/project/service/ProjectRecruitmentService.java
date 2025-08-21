@@ -1,25 +1,22 @@
 package com.potential_radar.PR.project.service;
 
-import com.potential_radar.PR.tech.domain.TechPart;
-import com.potential_radar.PR.tech.domain.TechStack;
+import com.potential_radar.PR.common.domain.TechPart;
+import com.potential_radar.PR.common.domain.TechStack;
+import com.potential_radar.PR.common.exception.AccessDeniedException;
 import com.potential_radar.PR.common.exception.NotFoundException;
-import com.potential_radar.PR.tech.repository.TechPartRepository;
-import com.potential_radar.PR.tech.repository.TechStackRepository;
+import com.potential_radar.PR.common.repository.TechPartRepository;
+import com.potential_radar.PR.common.repository.TechStackRepository;
 
 import com.potential_radar.PR.project.domain.*;
 import com.potential_radar.PR.project.dto.*;
 import com.potential_radar.PR.project.repository.*;
-import com.potential_radar.PR.search.event.ProjectCreatedEvent;
-import com.potential_radar.PR.search.event.ProjectUpdatedEvent;
-import com.potential_radar.PR.search.event.ProjectDeletedEvent;
-import com.potential_radar.PR.search.event.ProjectStatusChangedEvent;
 import com.potential_radar.PR.user.domain.User;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
+import com.potential_radar.PR.project.dto.ProjectMemberResponseDTO;
 
 @Service
 @RequiredArgsConstructor
@@ -29,7 +26,6 @@ public class ProjectRecruitmentService {
     private final ProjectMemberRepository projectMemberRepository;
     private final ProjectTechPartRepository projectTechPartRepository;
     private final ProjectTechStackRepository projectTechStackRepository;
-    private final ApplicationEventPublisher eventPublisher;
     private final ProjectCommentRepository projectCommentRepository;
     private final TechStackRepository techStackRepository; // New
     private final TechPartRepository techPartRepository;   // New
@@ -143,9 +139,6 @@ public class ProjectRecruitmentService {
 
         projectRecruitmentRepository.save(project); // cascade로 하위 엔티티도 저장
 
-        // 🔥 프로젝트 생성 이벤트 발행
-        eventPublisher.publishEvent(new ProjectCreatedEvent(project));
-
         // 팀리더 멤버 보장
         if (!projectMemberRepository.existsByProject_ProjectIdAndUser_UserId(project.getProjectId(), teamLeader.getUserId())) {
             projectMemberRepository.save(ProjectMember.builder()
@@ -227,14 +220,36 @@ public class ProjectRecruitmentService {
                 .collect(Collectors.toList());
     }
 
+    // 확정된 프로젝트 멤버 목록 조회
+    @Transactional(readOnly = true)
+    public List<ProjectMemberResponseDTO> getConfirmedProjectMembers(Long projectId, Long currentUserId) {
+        // 1. 프로젝트 존재 여부 확인
+        ProjectRecruitment project = projectRecruitmentRepository.findById(projectId)
+                .orElseThrow(() -> new NotFoundException("프로젝트를 찾을 수 없습니다."));
+
+        // 2. 현재 사용자가 해당 프로젝트의 멤버인지 확인 (리더 또는 일반 멤버)
+        projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, currentUserId)
+                .orElseThrow(() -> new AccessDeniedException("해당 프로젝트의 멤버만 팀원 목록을 볼 수 있습니다."));
+
+        // 3. 프로젝트의 모든 확정된 멤버 조회
+        List<ProjectMember> members = projectMemberRepository.findAllByProject_ProjectId(projectId);
+
+        // 4. DTO로 변환
+        return members.stream()
+                .map(member -> ProjectMemberResponseDTO.builder()
+                        .userId(member.getUser().getUserId())
+                        .userName(member.getUser().getNickname())
+                        .role(member.getRole().name())
+                        .techPart(member.getTechPart())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
     // 구인글 수정 (전량 삭제 → 재삽입)
     @Transactional
     public void updateProject(Long id, ProjectRecruitmentRequest request) {
         ProjectRecruitment project = projectRecruitmentRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("해당 구인글이 존재하지 않습니다."));
-
-        // 이전 상태 저장 (상태 변경 이벤트를 위해)
-        ProjectStatus previousStatus = project.getStatus();
 
         // 1) 기본 필드 업데이트
         project.setTitle(request.getTitle());
@@ -299,6 +314,26 @@ public class ProjectRecruitmentService {
             }
         }
     }
+
+    // 구인글 상태 수정
+    @Transactional
+    public void updateProjectStatus(Long projectId, String status, Long userId) {
+        ProjectRecruitment project = projectRecruitmentRepository.findByIdWithTeamLeader(projectId)
+                .orElseThrow(() -> new NotFoundException("해당 구인글이 존재하지 않습니다."));
+
+        // 팀 리더 권한 확인
+        if (!project.getTeamLeader().getUserId().equals(userId)) {
+            throw new AccessDeniedException("프로젝트 상태를 변경할 권한이 없습니다.");
+        }
+
+        try {
+            ProjectStatus newStatus = ProjectStatus.valueOf(status.toUpperCase());
+            project.setStatus(newStatus);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("유효하지 않은 상태값입니다: " + status);
+        }
+    }
+
     // 구인글 삭제
     @Transactional
     public void deleteProject(Long id) {
@@ -314,8 +349,5 @@ public class ProjectRecruitmentService {
 
         // 2) 부모 삭제
         projectRecruitmentRepository.delete(project);
-
-//        // 🔥 프로젝트 삭제 이벤트 발행
-//        eventPublisher.publishEvent(new ProjectDeletedEvent(id, projectName));
     }
 }

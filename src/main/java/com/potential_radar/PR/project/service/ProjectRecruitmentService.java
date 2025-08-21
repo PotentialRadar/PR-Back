@@ -2,6 +2,7 @@ package com.potential_radar.PR.project.service;
 
 import com.potential_radar.PR.common.domain.TechPart;
 import com.potential_radar.PR.common.domain.TechStack;
+import com.potential_radar.PR.common.exception.AccessDeniedException;
 import com.potential_radar.PR.common.exception.NotFoundException;
 import com.potential_radar.PR.common.repository.TechPartRepository;
 import com.potential_radar.PR.common.repository.TechStackRepository;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
+import com.potential_radar.PR.project.dto.ProjectMemberResponseDTO;
 
 @Service
 @RequiredArgsConstructor
@@ -218,6 +220,31 @@ public class ProjectRecruitmentService {
                 .collect(Collectors.toList());
     }
 
+    // 확정된 프로젝트 멤버 목록 조회
+    @Transactional(readOnly = true)
+    public List<ProjectMemberResponseDTO> getConfirmedProjectMembers(Long projectId, Long currentUserId) {
+        // 1. 프로젝트 존재 여부 확인
+        ProjectRecruitment project = projectRecruitmentRepository.findById(projectId)
+                .orElseThrow(() -> new NotFoundException("프로젝트를 찾을 수 없습니다."));
+
+        // 2. 현재 사용자가 해당 프로젝트의 멤버인지 확인 (리더 또는 일반 멤버)
+        projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, currentUserId)
+                .orElseThrow(() -> new AccessDeniedException("해당 프로젝트의 멤버만 팀원 목록을 볼 수 있습니다."));
+
+        // 3. 프로젝트의 모든 확정된 멤버 조회
+        List<ProjectMember> members = projectMemberRepository.findAllByProject_ProjectId(projectId);
+
+        // 4. DTO로 변환
+        return members.stream()
+                .map(member -> ProjectMemberResponseDTO.builder()
+                        .userId(member.getUser().getUserId())
+                        .userName(member.getUser().getNickname())
+                        .role(member.getRole().name())
+                        .techPart(member.getTechPart())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
     // 구인글 수정 (전량 삭제 → 재삽입)
     @Transactional
     public void updateProject(Long id, ProjectRecruitmentRequest request) {
@@ -287,6 +314,26 @@ public class ProjectRecruitmentService {
             }
         }
     }
+
+    // 구인글 상태 수정
+    @Transactional
+    public void updateProjectStatus(Long projectId, String status, Long userId) {
+        ProjectRecruitment project = projectRecruitmentRepository.findByIdWithTeamLeader(projectId)
+                .orElseThrow(() -> new NotFoundException("해당 구인글이 존재하지 않습니다."));
+
+        // 팀 리더 권한 확인
+        if (!project.getTeamLeader().getUserId().equals(userId)) {
+            throw new AccessDeniedException("프로젝트 상태를 변경할 권한이 없습니다.");
+        }
+
+        try {
+            ProjectStatus newStatus = ProjectStatus.valueOf(status.toUpperCase());
+            project.setStatus(newStatus);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("유효하지 않은 상태값입니다: " + status);
+        }
+    }
+
     // 구인글 삭제
     @Transactional
     public void deleteProject(Long id) {

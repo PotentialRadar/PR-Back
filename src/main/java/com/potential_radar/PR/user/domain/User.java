@@ -1,6 +1,6 @@
 package com.potential_radar.PR.user.domain;
 
-import com.potential_radar.PR.common.domain.TechPart;
+import com.potential_radar.PR.tech.domain.TechPart;
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @NoArgsConstructor
@@ -50,8 +51,14 @@ public class User {
     @ColumnDefault("now()")
     private LocalDateTime updatedAt;
 
+    @Column(columnDefinition = "text")
+    private String profileImage;
+
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private UserProfile userProfile;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private List<UserTechStack> userTechStacks;
 
     @PrePersist
     void prePersist() {
@@ -64,12 +71,13 @@ public class User {
 
     @Builder
     public User(String email, String password, String nickname,
-                Provider provider, String providerUserId) {
+                Provider provider, String providerUserId, String profileImage) {
         this.email = email;
         this.password = password;
         this.nickname = nickname;
         this.provider = provider;
         this.providerUserId = providerUserId;
+        this.profileImage = profileImage;
     }
 
     //== 연관관계 편의 메서드 ==//
@@ -84,5 +92,22 @@ public class User {
 
     public void setUserProfile(UserProfile userProfile) {
         this.userProfile = userProfile;
+    }
+
+    public void setProfileImage(String profileImage) {
+        this.profileImage = profileImage;
+    }
+
+    //== UserProfile 위임 메서드 ==//
+    public TechPart getTechPart() {
+        return this.userProfile != null ? this.userProfile.getTechPart() : null;
+    }
+    
+    public ExperienceRange getExperienceRange() {
+        return this.userProfile != null ? this.userProfile.getExperienceRange() : ExperienceRange.FRESHER;
+    }
+    
+    public boolean isPortfolioOpen() {
+        return this.userProfile != null && this.userProfile.isPortfolioOpen();
     }
 }

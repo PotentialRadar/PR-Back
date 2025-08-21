@@ -1,0 +1,77 @@
+{
+  "properties": {
+    "projectId": {
+      "type": "long"
+    },
+    "title": {
+      "type": "text",
+      "analyzer": "standard",
+      "fields": {
+        "keyword": {
+          "type": "keyword"
+        },
+        "ngram": {
+          "type": "text",
+          "analyzer": "standard"
+        }
+      }
+    },
+    "description": {
+      "type": "text",
+      "analyzer": "standard"
+    },
+    "techParts": {
+      "type": "keyword"
+    },
+    "techStacks": {
+      "type": "text",
+      "analyzer": "tech_stack_analyzer",
+      "fields": {
+        "keyword": {
+          "type": "keyword"
+        }
+      }
+    },
+    "status": {
+      "type": "keyword"
+    },
+    "teamLeaderId": {
+      "type": "long"
+    },
+    "teamLeaderNickname": {
+      "type": "text",
+      "analyzer": "standard",
+      "fields": {
+        "keyword": {
+          "type": "keyword"
+        }
+      }
+    },
+    "recruitCount": {
+      "type": "integer"
+    },
+    "viewCount": {
+      "type": "integer"
+    },
+    "recruitDeadline": {
+      "type": "text",
+      "index": false
+    },
+    "startDate": {
+      "type": "text",
+      "index": false
+    },
+    "endDate": {
+      "type": "text",
+      "index": false
+    },
+    "createdAt": {
+      "type": "text",
+      "index": false
+    },
+    "updatedAt": {
+      "type": "text",
+      "index": false
+    }
+  }
+}

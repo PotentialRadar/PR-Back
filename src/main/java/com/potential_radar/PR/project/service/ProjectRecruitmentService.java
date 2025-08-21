@@ -1,16 +1,21 @@
 package com.potential_radar.PR.project.service;
 
-import com.potential_radar.PR.common.domain.TechPart;
-import com.potential_radar.PR.common.domain.TechStack;
+import com.potential_radar.PR.tech.domain.TechPart;
+import com.potential_radar.PR.tech.domain.TechStack;
 import com.potential_radar.PR.common.exception.NotFoundException;
-import com.potential_radar.PR.common.repository.TechPartRepository;
-import com.potential_radar.PR.common.repository.TechStackRepository;
+import com.potential_radar.PR.tech.repository.TechPartRepository;
+import com.potential_radar.PR.tech.repository.TechStackRepository;
 
 import com.potential_radar.PR.project.domain.*;
 import com.potential_radar.PR.project.dto.*;
 import com.potential_radar.PR.project.repository.*;
+import com.potential_radar.PR.search.event.ProjectCreatedEvent;
+import com.potential_radar.PR.search.event.ProjectUpdatedEvent;
+import com.potential_radar.PR.search.event.ProjectDeletedEvent;
+import com.potential_radar.PR.search.event.ProjectStatusChangedEvent;
 import com.potential_radar.PR.user.domain.User;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
@@ -24,6 +29,7 @@ public class ProjectRecruitmentService {
     private final ProjectMemberRepository projectMemberRepository;
     private final ProjectTechPartRepository projectTechPartRepository;
     private final ProjectTechStackRepository projectTechStackRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final ProjectCommentRepository projectCommentRepository;
     private final TechStackRepository techStackRepository; // New
     private final TechPartRepository techPartRepository;   // New
@@ -137,6 +143,9 @@ public class ProjectRecruitmentService {
 
         projectRecruitmentRepository.save(project); // cascade로 하위 엔티티도 저장
 
+        // 🔥 프로젝트 생성 이벤트 발행
+        eventPublisher.publishEvent(new ProjectCreatedEvent(project));
+
         // 팀리더 멤버 보장
         if (!projectMemberRepository.existsByProject_ProjectIdAndUser_UserId(project.getProjectId(), teamLeader.getUserId())) {
             projectMemberRepository.save(ProjectMember.builder()
@@ -224,6 +233,9 @@ public class ProjectRecruitmentService {
         ProjectRecruitment project = projectRecruitmentRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("해당 구인글이 존재하지 않습니다."));
 
+        // 이전 상태 저장 (상태 변경 이벤트를 위해)
+        ProjectStatus previousStatus = project.getStatus();
+
         // 1) 기본 필드 업데이트
         project.setTitle(request.getTitle());
         project.setDescription(request.getDescription());
@@ -302,5 +314,8 @@ public class ProjectRecruitmentService {
 
         // 2) 부모 삭제
         projectRecruitmentRepository.delete(project);
+
+//        // 🔥 프로젝트 삭제 이벤트 발행
+//        eventPublisher.publishEvent(new ProjectDeletedEvent(id, projectName));
     }
 }

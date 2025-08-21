@@ -73,13 +73,12 @@ public class DataSyncService {
                 .id(String.valueOf(user.getUserId()))
                 .userId(user.getUserId())
                 .nickname(user.getNickname())
-                .techPart(user.getTechPart()) // 사용자가 설정한 기술 파트
+                .techPart(user.getTechPart() != null ? user.getTechPart().getName() : null) // 사용자가 설정한 기술 파트
                 .techStacks(getUserTechStacks(user)) // 실제 연관관계에서 기술 스택 추출
                 .introduction("안녕하세요, " + user.getNickname() + "입니다.") // 기본 소개
                 .profileImage(user.getProfileImage())
                 .githubUrl("https://github.com/" + user.getNickname().toLowerCase()) // 기본 GitHub URL
                 .experienceRange(user.getExperienceRange()) // 경력 정보
-                .isSearchable(true) // 기본값으로 검색 가능하게 설정
                 .isPortfolioOpen(user.isPortfolioOpen()) // 포트폴리오 공개 여부
                 .isSearchOpen(true) // 검색 허용 여부 (기본값 true)
                 .createdAt(user.getCreatedAt().format(ELASTICSEARCH_DATE_FORMAT))

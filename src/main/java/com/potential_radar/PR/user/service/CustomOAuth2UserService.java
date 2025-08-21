@@ -1,14 +1,14 @@
 package com.potential_radar.PR.user.service;
 
+import com.potential_radar.PR.tech.domain.TechPart;
 import com.potential_radar.PR.user.domain.User;
-import com.potential_radar.PR.common.domain.TechPart;
-import com.potential_radar.PR.common.excetpion.NotFoundException;
+import com.potential_radar.PR.common.exception.NotFoundException;
 import com.potential_radar.PR.user.domain.Provider;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.oauth.Google2UserInfo;
 import com.potential_radar.PR.user.oauth.Kakao2UserInfo;
 import com.potential_radar.PR.user.oauth.OAuth2UserInfo;
-import com.potential_radar.PR.common.repository.TechPartRepository;
+import com.potential_radar.PR.tech.repository.TechPartRepository;
 import com.potential_radar.PR.user.repository.UserProfileRepository;
 import com.potential_radar.PR.user.repository.UserRepository;
 import jakarta.transaction.Transactional;

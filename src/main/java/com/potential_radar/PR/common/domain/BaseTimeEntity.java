@@ -1,4 +1,4 @@
-package com.potential_radar.PR.common.entity;
+package com.potential_radar.PR.common.domain;
 
 import jakarta.persistence.MappedSuperclass;
 import lombok.Getter;

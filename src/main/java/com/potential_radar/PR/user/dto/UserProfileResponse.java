@@ -30,7 +30,7 @@ public record UserProfileResponse(
                 userProfile.getUser().getNickname(),
                 userProfile.getUser().getEmail(),
                 userProfile.getTechPart() != null ? userProfile.getTechPart().getName() : null,
-                userProfile.getProfileImage(),
+                userProfile.getUser().getProfileImage(),
                 userProfile.getBio(),
                 userProfile.getPhone(),
                 userProfile.getJobTitle(),

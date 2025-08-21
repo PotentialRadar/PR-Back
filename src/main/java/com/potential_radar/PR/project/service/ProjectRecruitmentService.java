@@ -1,10 +1,10 @@
 package com.potential_radar.PR.project.service;
 
-import com.potential_radar.PR.common.domain.TechPart;
-import com.potential_radar.PR.common.domain.TechStack;
+import com.potential_radar.PR.tech.domain.TechPart;
+import com.potential_radar.PR.tech.domain.TechStack;
 import com.potential_radar.PR.common.exception.NotFoundException;
-import com.potential_radar.PR.common.repository.TechPartRepository;
-import com.potential_radar.PR.common.repository.TechStackRepository;
+import com.potential_radar.PR.tech.repository.TechPartRepository;
+import com.potential_radar.PR.tech.repository.TechStackRepository;
 
 import com.potential_radar.PR.project.domain.*;
 import com.potential_radar.PR.project.dto.*;
@@ -315,7 +315,7 @@ public class ProjectRecruitmentService {
         // 2) 부모 삭제
         projectRecruitmentRepository.delete(project);
 
-        // 🔥 프로젝트 삭제 이벤트 발행
-        eventPublisher.publishEvent(new ProjectDeletedEvent(id, projectName));
+//        // 🔥 프로젝트 삭제 이벤트 발행
+//        eventPublisher.publishEvent(new ProjectDeletedEvent(id, projectName));
     }
 }

@@ -1,10 +1,10 @@
 package com.potential_radar.PR.user.service;
 
 import com.potential_radar.PR.common.exception.NotFoundException;
-import com.potential_radar.PR.common.repository.TechPartRepository;
+import com.potential_radar.PR.tech.repository.TechPartRepository;
 
 import com.potential_radar.PR.config.jwt.TokenProvider;
-import com.potential_radar.PR.common.domain.TechPart;
+import com.potential_radar.PR.tech.domain.TechPart;
 import com.potential_radar.PR.user.dto.*;
 import com.potential_radar.PR.user.domain.Provider;
 import com.potential_radar.PR.user.domain.User;
@@ -121,7 +121,7 @@ public class UserServiceImpl implements UserService {
         }
 
         // 프로필 정보 업데이트
-        if (request.profileImage() != null) userProfile.setProfileImage(request.profileImage());
+        if (request.profileImage() != null) user.setProfileImage(request.profileImage());
         if (request.bio() != null) userProfile.setBio(request.bio());
         if (request.phone() != null) userProfile.setPhone(request.phone());
         if (request.githubUrl() != null) userProfile.setGithubUrl(request.githubUrl());
@@ -136,6 +136,7 @@ public class UserServiceImpl implements UserService {
         if (request.isSearchOpen() != null) userProfile.setSearchOpen(request.isSearchOpen());
         if (request.experienceRange() != null) userProfile.setExperienceRange(request.experienceRange());
 
+        userRepository.save(user);
         userProfileRepository.save(userProfile);
     }
 

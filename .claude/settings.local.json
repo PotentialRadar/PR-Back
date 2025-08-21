@@ -15,7 +15,8 @@
       "Bash(for i in {1..6})",
       "Bash(for i in {1..7})",
       "Bash(for i in {1..8})",
-      "Bash(time curl:*)"
+      "Bash(time curl:*)",
+      "Bash(tasklist:*)"
     ],
     "deny": [],
     "ask": [],

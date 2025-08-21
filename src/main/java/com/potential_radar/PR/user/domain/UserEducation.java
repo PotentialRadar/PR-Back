@@ -28,27 +28,27 @@ public class UserEducation {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "institution", nullable = false, columnDefinition = "VARCHAR COMMENT '기관이름'")
+    @Column(name = "institution", nullable = false)
     private String institution;
 
-    @Column(name = "program", columnDefinition = "VARCHAR COMMENT '전공, 과정'")
+    @Column(name = "program")
     private String program;
 
-    @Column(name = "start_date", nullable = false, columnDefinition = "DATE COMMENT '입학일'")
+    @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
-    @Column(name = "end_date", columnDefinition = "DATE COMMENT '졸업일'")
+    @Column(name = "end_date")
     private LocalDate endDate;
 
-    @Column(name = "is_current", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE COMMENT '재학여부'")
+    @Column(name = "is_current", nullable = false)
     @Builder.Default
     private Boolean isCurrent = false;
 
     @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP COMMENT '생성일'")
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP COMMENT '수정일'")
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 }

@@ -28,30 +28,30 @@ public class UserExperience {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "company_name", nullable = false, columnDefinition = "VARCHAR COMMENT '회사이름'")
+    @Column(name = "company_name", nullable = false)
     private String companyName;
 
-    @Column(name = "department", columnDefinition = "VARCHAR COMMENT '부서, 직책'")
+    @Column(name = "department")
     private String department;
 
-    @Column(name = "start_date", nullable = false, columnDefinition = "DATE COMMENT '입사일'")
+    @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
-    @Column(name = "end_date", columnDefinition = "DATE COMMENT '퇴사일'")
+    @Column(name = "end_date")
     private LocalDate endDate;
 
-    @Column(name = "is_current", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE COMMENT '재직여부'")
+    @Column(name = "is_current", nullable = false)
     @Builder.Default
     private Boolean isCurrent = false;
 
-    @Column(name = "summary", columnDefinition = "VARCHAR COMMENT '소개'")
+    @Column(name = "summary")
     private String summary;
 
     @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP COMMENT '생성일'")
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP COMMENT '수정일'")
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 }

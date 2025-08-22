@@ -17,7 +17,7 @@ import lombok.*;
                 @UniqueConstraint(name = "uk_tech_stack_name", columnNames = "name")
         }
 )
-public class TechStack {
+public class TechStackToDelete {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -1,12 +1,12 @@
 package com.potential_radar.PR.user.service.impl;
 
-import com.potential_radar.PR.techStack.domain.TechStack;
+import com.potential_radar.PR.techStack.domain.TechStackToDelete;
 import com.potential_radar.PR.techStack.repository.TechStackRepository;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.domain.UserEducation;
 import com.potential_radar.PR.user.domain.UserExperience;
 import com.potential_radar.PR.user.domain.UserProfile;
-import com.potential_radar.PR.user.domain.UserTechStack;
+import com.potential_radar.PR.user.domain.UserTechStack1;
 import com.potential_radar.PR.user.dto.editPortfolio.UpdatedUserPortfolioResponse;
 import com.potential_radar.PR.user.dto.editPortfolio.UserPortfolioUpdateRequest;
 import com.potential_radar.PR.user.dto.education.UserEducationRequest;
@@ -133,12 +133,12 @@ public class PortfolioServiceImpl implements PortfolioService {
         
         if (request.techStacks() != null) {
             for (UserTechStackRequest techReq : request.techStacks()) {
-                TechStack techStack = stackRepository.findById(techReq.getStackId())
+                TechStackToDelete techStackToDelete = stackRepository.findById(techReq.getStackId())
                         .orElseThrow(() -> new IllegalArgumentException("기술 스택을 찾을 수 없습니다: " + techReq.getStackId()));
                 
-                UserTechStack userTechStack = UserTechStack.builder()
+                UserTechStack1 userTechStack = UserTechStack1.builder()
                         .user(user)
-                        .stack(techStack)
+                        .stack(techStackToDelete)
                         .skillLevel(techReq.getSkillLevel())
                         .build();
                 user.getUserTechStacks().add(userTechStack);

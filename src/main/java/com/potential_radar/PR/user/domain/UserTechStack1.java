@@ -1,8 +1,6 @@
 package com.potential_radar.PR.user.domain;
 
-<<<<<<< HEAD
-
-import com.potential_radar.PR.techStack.domain.TechStack;
+import com.potential_radar.PR.tech.domain.TechStack;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -25,7 +23,7 @@ import lombok.*;
                 @Index(name = "idx_user_tech_stack_stack_id", columnList = "stack_id")
         }
 )
-public class UserTechStack {
+public class UserTechStack1 {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -51,29 +49,28 @@ public class UserTechStack {
     @Min(1) @Max(5)
     private Integer skillLevel; // NULL 허용(미평가) → ERD의 "NULL, 1~5" 반영
 }
-=======
-import com.potential_radar.PR.tech.domain.TechStack;
-import jakarta.persistence.*;
-import lombok.*;
 
-@Entity
-@Table(name = "user_tech_stack")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-public class UserTechStack {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long userTechStackId;
+//import com.potential_radar.PR.tech.domain.TechStack;
+//import jakarta.persistence.*;
+//import lombok.*;
+//
+//@Entity
+//@Table(name = "user_tech_stack")
+//@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+//public class UserTechStack {
+//    @Id
+//    @GeneratedValue(strategy = GenerationType.IDENTITY)
+//    private Long userTechStackId;
+//
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "user_id")
+//    private User user;
+//
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "tech_stack_id")
+//    private TechStack techStack;
+//
+//    @Column(nullable = true)
+//    private Integer skillLevel;
+//}
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    private User user;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tech_stack_id")
-    private TechStack techStack;
-
-    @Column(nullable = true)
-    private Integer skillLevel;
-}
-
->>>>>>> origin/dev

@@ -1,6 +1,6 @@
 package com.potential_radar.PR.user.dto.techStack;
 
-import com.potential_radar.PR.user.domain.UserTechStack;
+import com.potential_radar.PR.user.domain.UserTechStack1;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -17,7 +17,7 @@ public class UserTechStackResponse {
     private String stackName;
     private Integer skillLevel;
     
-    public static UserTechStackResponse from(UserTechStack userTechStack) {
+    public static UserTechStackResponse from(UserTechStack1 userTechStack) {
         return UserTechStackResponse.builder()
                 .userTechStackId(userTechStack.getUserTechStackId())
                 .stackId(userTechStack.getStack().getStackId())

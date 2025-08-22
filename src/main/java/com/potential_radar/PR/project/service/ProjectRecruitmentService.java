@@ -1,11 +1,13 @@
 package com.potential_radar.PR.project.service;
 
-import com.potential_radar.PR.common.domain.TechPart;
-import com.potential_radar.PR.common.domain.TechStack;
+import com.potential_radar.PR.like.domain.TargetType;
+import com.potential_radar.PR.like.service.LikeService;
+import com.potential_radar.PR.tech.domain.TechPart;
+import com.potential_radar.PR.tech.domain.TechStack;
 import com.potential_radar.PR.common.exception.AccessDeniedException;
 import com.potential_radar.PR.common.exception.NotFoundException;
-import com.potential_radar.PR.common.repository.TechPartRepository;
-import com.potential_radar.PR.common.repository.TechStackRepository;
+import com.potential_radar.PR.tech.repository.TechPartRepository;
+import com.potential_radar.PR.tech.repository.TechStackRepository;
 
 import com.potential_radar.PR.project.domain.*;
 import com.potential_radar.PR.project.dto.*;
@@ -29,6 +31,7 @@ public class ProjectRecruitmentService {
     private final ProjectCommentRepository projectCommentRepository;
     private final TechStackRepository techStackRepository; // New
     private final TechPartRepository techPartRepository;   // New
+    private final LikeService likeService; // 좋아요 서비스 주입
 
     public ProjectRecruitmentResponse convertToResponseDto(ProjectRecruitment pr) {
         // 스택
@@ -52,6 +55,7 @@ public class ProjectRecruitmentService {
         int acceptedCount = projectApplicationRepository.countByProject_ProjectIdAndStatus(
                 pr.getProjectId(), ProjectApplication.ApplicationStatus.ACCEPTED);
         int remainingCount = pr.getRecruitCount() - acceptedCount;
+        long likeCount = likeService.getLikeCount(TargetType.PROJECT, pr.getProjectId());
 
         return ProjectRecruitmentResponse.builder()
                 .projectId(pr.getProjectId())
@@ -64,6 +68,7 @@ public class ProjectRecruitmentService {
                 .fileUrl(pr.getFileUrl())
                 .status(pr.getStatus().name())
                 .viewCount(pr.getViewCount())
+                .likeCount(likeCount)
                 .recruitCount(pr.getRecruitCount())
                 .appliedCount(appliedCount)
                 .acceptedCount(acceptedCount)
@@ -181,6 +186,7 @@ public class ProjectRecruitmentService {
         int acceptedCount = projectApplicationRepository.countByProject_ProjectIdAndStatus(
                 pr.getProjectId(), ProjectApplication.ApplicationStatus.ACCEPTED);
         int remainingCount = pr.getRecruitCount() - acceptedCount;
+        long likeCount = likeService.getLikeCount(TargetType.PROJECT, pr.getProjectId());
 
         return ProjectRecruitmentResponse.builder()
                 .projectId(pr.getProjectId())
@@ -193,6 +199,7 @@ public class ProjectRecruitmentService {
                 .fileUrl(pr.getFileUrl())
                 .status(pr.getStatus().name())
                 .viewCount(pr.getViewCount())
+                .likeCount(likeCount)
                 .recruitCount(pr.getRecruitCount())
                 .appliedCount(appliedCount)
                 .acceptedCount(acceptedCount)

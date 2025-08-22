@@ -23,28 +23,30 @@ def calculate_tech_similarity(user_techs: List[str], project_techs: List[str]) -
     if not user_techs or not project_techs:
         return 0.0
     
-    # 기본적인 기술스택 그룹 정의
+    # 기본적인 기술스택 그룹 정의 (대소문자 무시를 위해 소문자로 통일)
     tech_groups = {
-        'frontend': ['React', 'Vue.js', 'Angular', 'JavaScript', 'TypeScript', 'HTML', 'CSS'],
-        'backend': ['Node.js', 'Python', 'Java', 'Spring', 'Django', 'FastAPI', 'Express'],
-        'mobile': ['Flutter', 'React Native', 'iOS', 'Android', 'Swift', 'Kotlin'],
-        'database': ['PostgreSQL', 'MongoDB', 'MySQL', 'Redis'],
-        'cloud': ['AWS', 'Docker', 'Kubernetes', 'Azure', 'GCP'],
-        'ai': ['TensorFlow', 'PyTorch', 'Machine Learning', 'OpenCV']
+        'frontend': ['react', 'vue.js', 'angular', 'javascript', 'typescript', 'html', 'css', 'html5', 'css3', 'next.js', 'nuxt.js'],
+        'backend': ['node.js', 'python', 'java', 'spring', 'spring boot', 'spring framework', 'django', 'fastapi', 'express', 'express.js'],
+        'mobile': ['flutter', 'react native', 'ios', 'android', 'swift', 'kotlin', 'dart'],
+        'database': ['postgresql', 'mongodb', 'mysql', 'redis', 'oracle', 'sqlite'],
+        'cloud': ['aws', 'docker', 'kubernetes', 'azure', 'gcp', 'heroku'],
+        'ai': ['tensorflow', 'pytorch', 'machine learning', 'opencv', 'scikit-learn']
     }
     
-    # 각 기술이 속한 그룹 찾기
+    # 각 기술이 속한 그룹 찾기 (대소문자 무시)
     user_groups = set()
     project_groups = set()
     
     for tech in user_techs:
+        tech_lower = tech.lower()
         for group, techs in tech_groups.items():
-            if tech in techs:
+            if tech_lower in techs:
                 user_groups.add(group)
     
     for tech in project_techs:
+        tech_lower = tech.lower()
         for group, techs in tech_groups.items():
-            if tech in techs:
+            if tech_lower in techs:
                 project_groups.add(group)
     
     # 공통 그룹 비율 계산
@@ -72,12 +74,14 @@ def compute_features(user_techs: List[str], project_techs: List[str]) -> List[fl
         logger.debug("빈 기술스택으로 인해 특성 벡터를 0.0으로 설정")
         return [0.0]
         
-    u_set, p_set = set(user_techs), set(project_techs)
+    u_set = {tech.lower() for tech in user_techs}
+    p_set = {tech.lower() for tech in project_techs}
     intersection = len(u_set & p_set)
     union = len(u_set | p_set)
     
     jaccard = intersection / union if union > 0 else 0.0
     logger.debug(f"Jaccard 유사도 계산: {intersection}/{union} = {jaccard:.4f}")
+    logger.debug(f"사용자 기술: {u_set}, 프로젝트 기술: {p_set}")
     
     return [jaccard]
 
@@ -85,7 +89,7 @@ def compute_features(user_techs: List[str], project_techs: List[str]) -> List[fl
 # jaccard: 단순 겹침비율
 def jaccard(user_techs: List[str], project_techs: List[str]) -> float:
     """
-    Jaccard 유사도를 계산합니다.
+    Jaccard 유사도를 계산합니다 (대소문자 무시).
     
     Args:
         user_techs: 사용자 기술스택
@@ -97,7 +101,8 @@ def jaccard(user_techs: List[str], project_techs: List[str]) -> float:
     if not user_techs or not project_techs:
         return 0.0
         
-    u_set, p_set = set(user_techs), set(project_techs)
+    u_set = {tech.lower() for tech in user_techs}
+    p_set = {tech.lower() for tech in project_techs}
     intersection = len(u_set & p_set)
     union = len(u_set | p_set)
     
@@ -122,8 +127,8 @@ def weighted_overlap(
         return 0.0
         
     try:
-        user_dict = {x["name"]: int(x.get("level", 3)) for x in user_norm}
-        proj_dict = {x["name"]: int(x.get("level", 3)) for x in proj_norm}
+        user_dict = {x["name"].lower(): int(x.get("level", 3)) for x in user_norm}
+        proj_dict = {x["name"].lower(): int(x.get("level", 3)) for x in proj_norm}
         
         common_techs = set(user_dict.keys()) & set(proj_dict.keys())
         if not common_techs:

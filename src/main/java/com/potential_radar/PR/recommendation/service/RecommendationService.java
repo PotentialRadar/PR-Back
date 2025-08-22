@@ -1,10 +1,14 @@
 package com.potential_radar.PR.recommendation.service;
 
 import com.potential_radar.PR.common.exception.RecommendationServiceException;
+import com.potential_radar.PR.like.domain.Like;
+import com.potential_radar.PR.like.domain.TargetType;
+import com.potential_radar.PR.like.repository.LikeRepository;
 import com.potential_radar.PR.project.domain.ProjectRecruitment;
 import com.potential_radar.PR.project.repository.ProjectApplicationRepository;
 import com.potential_radar.PR.project.repository.ProjectRecruitmentRepository;
 import com.potential_radar.PR.recommendation.domain.RecommendationHistory;
+import com.potential_radar.PR.recommendation.dto.LikedProject;
 import com.potential_radar.PR.recommendation.dto.RecommendRequest;
 import com.potential_radar.PR.recommendation.dto.RecommendedProjectResponse;
 import com.potential_radar.PR.recommendation.repository.RecommendationHistoryRepository;
@@ -33,6 +37,7 @@ public class RecommendationService {
     private final UserRepository userRepository;
     private final ProjectRecruitmentRepository projectRecruitmentRepository;
     private final ProjectApplicationRepository projectApplicationRepository;
+    private final LikeRepository likeRepository;
 
     // AI 모델 버전을 명시적으로 관리합니다.
     private static final String CURRENT_MODEL_VERSION = "1.0-hybrid";
@@ -42,12 +47,14 @@ public class RecommendationService {
                                  RecommendationHistoryRepository recommendationHistoryRepository,
                                  UserRepository userRepository,
                                  ProjectRecruitmentRepository projectRecruitmentRepository,
-                                 ProjectApplicationRepository projectApplicationRepository) {
+                                 ProjectApplicationRepository projectApplicationRepository,
+                                 LikeRepository likeRepository) {
         this.pythonApiHost = pythonApiHost;
         this.recommendationHistoryRepository = recommendationHistoryRepository;
         this.userRepository = userRepository;
         this.projectRecruitmentRepository = projectRecruitmentRepository;
         this.projectApplicationRepository = projectApplicationRepository;
+        this.likeRepository = likeRepository;
         this.webClient = webClientBuilder.baseUrl(pythonApiHost).build();
     }
 
@@ -70,6 +77,22 @@ public class RecommendationService {
                 strict, topN, minScore, minOverlap);
 
         try {
+            // 좋아요 데이터 포함 여부 확인 및 수집  
+            log.info("🔍 좋아요 데이터 포함 여부 확인: includeLikes={}", request.isIncludeLikes());
+            if (request.isIncludeLikes()) {
+                List<LikedProject> likedProjects = getUserLikedProjects(request.getUserId());
+                request.setLikedProjects(likedProjects);
+                log.info("📍 사용자 좋아요 데이터 수집 완료 - {}개 프로젝트", likedProjects.size());
+                if (!likedProjects.isEmpty()) {
+                    log.info("📍 첫 번째 좋아요 프로젝트: {}", likedProjects.get(0));
+                }
+            } else {
+                log.info("📍 좋아요 데이터 사용 안 함 - 기술스택만 사용");
+            }
+            
+            // AI 서버로 보내는 요청 데이터 로깅
+            log.info("🚀 AI 서버로 보내는 요청 데이터: {}", request);
+            
             // AI 서버 응답을 먼저 String으로 받아서 로그 출력
             String rawResponse = webClient.post()
                     .uri(uriBuilder -> uriBuilder
@@ -161,6 +184,86 @@ public class RecommendationService {
                 int appliedCount = projectApplicationRepository.countByProject_ProjectId(project.getProjectId());
                 response.setAppliedCount(appliedCount);
             });
+        }
+    }
+
+    /**
+     * 사용자의 좋아요한 프로젝트 데이터 수집
+     * BaseTimeEntity를 활용하여 시간 기반 분석 가능
+     */
+    private List<LikedProject> getUserLikedProjects(Long userId) {
+        try {
+            log.info("🔍 사용자 {}의 좋아요 데이터 수집 시작", userId);
+            
+            // 사용자 존재 여부 확인 (NotFoundException 활용)
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다: " + userId));
+            
+            log.info("✅ 사용자 {} 확인됨: {}", userId, user.getEmail());
+            
+            // 프로젝트 좋아요 데이터 조회
+            List<Like> projectLikes = likeRepository.findAllByUserAndTargetType(user, TargetType.PROJECT);
+            
+            log.info("🔍 사용자 {}의 프로젝트 좋아요 {}개 발견", userId, projectLikes.size());
+            
+            if (projectLikes.isEmpty()) {
+                log.info("📍 사용자 {}는 좋아요한 프로젝트가 없습니다", userId);
+                return List.of();
+            }
+            
+            // Like를 LikedProject DTO로 변환
+            List<LikedProject> likedProjects = projectLikes.stream()
+                    .map(this::convertToLikedProject)
+                    .filter(likedProject -> likedProject != null) // null 안전성
+                    .toList();
+                    
+            log.info("🎯 사용자 {}의 좋아요 데이터 변환 완료: {}개 → {}개", userId, projectLikes.size(), likedProjects.size());
+            return likedProjects;
+                    
+        } catch (Exception e) {
+            log.warn("⚠️ 사용자 좋아요 데이터 수집 실패 (userId: {}): {}", userId, e.getMessage(), e);
+            // 좋아요 데이터 수집 실패는 전체 추천을 중단시키지 않음
+            return List.of();
+        }
+    }
+    
+    /**
+     * Like 엔티티를 LikedProject DTO로 변환
+     * BaseTimeEntity의 createdAt 활용
+     */
+    private LikedProject convertToLikedProject(Like like) {
+        try {
+            // 좋아요한 프로젝트 정보 조회
+            ProjectRecruitment project = projectRecruitmentRepository.findById(like.getTargetId())
+                    .orElse(null);
+                    
+            if (project == null) {
+                log.warn("⚠️ 좋아요한 프로젝트를 찾을 수 없습니다: {}", like.getTargetId());
+                return null;
+            }
+            
+            // 프로젝트 기술스택 추출
+            List<String> techStacks = project.getTechStacks().stream()
+                    .map(ts -> ts.getTechStack().getName())
+                    .toList();
+            
+            // 프로젝트 카테고리 추출 (TechPart 기반)
+            String category = project.getTechParts().stream()
+                    .findFirst()
+                    .map(tp -> tp.getTechPart().getName())
+                    .orElse("기타");
+            
+            return new LikedProject(
+                    project.getProjectId(),
+                    project.getTitle(),
+                    techStacks,
+                    like.getCreatedAt(), // BaseTimeEntity의 createdAt 활용
+                    category
+            );
+            
+        } catch (Exception e) {
+            log.error("❌ Like를 LikedProject로 변환 실패 (likeId: {}): {}", like.getId(), e.getMessage());
+            return null;
         }
     }
 }

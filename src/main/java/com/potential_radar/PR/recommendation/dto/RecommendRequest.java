@@ -16,4 +16,14 @@ public class RecommendRequest {
 
     @JsonProperty("techStacks")
     private List<UserTechStack> techStacks;
+    
+    @JsonProperty("likedProjects")
+    private List<LikedProject> likedProjects;
+    
+    @JsonProperty("includeLikes")
+    private Boolean includeLikes = true; // 좋아요 데이터 포함 여부
+    
+    public boolean isIncludeLikes() {
+        return includeLikes != null ? includeLikes : true;
+    }
 }

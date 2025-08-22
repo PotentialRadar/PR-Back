@@ -533,7 +533,19 @@ INSERT INTO project_recruitment (team_leader_id, title, description, recruit_dea
 
 ON CONFLICT (project_id) DO NOTHING;
 
+-- =============================================
+-- 좋아요 데이터 삽입 (테스트용)
+-- =============================================
+
+-- 사용자 1이 React 관련 프로젝트들을 좋아요한 데이터 추가
+INSERT INTO likes (user_id, target_id, target_type, created_at, updated_at) VALUES 
+(1, 1, 'PROJECT', NOW(), NOW()),  -- AI 기반 개인 맞춤형 학습 플랫폼 개발
+(1, 2, 'PROJECT', NOW() - INTERVAL '7 days', NOW()),  -- 실시간 협업 화이트보드 웹 애플리케이션
+(1, 5, 'PROJECT', NOW() - INTERVAL '14 days', NOW()), -- 모바일 AR 쇼핑 경험 애플리케이션
+(1, 7, 'PROJECT', NOW() - INTERVAL '21 days', NOW()); -- 클라우드 기반 팀 프로젝트 관리 도구
+
 -- 프로젝트 데이터 확인 쿼리
 -- SELECT COUNT(*) as total_projects FROM project_recruitment;
 -- SELECT COUNT(*) as total_project_tech_parts FROM project_tech_part;
 -- SELECT COUNT(*) as total_project_tech_stacks FROM project_tech_stack;
+-- SELECT COUNT(*) as total_likes FROM likes WHERE target_type = 'PROJECT';

@@ -3,6 +3,7 @@ Pydantic 스키마 정의
 """
 from pydantic import BaseModel, Field, validator
 from typing import List, Optional, Dict
+from datetime import datetime
 
 class UserTechStack(BaseModel):
     """사용자 기술스택 정보"""
@@ -15,6 +16,14 @@ class UserTechStack(BaseModel):
             raise ValueError('기술스택 이름은 비어있을 수 없습니다')
         return v.strip().lower()
 
+class LikedProject(BaseModel):
+    """사용자가 좋아요한 프로젝트 정보"""
+    projectId: int = Field(..., description="프로젝트 ID", gt=0)
+    title: str = Field(..., description="프로젝트 제목", max_length=200)
+    techStacks: List[str] = Field(default_factory=list, description="프로젝트 기술스택")
+    likedAt: datetime = Field(..., description="좋아요 시점")
+    category: str = Field(default="기타", description="프로젝트 카테고리")
+
 class RecommendRequest(BaseModel):
     """프로젝트 추천 요청 스키마"""
     user_id: int = Field(..., alias="userId", description="사용자 ID", gt=0)
@@ -24,6 +33,17 @@ class RecommendRequest(BaseModel):
         description="사용자 기술스택 리스트",
         min_items=1,
         max_items=20
+    )
+    liked_projects: List[LikedProject] = Field(
+        default_factory=list,
+        alias="likedProjects",
+        description="사용자가 좋아요한 프로젝트 리스트",
+        max_items=50
+    )
+    include_likes: bool = Field(
+        default=True,
+        alias="includeLikes", 
+        description="좋아요 데이터 포함 여부"
     )
 
     class Config:

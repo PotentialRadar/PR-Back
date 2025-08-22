@@ -75,7 +75,7 @@ def generate_training_data():
             projects.append({
                 "project_id": p.project_id,
                 "title": p.title,
-                "tech_stacks": [ts.tech_stack_name for ts in p.tech_stacks]
+                "tech_stacks": [ts.tech_stack.name for ts in p.tech_stacks]
             })
         
         # 훈련 데이터 생성

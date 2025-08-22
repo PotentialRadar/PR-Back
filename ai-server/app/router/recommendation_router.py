@@ -8,9 +8,10 @@ from app.schemas import RecommendRequest, ProjectRecommendation, RecommendationE
 from app.utils.feature_engineering import compute_features, enhanced_final_score
 from app.utils.preprocess import normalize_tech_stacks, to_name_list
 from app.utils.explanation_generator import RecommendationExplainer
+from app.utils.like_analyzer import LikePatternAnalyzer
 from app.config import settings
 from app.database import get_db
-from app.models import Project
+from app.models import Project, ProjectTechStack
 from app.core.model_loader import get_model, is_ml_model_available
 
 logger = logging.getLogger(__name__)
@@ -75,6 +76,22 @@ def get_recommended_projects(
     user_norm = normalize_tech_stacks(tech_stack_dicts, min_level=1, max_level=5)
     user_names = to_name_list(user_norm)
     
+    logger.info(f"🔍 사용자 기술스택: {user_names}")
+    
+    # 좋아요 패턴 분석 (새로 추가)
+    like_analyzer = LikePatternAnalyzer()
+    user_preferences = None
+    use_likes = request.include_likes and request.liked_projects
+    
+    logger.info(f"🔍 좋아요 데이터 확인 - include_likes: {request.include_likes}, liked_projects: {len(request.liked_projects) if request.liked_projects else 0}")
+    
+    if use_likes:
+        user_preferences = like_analyzer.analyze_user_preferences(request.liked_projects)
+        logger.info(f"🎯 좋아요 기반 추천 활성화 - {len(request.liked_projects)}개 프로젝트 분석 완료")
+        logger.info(f"🎯 사용자 선호 기술: {list(user_preferences.get('preferred_techs', {}).keys())[:5]}")
+    else:
+        logger.info("📍 좋아요 데이터 사용 안 함 - 기술스택만 사용")
+    
     # 1. DB에서 프로젝트 정보를 tech_stacks와 함께 한 번에 가져옵니다 (N+1 쿼리 방지)
     # 성능 최적화: 필요 시 topN * 2 정도로 제한하여 메모리 사용량 최적화
     max_projects = max(topN * 3, 50)  # 최소 50개, 최대 요청량의 3배
@@ -82,7 +99,7 @@ def get_recommended_projects(
     try:
         db_projects = (
             db.query(Project)
-            .options(joinedload(Project.tech_stacks))
+            .options(joinedload(Project.tech_stacks).joinedload(ProjectTechStack.tech_stack))
             .limit(max_projects)
             .all()
         )
@@ -92,16 +109,20 @@ def get_recommended_projects(
         raise HTTPException(status_code=503, detail="프로젝트 데이터 조회 실패")
 
     # 2. DB 모델 객체(Project)를 Pydantic 스키마(ProjectRecommendation)로 변환합니다.
-    all_projects = [
-        ProjectRecommendation(
+    all_projects = []
+    for p in db_projects:
+        tech_stacks = [ts.tech_stack.name for ts in p.tech_stacks if ts.tech_stack]
+        logger.info(f"🔍 프로젝트 {p.project_id} ({p.title}): {tech_stacks}")
+        
+        all_projects.append(ProjectRecommendation(
             projectId=p.project_id,
             title=p.title,
             description=p.description,
             matchScore=0.0, # 점수는 나중에 계산
-            projectTechStacks=[ts.tech_stack_name for ts in p.tech_stacks] # 수정된 모델의 컬럼명(tech_stack_name)으로 변경
-        )
-        for p in db_projects
-    ]
+            projectTechStacks=tech_stacks
+        ))
+    
+    logger.info(f"📊 총 {len(all_projects)}개 프로젝트 변환 완료")
 
     scored: List[ProjectRecommendation] = []
     explainer = RecommendationExplainer()
@@ -111,6 +132,8 @@ def get_recommended_projects(
         proj_raw = [{"name": name, "level": 3} for name in p.projectTechStacks]
         proj_norm = normalize_tech_stacks(proj_raw, min_level=1, max_level=5)
         proj_names = to_name_list(proj_norm)
+        
+        logger.debug(f"프로젝트 {p.projectId} 기술스택: {proj_names}")
 
         # Jaccard overlap for transparent gating
         u_set = set(user_names)
@@ -123,14 +146,31 @@ def get_recommended_projects(
         if is_ml_model_available():
             # ML 모델 사용
             feats = compute_features(user_names, proj_names)
-            score = float(model.predict_proba([feats])[0][1])
+            tech_score = float(model.predict_proba([feats])[0][1])
             logger.debug(f"ML 모델 사용 - 프로젝트 {p.projectId}")
         else:
             # 룰 기반 알고리즘 사용
-            score = float(enhanced_final_score(user_names, user_norm, proj_names, proj_norm))
+            tech_score = float(enhanced_final_score(user_names, user_norm, proj_names, proj_norm))
             logger.debug(f"룰 기반 알고리즘 사용 - 프로젝트 {p.projectId}")
+        
+        # 좋아요 기반 점수 계산 및 통합 (새로 추가)
+        if use_likes and user_preferences:
+            like_score = like_analyzer.calculate_like_similarity_score(
+                user_preferences, 
+                p.projectTechStacks,
+                "기타"  # 카테고리는 추후 프로젝트 도메인에서 가져올 수 있음
+            )
+            # 하이브리드 점수: 기술스택 70% + 좋아요 패턴 30%
+            score = (tech_score * 0.7) + (like_score * 0.3)
+            logger.debug(f"하이브리드 점수 - 프로젝트 {p.projectId}: tech={tech_score:.3f}, like={like_score:.3f}, final={score:.3f}")
+        else:
+            score = tech_score
+            logger.debug(f"기술스택 점수만 사용 - 프로젝트 {p.projectId}: {score:.3f}")
 
-        logger.debug(f"프로젝트 {p.projectId}: overlap={overlap:.2f}, score={score:.4f}")
+        logger.info(f"🔍 점수 계산 - 프로젝트 {p.projectId} ({p.title}): overlap={overlap:.2f}, tech_score={tech_score:.4f}, final_score={score:.4f}")
+        logger.info(f"  사용자 기술: {user_names}")
+        logger.info(f"  프로젝트 기술: {proj_names}")
+        logger.info(f"  교집합: {u_set & p_set}")
 
         # Explanation 생성
         try:
@@ -144,7 +184,7 @@ def get_recommended_projects(
                 project_techs=proj_names,
                 project_norm=proj_norm,
                 project_title=p.title,
-                matchScore=score
+                match_score=score
             )
             
             logger.info(f"설명 데이터 생성됨: {explanation_data}")

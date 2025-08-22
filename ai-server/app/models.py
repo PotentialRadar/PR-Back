@@ -30,4 +30,4 @@ class TechStack(Base):
     __tablename__ = "tech_stack"
     
     tech_stack_id = Column(Integer, primary_key=True, index=True)
-    tech_stack_name = Column(String(50), nullable=False)
+    name = Column(String(50), nullable=False)

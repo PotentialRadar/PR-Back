@@ -1,4 +1,4 @@
-package com.potential_radar.PR.user.dto;
+package com.potential_radar.PR.user.dto.editInfo;
 
 import com.potential_radar.PR.user.domain.ExperienceRange;
 import jakarta.validation.constraints.NotBlank;
@@ -13,9 +13,6 @@ public record UserProfileUpdateRequest(
         Long techPartId,
         
         String profileImage,
-        
-        @Size(max = 500, message = "자기소개는 500자 이하여야 합니다")
-        String bio,
 
         @Size(max = 50, message = "직책은 50자 이하여야 합니다")
         String jobTitle,

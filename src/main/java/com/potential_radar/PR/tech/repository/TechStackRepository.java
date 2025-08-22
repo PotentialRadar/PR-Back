@@ -9,4 +9,6 @@ import java.util.Optional;
 @Repository
 public interface TechStackRepository extends JpaRepository<TechStack, Long> {
     Optional<TechStack> findByNameIgnoreCase(String name);
+    Optional<TechStack> findByName(String name);
+    boolean existsByName(String name);
 }

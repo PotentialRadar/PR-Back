@@ -1,11 +1,13 @@
 package com.potential_radar.PR.project.controller;
 
-import com.potential_radar.PR.common.excetpion.AccessDeniedException;
-import com.potential_radar.PR.common.excetpion.NotFoundException;
+import com.potential_radar.PR.common.exception.AccessDeniedException;
+import com.potential_radar.PR.common.exception.NotFoundException;
 import com.potential_radar.PR.project.domain.ProjectRecruitment;
-import com.potential_radar.PR.project.dto.ProjectApplyRequest;
 import com.potential_radar.PR.project.dto.ProjectApplicationResponseDTO;
+import com.potential_radar.PR.project.dto.ProjectRecruitmentResponse;
+import com.potential_radar.PR.project.dto.ProjectApplyRequest;
 import com.potential_radar.PR.project.dto.ProjectApplicationStatusUpdateRequest;
+import com.potential_radar.PR.project.dto.ProjectRecruitmentResponse;
 import com.potential_radar.PR.project.repository.ProjectRecruitmentRepository;
 import com.potential_radar.PR.project.service.ProjectApplicationService;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +50,13 @@ public class ProjectApplicationController {
 
         // 3. 지원자 목록 조회
         List<ProjectApplicationResponseDTO> response = projectApplicationService.getProjectMembers(projectId);
+        return ResponseEntity.ok(response);
+    }
+
+    // 사용자가 지원한 프로젝트 목록 조회
+    @GetMapping("/users/{userId}/applied")
+    public ResponseEntity<List<ProjectRecruitmentResponse>> getAppliedProjectsByUser(@PathVariable Long userId) {
+        List<ProjectRecruitmentResponse> response = projectApplicationService.getAppliedProjectsByUser(userId);
         return ResponseEntity.ok(response);
     }
 

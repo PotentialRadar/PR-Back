@@ -31,7 +31,7 @@ public record OfficialPotfolioResponse(
                 userProfile.getUser().getNickname(),
                 userProfile.getUser().getEmail(),
                 userProfile.getTechPart() != null ? userProfile.getTechPart().getName() : null,
-                user.getProfileImage(),
+                userProfile.getUser().getProfileImage(),
                 userProfile.getBio(),
                 userProfile.getPhone(),
                 userProfile.getJobTitle(),

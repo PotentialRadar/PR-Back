@@ -84,3 +84,5 @@ test_*.sql
 ### Logs ###
 *.log
 logs/
+
+.claude/

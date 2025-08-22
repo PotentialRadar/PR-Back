@@ -31,7 +31,7 @@ public class WebSecurityConfig {
     private final TokenProvider tokenProvider;
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2AuthenticationSuccessHandler oAuth2SuccessHandler;
-    
+
     @Value("${ports.frontend}")
     private String frontendPort;
 
@@ -62,7 +62,10 @@ public class WebSecurityConfig {
                                 "/login/oauth2/**",
                                 "/api/login/**",
                                 "/api/user/**",
-                                "/api/recommend/**"
+                                "/api/recommend/**",
+                                "/api/recommend/**",
+                                "/test/**",
+                                "/api/search/**"
                         )
                         .permitAll()
                         .requestMatchers("/api/projects/**").permitAll()

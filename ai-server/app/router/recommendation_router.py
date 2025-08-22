@@ -144,7 +144,7 @@ def get_recommended_projects(
                 project_techs=proj_names,
                 project_norm=proj_norm,
                 project_title=p.title,
-                match_score=score
+                matchScore=score
             )
             
             logger.info(f"설명 데이터 생성됨: {explanation_data}")

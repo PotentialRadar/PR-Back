@@ -1,11 +1,6 @@
 package com.potential_radar.PR.like.service;
 
-import com.potential_radar.PR.common.excetpion.NotFoundException;
-import com.potential_radar.PR.like.domain.Like;
-import com.potential_radar.PR.like.dto.LikeRequestDto;
-import com.potential_radar.PR.like.dto.LikeResponseDto;
-import com.potential_radar.PR.like.repository.LikeRepository;
-import com.potential_radar.PR.common.excetpion.NotFoundException;
+import com.potential_radar.PR.common.exception.NotFoundException;
 import com.potential_radar.PR.like.domain.Like;
 import com.potential_radar.PR.like.domain.TargetType;
 import com.potential_radar.PR.like.dto.LikeRequestDto;
@@ -13,8 +8,6 @@ import com.potential_radar.PR.like.dto.LikeResponseDto;
 import com.potential_radar.PR.like.repository.LikeRepository;
 import com.potential_radar.PR.project.domain.ProjectApplication;
 import com.potential_radar.PR.project.domain.ProjectRecruitment;
-import com.potential_radar.PR.project.domain.ProjectTechPart;
-import com.potential_radar.PR.project.domain.ProjectTechStack;
 import com.potential_radar.PR.project.dto.ProjectPartRecruitmentDTO;
 import com.potential_radar.PR.project.dto.ProjectRecruitmentResponse;
 import com.potential_radar.PR.project.dto.ProjectTechStackDTO;
@@ -83,14 +76,14 @@ public class LikeService {
         for (ProjectRecruitment pr : projects) {
             List<ProjectTechStackDTO> techStackDTOs = pr.getTechStacks().stream()
                     .map(ts -> ProjectTechStackDTO.builder()
-                            .techStackName(ts.getTechStackName())
+                            .techStackName(ts.getTechStack().getName()) // Get name from TechStack entity
                             .recruitCount(ts.getRecruitCount())
                             .build())
                     .collect(Collectors.toList());
 
             List<ProjectPartRecruitmentDTO> partDTOs = pr.getTechParts().stream()
                     .map(pt -> ProjectPartRecruitmentDTO.builder()
-                            .partName(pt.getPartName())
+                            .partName(pt.getTechPart().getName()) // Get name from TechPart entity
                             .recruitCount(pt.getRecruitCount())
                             .build())
                     .collect(Collectors.toList());

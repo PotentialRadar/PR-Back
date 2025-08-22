@@ -14,5 +14,5 @@ public interface ProjectTechPartRepository extends JpaRepository<ProjectTechPart
     @Query("delete from ProjectTechPart p where p.project.projectId = :projectId")
     void deleteAllByProjectId(@Param("projectId") Long projectId);
 
-    boolean existsByProject_ProjectIdAndPartName(Long projectId, String partName);
+    boolean existsByProject_ProjectIdAndTechPart_Name(Long projectId, String techPartName);
 }

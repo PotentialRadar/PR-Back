@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.NonNull;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -36,7 +37,7 @@ public class Like {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    public Like(User user, TargetType targetType, Long targetId) {
+    public Like(@NonNull User user, @NonNull TargetType targetType, @NonNull Long targetId) {
         this.user = user;
         this.targetType = targetType;
         this.targetId = targetId;

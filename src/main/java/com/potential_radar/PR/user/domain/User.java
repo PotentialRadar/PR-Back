@@ -1,14 +1,14 @@
 package com.potential_radar.PR.user.domain;
 
-import com.potential_radar.PR.common.domain.TechPart;
-import com.potential_radar.PR.techStack.domain.TechStack;
+
+import com.potential_radar.PR.techStack.domain.TechStackToDelete;
+import com.potential_radar.PR.tech.domain.TechPart;
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,6 +59,9 @@ public class User {
     @ColumnDefault("now()")
     private LocalDateTime updatedAt;
 
+    @Column(columnDefinition = "text")
+    private String profileImage;
+
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private UserProfile userProfile;
 
@@ -69,10 +72,10 @@ public class User {
     private List<UserExperience> experiences = new ArrayList<>();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<UserTechStack> userTechStacks = new ArrayList<>();
+    private List<UserTechStack1> userTechStacks = new ArrayList<>();
 
-    public void addTechStack(TechStack stack, Integer level) {
-        UserTechStack uts = UserTechStack.builder()
+    public void addTechStack(TechStackToDelete stack, Integer level) {
+        UserTechStack1 uts = UserTechStack1.builder()
                 .user(this)
                 .stack(stack)
                 .skillLevel(level)
@@ -100,6 +103,9 @@ public class User {
         experiences.remove(experience);
         experience.setUser(null);
     }
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private List<UserTechStack1> userTechStacks;
+
 
     @PrePersist
     void prePersist() {
@@ -119,6 +125,7 @@ public class User {
         this.provider = provider;
         this.providerUserId = providerUserId;
         this.profileImage=profileImage;
+        this.profileImage = profileImage;
     }
 
     //== 연관관계 편의 메서드 ==//
@@ -131,4 +138,24 @@ public class User {
         }
     }
 
+    public void setUserProfile(UserProfile userProfile) {
+        this.userProfile = userProfile;
+    }
+
+    public void setProfileImage(String profileImage) {
+        this.profileImage = profileImage;
+    }
+
+    //== UserProfile 위임 메서드 ==//
+    public TechPart getTechPart() {
+        return this.userProfile != null ? this.userProfile.getTechPart() : null;
+    }
+    
+    public ExperienceRange getExperienceRange() {
+        return this.userProfile != null ? this.userProfile.getExperienceRange() : ExperienceRange.FRESHER;
+    }
+    
+    public boolean isPortfolioOpen() {
+        return this.userProfile != null && this.userProfile.isPortfolioOpen();
+    }
 }

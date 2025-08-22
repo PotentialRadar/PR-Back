@@ -1,8 +1,10 @@
 package com.potential_radar.PR.user.service.impl;
 
-import com.potential_radar.PR.common.excetpion.NotFoundException;
+import com.potential_radar.PR.common.exception.NotFoundException;
+import com.potential_radar.PR.tech.repository.TechPartRepository;
+
 import com.potential_radar.PR.config.jwt.TokenProvider;
-import com.potential_radar.PR.common.domain.TechPart;
+import com.potential_radar.PR.tech.domain.TechPart;
 import com.potential_radar.PR.user.dto.*;
 import com.potential_radar.PR.user.domain.Provider;
 import com.potential_radar.PR.user.domain.User;
@@ -43,7 +45,7 @@ public class UserServiceImpl implements UserService {
                 .nickname(request.nickname())
                 .provider(Provider.EMAIL)
                 .build();
-        
+
         // 2. UserProfile 생성 및 User와 연결
         TechPart defaultTechPart = techPartRepository.findById(11L)  // Defualt : 11 ETC
                 .orElseThrow(() -> new NotFoundException("기본 기술 분야를 찾을 수 없습니다"));
@@ -106,14 +108,14 @@ public class UserServiceImpl implements UserService {
         User user = findByEmail(email);
         UserProfile userProfile = userProfileRepository.findByUser(user)
                 .orElseThrow(() -> new NotFoundException("사용자 프로필을 찾을 수 없습니다"));
-        
+
         // TechPart 유효성 검사
         if (request.techPartId() != null) {
             TechPart techPart = techPartRepository.findById(request.techPartId())
                     .orElseThrow(() -> new NotFoundException("기술 분야를 찾을 수 없습니다"));
             userProfile.setTechPart(techPart);
         }
-        
+
         // 사용자 닉네임 업데이트 (프로필에서 닉네임도 변경 가능)
         if (request.nickname() != null && !user.getNickname().equals(request.nickname())) {
             if (userRepository.existsByNickname(request.nickname())) {
@@ -121,7 +123,7 @@ public class UserServiceImpl implements UserService {
             }
             userRepository.updateNickname(user.getUserId(), request.nickname());
         }
-        
+
         // 프로필 정보 업데이트
         if (request.profileImage() != null) user.setProfileImage(request.profileImage());
         if (request.phone() != null) userProfile.setPhone(request.phone());
@@ -136,20 +138,21 @@ public class UserServiceImpl implements UserService {
         if (request.isContactOpen() != null) userProfile.setContactOpen(request.isContactOpen());
         if (request.isSearchOpen() != null) userProfile.setSearchOpen(request.isSearchOpen());
         if (request.experienceRange() != null) userProfile.setExperienceRange(request.experienceRange());
-        
+
+        userRepository.save(user);
         userProfileRepository.save(userProfile);
     }
 
     @Override
     public void deleteUser(String email) {
         User user = findByEmail(email);
-        
+
         // 프로필이 있다면 삭제
         userProfileRepository.findByUser(user).ifPresent(userProfileRepository::delete);
-        
+
         // 리프레시 토큰 삭제
         refreshTokenService.deleteRefreshToken(user.getUserId());
-        
+
         // 사용자 삭제
         userRepository.delete(user);
     }

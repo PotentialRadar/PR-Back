@@ -23,7 +23,7 @@ import lombok.*;
                 @Index(name = "idx_user_tech_stack_stack_id", columnList = "stack_id")
         }
 )
-public class UserTechStack1 {
+public class UserTechStack {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

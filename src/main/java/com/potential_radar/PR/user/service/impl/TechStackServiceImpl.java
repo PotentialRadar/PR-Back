@@ -1,10 +1,10 @@
 package com.potential_radar.PR.user.service.impl;
 
-import com.potential_radar.PR.common.excetpion.NotFoundException;
-import com.potential_radar.PR.techStack.domain.TechStackToDelete;
-import com.potential_radar.PR.techStack.repository.TechStackRepository;
+import com.potential_radar.PR.common.exception.NotFoundException;
+import com.potential_radar.PR.tech.domain.TechStack;
+import com.potential_radar.PR.tech.repository.TechStackRepository;
 import com.potential_radar.PR.user.domain.User;
-import com.potential_radar.PR.user.domain.UserTechStack1;
+import com.potential_radar.PR.user.domain.UserTechStack;
 import com.potential_radar.PR.user.dto.techStack.UserTechStackRequest;
 import com.potential_radar.PR.user.dto.techStack.UserTechStackResponse;
 import com.potential_radar.PR.user.repository.UserRepository;
@@ -31,20 +31,20 @@ public class TechStackServiceImpl implements TechStackService {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다"));
 
-        TechStackToDelete techStackToDelete = techStackRepository.findById(request.getStackId())
+        TechStack techStack = techStackRepository.findById(request.getStackId())
                 .orElseThrow(() -> new NotFoundException("기술 스택을 찾을 수 없습니다"));
 
-        if (userTechStackRepository.existsByUserAndStack_StackId(user, request.getStackId())) {
+        if (userTechStackRepository.existsByUserAndStack_TechStackId(user, request.getStackId())) {
             throw new IllegalArgumentException("이미 등록된 기술 스택입니다");
         }
 
-        UserTechStack1 userTechStack = UserTechStack1.builder()
+        UserTechStack userTechStack = UserTechStack.builder()
                 .user(user)
-                .stack(techStackToDelete)
+                .stack(techStack)
                 .skillLevel(request.getSkillLevel())
                 .build();
 
-        UserTechStack1 saved = userTechStackRepository.save(userTechStack);
+        UserTechStack saved = userTechStackRepository.save(userTechStack);
         return UserTechStackResponse.from(saved);
     }
 
@@ -53,7 +53,7 @@ public class TechStackServiceImpl implements TechStackService {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다"));
 
-        List<UserTechStack1> userTechStacks = userTechStackRepository.findByUserWithTechStack(user);
+        List<UserTechStack> userTechStacks = userTechStackRepository.findByUserWithTechStack(user);
         return userTechStacks.stream()
                 .map(UserTechStackResponse::from)
                 .collect(Collectors.toList());
@@ -64,22 +64,22 @@ public class TechStackServiceImpl implements TechStackService {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다"));
 
-        UserTechStack1 userTechStack = userTechStackRepository.findByUserAndUserTechStackId(user, userTechStackId)
+        UserTechStack userTechStack = userTechStackRepository.findByUserAndUserTechStackId(user, userTechStackId)
                 .orElseThrow(() -> new NotFoundException("기술 스택 정보를 찾을 수 없습니다"));
 
-        if (!userTechStack.getStack().getStackId().equals(request.getStackId())) {
-            TechStackToDelete newTechStackToDelete = techStackRepository.findById(request.getStackId())
+        if (!userTechStack.getStack().getTechStackId().equals(request.getStackId())) {
+            TechStack newTechStack = techStackRepository.findById(request.getStackId())
                     .orElseThrow(() -> new NotFoundException("기술 스택을 찾을 수 없습니다"));
 
-            if (userTechStackRepository.existsByUserAndStack_StackId(user, request.getStackId())) {
+            if (userTechStackRepository.existsByUserAndStack_TechStackId(user, request.getStackId())) {
                 throw new IllegalArgumentException("이미 등록된 기술 스택입니다");
             }
             
-            userTechStack.setStack(newTechStackToDelete);
+            userTechStack.setStack(newTechStack);
         }
 
         userTechStack.setSkillLevel(request.getSkillLevel());
-        UserTechStack1 saved = userTechStackRepository.save(userTechStack);
+        UserTechStack saved = userTechStackRepository.save(userTechStack);
         return UserTechStackResponse.from(saved);
     }
 
@@ -88,7 +88,7 @@ public class TechStackServiceImpl implements TechStackService {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다"));
 
-        UserTechStack1 userTechStack = userTechStackRepository.findByUserAndUserTechStackId(user, userTechStackId)
+        UserTechStack userTechStack = userTechStackRepository.findByUserAndUserTechStackId(user, userTechStackId)
                 .orElseThrow(() -> new NotFoundException("기술 스택 정보를 찾을 수 없습니다"));
 
         userTechStackRepository.delete(userTechStack);

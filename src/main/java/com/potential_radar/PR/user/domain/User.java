@@ -1,16 +1,20 @@
 package com.potential_radar.PR.user.domain;
 
+
+import com.potential_radar.PR.techStack.domain.TechStackToDelete;
 import com.potential_radar.PR.tech.domain.TechPart;
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
-
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Getter
+@Setter
 @NoArgsConstructor
 @Entity
 @Table(
@@ -27,6 +31,7 @@ public class User {
     private Long userId;
 
     // citext 매핑: columnDefinition 으로 지정 (Hibernate는 String으로 처리 가능)
+    // TODO : citext 필요 없지 않나?
     @Column(nullable = false, unique = true, columnDefinition = "citext")
     private String email;
 
@@ -43,6 +48,9 @@ public class User {
     @Column(name = "provider_user_id")
     private String providerUserId;
 
+    @Column(columnDefinition = "text")
+    private String profileImage;
+
     @Column(nullable = false)
     @ColumnDefault("now()")
     private LocalDateTime createdAt;
@@ -57,8 +65,47 @@ public class User {
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private UserProfile userProfile;
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<UserEducation> educations = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<UserExperience> experiences = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<UserTechStack1> userTechStacks = new ArrayList<>();
+
+    public void addTechStack(TechStackToDelete stack, Integer level) {
+        UserTechStack1 uts = UserTechStack1.builder()
+                .user(this)
+                .stack(stack)
+                .skillLevel(level)
+                .build();
+        userTechStacks.add(uts);
+    }
+
+    // 편의 메서드
+    public void addEducation(UserEducation education) {
+        educations.add(education);
+        education.setUser(this);
+    }
+
+    public void removeEducation(UserEducation education) {
+        educations.remove(education);
+        education.setUser(null);
+    }
+
+    public void addExperience(UserExperience experience) {
+        experiences.add(experience);
+        experience.setUser(this);
+    }
+
+    public void removeExperience(UserExperience experience) {
+        experiences.remove(experience);
+        experience.setUser(null);
+    }
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
-    private List<UserTechStack> userTechStacks;
+    private List<UserTechStack1> userTechStacks;
+
 
     @PrePersist
     void prePersist() {
@@ -77,6 +124,7 @@ public class User {
         this.nickname = nickname;
         this.provider = provider;
         this.providerUserId = providerUserId;
+        this.profileImage=profileImage;
         this.profileImage = profileImage;
     }
 

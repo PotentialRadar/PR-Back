@@ -1,7 +1,7 @@
 package com.potential_radar.PR.user.repository;
 
 import com.potential_radar.PR.user.domain.User;
-import com.potential_radar.PR.user.domain.UserTechStack1;
+import com.potential_radar.PR.user.domain.UserTechStack;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -9,20 +9,20 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
-public interface UserTechStackRepository extends JpaRepository<UserTechStack1, Long> {
+public interface UserTechStackRepository extends JpaRepository<UserTechStack, Long> {
     
-    List<UserTechStack1> findByUser(User user);
+    List<UserTechStack> findByUser(User user);
     
-    List<UserTechStack1> findByUserUserId(Long userId);
+    List<UserTechStack> findByUserUserId(Long userId);
     
-    Optional<UserTechStack1> findByUserAndUserTechStackId(User user, Long userTechStackId);
+    Optional<UserTechStack> findByUserAndUserTechStackId(User user, Long userTechStackId);
     
-    @Query("SELECT uts FROM UserTechStack1 uts " +
+    @Query("SELECT uts FROM UserTechStack uts " +
            "JOIN FETCH uts.stack " +
            "WHERE uts.user = :user")
-    List<UserTechStack1> findByUserWithTechStack(@Param("user") User user);
+    List<UserTechStack> findByUserWithTechStack(@Param("user") User user);
     
-    boolean existsByUserAndStack_StackId(User user, Long stackId);
+    boolean existsByUserAndStack_TechStackId(User user, Long techStackId);
     
     void deleteByUserAndUserTechStackId(User user, Long userTechStackId);
 }

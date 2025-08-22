@@ -11,6 +11,12 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Table(
+        name = "tech_stack",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_tech_stack_name", columnNames = "name")
+        }
+)
 public class TechStack {
 
     @Id

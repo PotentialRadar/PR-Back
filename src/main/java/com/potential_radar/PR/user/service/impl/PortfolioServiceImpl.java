@@ -1,12 +1,8 @@
 package com.potential_radar.PR.user.service.impl;
 
-import com.potential_radar.PR.techStack.domain.TechStackToDelete;
-import com.potential_radar.PR.techStack.repository.TechStackRepository;
-import com.potential_radar.PR.user.domain.User;
-import com.potential_radar.PR.user.domain.UserEducation;
-import com.potential_radar.PR.user.domain.UserExperience;
-import com.potential_radar.PR.user.domain.UserProfile;
-import com.potential_radar.PR.user.domain.UserTechStack1;
+import com.potential_radar.PR.tech.domain.TechStack;
+import com.potential_radar.PR.tech.repository.TechStackRepository;
+import com.potential_radar.PR.user.domain.*;
 import com.potential_radar.PR.user.dto.editPortfolio.UpdatedUserPortfolioResponse;
 import com.potential_radar.PR.user.dto.editPortfolio.UserPortfolioUpdateRequest;
 import com.potential_radar.PR.user.dto.education.UserEducationRequest;
@@ -15,11 +11,7 @@ import com.potential_radar.PR.user.dto.experience.UserExperienceRequest;
 import com.potential_radar.PR.user.dto.experience.UserExperienceResponse;
 import com.potential_radar.PR.user.dto.techStack.UserTechStackRequest;
 import com.potential_radar.PR.user.dto.techStack.UserTechStackResponse;
-import com.potential_radar.PR.user.repository.UserEducationRepository;
-import com.potential_radar.PR.user.repository.UserExperienceRepository;
-import com.potential_radar.PR.user.repository.UserProfileRepository;
-import com.potential_radar.PR.user.repository.UserRepository;
-import com.potential_radar.PR.user.repository.UserTechStackRepository;
+import com.potential_radar.PR.user.repository.*;
 import com.potential_radar.PR.user.service.PortfolioService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -133,12 +125,12 @@ public class PortfolioServiceImpl implements PortfolioService {
         
         if (request.techStacks() != null) {
             for (UserTechStackRequest techReq : request.techStacks()) {
-                TechStackToDelete techStackToDelete = stackRepository.findById(techReq.getStackId())
+                TechStack techStack = stackRepository.findById(techReq.getStackId())
                         .orElseThrow(() -> new IllegalArgumentException("기술 스택을 찾을 수 없습니다: " + techReq.getStackId()));
                 
-                UserTechStack1 userTechStack = UserTechStack1.builder()
+                UserTechStack userTechStack = UserTechStack.builder()
                         .user(user)
-                        .stack(techStackToDelete)
+                        .stack(techStack)
                         .skillLevel(techReq.getSkillLevel())
                         .build();
                 user.getUserTechStacks().add(userTechStack);

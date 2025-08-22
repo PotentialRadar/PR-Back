@@ -1,15 +1,14 @@
 package com.potential_radar.PR.user.domain;
 
 
-import com.potential_radar.PR.techStack.domain.TechStackToDelete;
+import com.potential_radar.PR.common.domain.BaseTimeEntity;
 import com.potential_radar.PR.tech.domain.TechPart;
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.ColumnDefault;
-import java.time.LocalDateTime;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,7 +24,7 @@ import java.util.List;
                 @UniqueConstraint(name = "uk_users_provider_providerUserId", columnNames = {"provider","provider_user_id"})
         }
 )
-public class User {
+public class User extends BaseTimeEntity {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long userId;
@@ -51,17 +50,6 @@ public class User {
     @Column(columnDefinition = "text")
     private String profileImage;
 
-    @Column(nullable = false)
-    @ColumnDefault("now()")
-    private LocalDateTime createdAt;
-
-    @Column(nullable = false)
-    @ColumnDefault("now()")
-    private LocalDateTime updatedAt;
-
-    @Column(columnDefinition = "text")
-    private String profileImage;
-
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private UserProfile userProfile;
 
@@ -71,17 +59,8 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<UserExperience> experiences = new ArrayList<>();
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<UserTechStack1> userTechStacks = new ArrayList<>();
-
-    public void addTechStack(TechStackToDelete stack, Integer level) {
-        UserTechStack1 uts = UserTechStack1.builder()
-                .user(this)
-                .stack(stack)
-                .skillLevel(level)
-                .build();
-        userTechStacks.add(uts);
-    }
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private List<UserTechStack> userTechStacks;
 
     // 편의 메서드
     public void addEducation(UserEducation education) {
@@ -103,18 +82,7 @@ public class User {
         experiences.remove(experience);
         experience.setUser(null);
     }
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
-    private List<UserTechStack1> userTechStacks;
 
-
-    @PrePersist
-    void prePersist() {
-        this.createdAt = this.updatedAt = LocalDateTime.now();
-    }
-    @PreUpdate
-    void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
 
     @Builder
     public User(String email, String password, String nickname,
@@ -124,7 +92,6 @@ public class User {
         this.nickname = nickname;
         this.provider = provider;
         this.providerUserId = providerUserId;
-        this.profileImage=profileImage;
         this.profileImage = profileImage;
     }
 
@@ -136,14 +103,6 @@ public class User {
                     .techPart(defaultTechPart)
                     .build();
         }
-    }
-
-    public void setUserProfile(UserProfile userProfile) {
-        this.userProfile = userProfile;
-    }
-
-    public void setProfileImage(String profileImage) {
-        this.profileImage = profileImage;
     }
 
     //== UserProfile 위임 메서드 ==//

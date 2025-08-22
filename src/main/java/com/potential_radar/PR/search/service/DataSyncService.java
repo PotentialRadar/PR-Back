@@ -96,7 +96,7 @@ public class DataSyncService {
         try {
             if (user.getUserTechStacks() != null && !user.getUserTechStacks().isEmpty()) {
                 return user.getUserTechStacks().stream()
-                        .map(uts -> uts.getTechStack().getName())
+                        .map(uts -> uts.getStack().getName())
                         .collect(Collectors.toList());
             }
         } catch (Exception e) {

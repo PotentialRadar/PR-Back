@@ -50,6 +50,17 @@ public class PortfolioController {
         UpdatedUserPortfolioResponse response = portfolioService.updatePortfolio(email, request);
         return ResponseEntity.ok(response);
     }
+    
+    // bio만 수정
+    @PatchMapping("/bio")
+    public ResponseEntity<Object> updateBio(
+            @RequestBody Map<String, String> request,
+            Principal principal) {
+        String email = principal.getName();
+        String bio = request.get("bio");
+        portfolioService.updateBio(email, bio);
+        return ResponseEntity.ok(Map.of("message", "자기소개가 수정되었습니다"));
+    }
 
     // === 교육 정보 CRUD ===
     

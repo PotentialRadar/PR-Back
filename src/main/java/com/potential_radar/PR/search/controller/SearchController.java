@@ -8,6 +8,8 @@ import com.potential_radar.PR.search.service.SearchService;
 import com.potential_radar.PR.search.service.DataSyncService;
 import com.potential_radar.PR.search.repository.UserSearchRepository;
 import com.potential_radar.PR.search.repository.ProjectSearchRepository;
+import com.potential_radar.PR.tech.repository.TechStackRepository;
+import com.potential_radar.PR.tech.domain.TechStack;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +28,7 @@ public class SearchController {
     private final DataSyncService dataSyncService;
     private final UserSearchRepository userSearchRepository;
     private final ProjectSearchRepository projectSearchRepository;
+    private final TechStackRepository techStackRepository;
 
     @GetMapping("/users")
     public ResponseEntity<SearchResult<UserSearchRes>> searchUsers(

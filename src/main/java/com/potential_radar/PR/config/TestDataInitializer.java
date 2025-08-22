@@ -51,24 +51,23 @@ public class TestDataInitializer implements CommandLineRunner {
 
         log.info("Initializing test data...");
         
-        // 1. TechPart 데이터 생성
-        initializeTechParts();
+        // TechPart 초기화는 TechPartService에서 @PostConstruct로 처리됨
         
-        // 2. TechStack 데이터 생성 (항상 실행하여 새 데이터 추가)
+        // 1. TechStack 데이터 생성 (항상 실행하여 새 데이터 추가)
         if (!hasTechStackData) {
             initializeTechStacks();
         } else {
             log.info("TechStack data already exists, skipping TechStack initialization");
         }
         
-        // 3. 100명의 사용자 데이터 생성
+        // 2. 100명의 사용자 데이터 생성
         if (!hasUserData) {
             initializeUsers();
         } else {
             log.info("User data already exists, skipping user initialization");
         }
         
-        // 4. 프로젝트 데이터 생성
+        // 3. 프로젝트 데이터 생성
         if (!hasProjectData) {
             initializeProjects();
         } else {
@@ -78,22 +77,6 @@ public class TestDataInitializer implements CommandLineRunner {
         log.info("Test data initialization completed successfully!");
     }
 
-    private void initializeTechParts() {
-        List<String> techPartNames = Arrays.asList(
-            "프론트엔드", "백엔드", "풀스택", "모바일", "데브옵스", 
-            "데이터사이언스", "AI/ML", "게임개발", "보안", "QA/테스터", 
-            "UI/UX디자인", "PM/기획"
-        );
-
-        for (String name : techPartNames) {
-            if (techPartRepository.findByNameIgnoreCase(name).isEmpty()) {
-                TechPart techPart = TechPart.builder()
-                    .name(name)
-                    .build();
-                techPartRepository.save(techPart);
-            }
-        }
-    }
 
     private void initializeTechStacks() {
         List<String> techStackNames = Arrays.asList(

@@ -142,4 +142,17 @@ public class PortfolioServiceImpl implements PortfolioService {
         // 업데이트된 정보 반환
         return getPortfolio(email);
     }
+    
+    @Override
+    @Transactional
+    public void updateBio(String email, String bio) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + email));
+        
+        UserProfile profile = user.getUserProfile();
+        if (profile != null) {
+            profile.setBio(bio);
+            userProfileRepository.save(profile);
+        }
+    }
 }

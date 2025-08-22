@@ -8,4 +8,6 @@ public interface PortfolioService {
     UpdatedUserPortfolioResponse getPortfolio(String email);
     
     UpdatedUserPortfolioResponse updatePortfolio(String email, UserPortfolioUpdateRequest request);
+    
+    void updateBio(String email, String bio);
 }

@@ -17,7 +17,11 @@ public class CacheConfig {
                 "userSearchResults",
                 "projectSearchResults",
                 "autoCompleteResults",
-                "searchHistory"
+                "searchHistory",
+                "techParts",        // 기술 파트 캐시
+                "techPartNames",    // 기술 파트명 리스트 캐시
+                "techStacks",       // 기술 스택 캐시
+                "techStackNames"    // 기술 스택명 리스트 캐시
         ));
         return cacheManager;
     }

@@ -33,6 +33,7 @@ public record OfficialPotfolioResponse(
         List<UserExperienceResponse> experiences,
         List<UserTechStackResponse> techStacks,
         List<UserProjectResponse> projects
+        // TODO :  받은 리뷰 리스트
 ) {
     public OfficialPotfolioResponse(UserProfile userProfile, User user,
                                    List<UserEducationResponse> educations,

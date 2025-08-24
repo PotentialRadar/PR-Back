@@ -16,12 +16,14 @@ import com.potential_radar.PR.project.repository.ProjectRecruitmentRepository;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -32,6 +34,9 @@ public class LikeService {
     private final UserRepository userRepository;
     private final ProjectRecruitmentRepository projectRecruitmentRepository;
     private final ProjectApplicationRepository projectApplicationRepository;
+    private final RedisTemplate<String, Object> redisTemplate;
+
+    private static final String LIKE_COUNT_KEY_PREFIX = "likeCount::";
 
     //좋아요 클릭
     @Transactional
@@ -52,8 +57,28 @@ public class LikeService {
         long likeCount = likeRepository.countByTargetTypeAndTargetId(requestDto.getTargetType(), requestDto.getTargetId());
         boolean isLiked = likeRepository.existsByUserAndTargetTypeAndTargetId(user, requestDto.getTargetType(), requestDto.getTargetId());
 
+        //캐시 업데이트
+        String key = generateLikeCountKey(requestDto.getTargetType(), requestDto.getTargetId());
+        redisTemplate.opsForValue().set(key, likeCount);
+
         return new LikeResponseDto(likeCount, isLiked);
     }
+
+    //좋아요 개수
+    @Transactional(readOnly = true)
+    public long getLikeCount(TargetType targetType, Long targetId) {
+        String key = generateLikeCountKey(targetType, targetId);
+        Object cachedValue = redisTemplate.opsForValue().get(key);
+
+        if (cachedValue != null) {
+            return ((Number) cachedValue).longValue();
+        } else {
+            long likeCount = likeRepository.countByTargetTypeAndTargetId(targetType, targetId);
+            redisTemplate.opsForValue().set(key, likeCount, 1, TimeUnit.HOURS); // 1시간 동안 캐시
+            return likeCount;
+        }
+    }
+
 
     //프로젝트 좋아요 조회
     @Transactional(readOnly = true)
@@ -113,5 +138,15 @@ public class LikeService {
                     .build());
         }
         return responses;
+    }
+     private String generateLikeCountKey(TargetType targetType, Long targetId) {
+        return LIKE_COUNT_KEY_PREFIX + targetType.name() + "::" + targetId;
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isLikedByUser(TargetType targetType, Long targetId, String username) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new NotFoundException("유저를 찾을 수 없습니다."));
+        return likeRepository.existsByUserAndTargetTypeAndTargetId(user, targetType, targetId);
     }
 }

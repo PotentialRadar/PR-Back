@@ -15,6 +15,8 @@ import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -55,15 +57,17 @@ public class ProjectRecruitmentController {
 
     // 프로젝트 전체 조회
     @GetMapping
-    public ResponseEntity<List<ProjectRecruitmentResponse>> getAllProjects() {
-        List<ProjectRecruitmentResponse> response = projectRecruitmentService.getAllProjects();
+    public ResponseEntity<Page<ProjectRecruitmentResponse>> getAllProjects(Authentication authentication, Pageable pageable) {
+        String userEmail = getUserEmailFromAuthentication(authentication);
+        Page<ProjectRecruitmentResponse> response = projectRecruitmentService.getAllProjects(userEmail, pageable);
         return ResponseEntity.ok(response);
     }
 
     // 구인글 단일 조회
     @GetMapping("/{id}")
-    public ResponseEntity<ProjectRecruitmentResponse> getProject(@PathVariable Long id) {
-        ProjectRecruitmentResponse response = projectRecruitmentService.getProject(id);
+    public ResponseEntity<ProjectRecruitmentResponse> getProject(@PathVariable Long id, Authentication authentication) {
+        String userEmail = getUserEmailFromAuthentication(authentication);
+        ProjectRecruitmentResponse response = projectRecruitmentService.getProject(id, userEmail);
         return ResponseEntity.ok(response);
     }
 

@@ -93,8 +93,13 @@ public class ProjectApplicationService {
     @Transactional(readOnly = true)
     public List<ProjectRecruitmentResponse> getAppliedProjectsByUser(Long userId) {
         List<ProjectApplication> applications = ProjectApplicationRepository.findByUser_UserIdWithUser(userId);
+        if (applications.isEmpty()) {
+            return List.of();
+        }
+        String userEmail = applications.get(0).getUser().getEmail();
+
         return applications.stream()
-                .map(application -> projectRecruitmentService.convertToResponseDto(application.getProject()))
+                .map(application -> projectRecruitmentService.convertToResponseDto(application.getProject(), userEmail))
                 .toList();
     }
 

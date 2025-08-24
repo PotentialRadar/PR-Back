@@ -4,6 +4,9 @@ package com.potential_radar.PR.project.service;
 import com.potential_radar.PR.common.exception.AccessDeniedException;
 import com.potential_radar.PR.common.exception.NotFoundException;
 
+import com.potential_radar.PR.like.domain.TargetType;
+import com.potential_radar.PR.like.repository.LikeRepository;
+import com.potential_radar.PR.like.service.LikeService;
 import com.potential_radar.PR.project.domain.*;
 import com.potential_radar.PR.project.dto.*;
 import com.potential_radar.PR.project.repository.*;
@@ -12,12 +15,14 @@ import com.potential_radar.PR.tech.domain.TechStack;
 import com.potential_radar.PR.tech.repository.TechPartRepository;
 import com.potential_radar.PR.tech.repository.TechStackRepository;
 import com.potential_radar.PR.user.domain.User;
+import com.potential_radar.PR.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
-import com.potential_radar.PR.project.dto.ProjectMemberResponseDTO;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Service
 @RequiredArgsConstructor
@@ -28,27 +33,34 @@ public class ProjectRecruitmentService {
     private final ProjectTechPartRepository projectTechPartRepository;
     private final ProjectTechStackRepository projectTechStackRepository;
     private final ProjectCommentRepository projectCommentRepository;
-    private final TechStackRepository techStackRepository; // New
-    private final TechPartRepository techPartRepository;   // New
-    private final LikeService likeService; // 좋아요 서비스 주입
+    private final TechStackRepository techStackRepository;
+    private final TechPartRepository techPartRepository;
+    private final LikeService likeService;
+    private final LikeRepository likeRepository;
+    private final UserRepository userRepository;
 
-    public ProjectRecruitmentResponse convertToResponseDto(ProjectRecruitment pr) {
-        // 스택
-        List<ProjectTechStackDTO> techStackDTOs = new ArrayList<>();
-        for (ProjectTechStack ts : pr.getTechStacks()) {
-            techStackDTOs.add(ProjectTechStackDTO.builder()
-                    .techStackName(ts.getTechStack().getName())
-                    .recruitCount(ts.getRecruitCount())
-                    .build());
+    public ProjectRecruitmentResponse convertToResponseDto(ProjectRecruitment pr, String userEmail) {
+        boolean isLiked = false;
+        if (userEmail != null) {
+            Optional<User> userOpt = userRepository.findByEmail(userEmail);
+            if (userOpt.isPresent()) {
+                isLiked = likeRepository.existsByUserAndTargetTypeAndTargetId(userOpt.get(), TargetType.PROJECT, pr.getProjectId());
+            }
         }
-        // 파트
-        List<ProjectPartRecruitmentDTO> partDTOs = new ArrayList<>();
-        for (ProjectTechPart pt : pr.getTechParts()) {
-            partDTOs.add(ProjectPartRecruitmentDTO.builder()
-                    .partName(pt.getTechPart().getName())
-                    .recruitCount(pt.getRecruitCount())
-                    .build());
-        }
+
+        List<ProjectTechStackDTO> techStackDTOs = pr.getTechStacks().stream()
+                .map(ts -> ProjectTechStackDTO.builder()
+                        .techStackName(ts.getTechStack().getName())
+                        .recruitCount(ts.getRecruitCount())
+                        .build())
+                .collect(Collectors.toList());
+
+        List<ProjectPartRecruitmentDTO> partDTOs = pr.getTechParts().stream()
+                .map(pt -> ProjectPartRecruitmentDTO.builder()
+                        .partName(pt.getTechPart().getName())
+                        .recruitCount(pt.getRecruitCount())
+                        .build())
+                .collect(Collectors.toList());
 
         int appliedCount = projectApplicationRepository.countByProject_ProjectId(pr.getProjectId());
         int acceptedCount = projectApplicationRepository.countByProject_ProjectIdAndStatus(
@@ -68,6 +80,7 @@ public class ProjectRecruitmentService {
                 .status(pr.getStatus().name())
                 .viewCount(pr.getViewCount())
                 .likeCount(likeCount)
+                .isLiked(isLiked)
                 .recruitCount(pr.getRecruitCount())
                 .appliedCount(appliedCount)
                 .acceptedCount(acceptedCount)
@@ -103,7 +116,7 @@ public class ProjectRecruitmentService {
                 if (cnt == null || cnt < 0) cnt = 0;
 
                 TechStack foundTechStack = techStackRepository
-                        .findByNameIgnoreCase(in) // 핵심
+                        .findByNameIgnoreCase(in)
                         .orElseThrow(() -> new NotFoundException("TechStack not found: " + in));
 
                 techStacks.add(ProjectTechStack.builder()
@@ -129,7 +142,7 @@ public class ProjectRecruitmentService {
                 if (!seen.add(key)) throw new IllegalArgumentException("Duplicate partName: " + raw);
 
                 TechPart foundTechPart = techPartRepository
-                        .findByNameIgnoreCase(raw) // ✅ 핵심
+                        .findByNameIgnoreCase(raw)
                         .orElseThrow(() -> new NotFoundException("TechPart not found: " + raw));
 
                 techParts.add(ProjectTechPart.builder()
@@ -141,106 +154,53 @@ public class ProjectRecruitmentService {
         }
         project.setTechParts(techParts);
 
-        projectRecruitmentRepository.save(project); // cascade로 하위 엔티티도 저장
+        projectRecruitmentRepository.save(project);
 
-        // 팀리더 멤버 보장
         if (!projectMemberRepository.existsByProject_ProjectIdAndUser_UserId(project.getProjectId(), teamLeader.getUserId())) {
             projectMemberRepository.save(ProjectMember.builder()
                     .project(project)
                     .user(teamLeader)
                     .role(ProjectMember.Role.LEADER)
-                    .techPart(null) // 리더는 파트 없어도 OK
+                    .techPart(null)
                     .build());
         }
 
         return project.getProjectId();
     }
 
-    //구인글 조회
     @Transactional
-    public ProjectRecruitmentResponse getProject(Long id) {
+    public ProjectRecruitmentResponse getProject(Long id, String userEmail) {
         ProjectRecruitment pr = projectRecruitmentRepository.findByIdWithTeamLeader(id)
                 .orElseThrow(() -> new NotFoundException("해당 구인글이 존재하지 않습니다."));
         pr.setViewCount(pr.getViewCount() == null ? 1 : pr.getViewCount() + 1);
-
-        // 스택 → DTO
-        List<ProjectTechStackDTO> techStackDTOs = new ArrayList<>();
-        for (ProjectTechStack ts : pr.getTechStacks()) {
-            techStackDTOs.add(ProjectTechStackDTO.builder()
-                    .techStackName(ts.getTechStack().getName()) // Get name from TechStack entity
-                    .recruitCount(ts.getRecruitCount())
-                    .build());
-        }
-
-        // 파트 → DTO
-        List<ProjectPartRecruitmentDTO> partDTOs = new ArrayList<>();
-        for (ProjectTechPart pt : pr.getTechParts()) {
-            partDTOs.add(ProjectPartRecruitmentDTO.builder()
-                    .partName(pt.getTechPart().getName()) // Get name from TechPart entity
-                    .recruitCount(pt.getRecruitCount())
-                    .build());
-        }
-
-        int appliedCount = projectApplicationRepository.countByProject_ProjectId(pr.getProjectId());
-        int acceptedCount = projectApplicationRepository.countByProject_ProjectIdAndStatus(
-                pr.getProjectId(), ProjectApplication.ApplicationStatus.ACCEPTED);
-        int remainingCount = pr.getRecruitCount() - acceptedCount;
-        long likeCount = likeService.getLikeCount(TargetType.PROJECT, pr.getProjectId());
-
-        return ProjectRecruitmentResponse.builder()
-                .projectId(pr.getProjectId())
-                .teamLeaderId(pr.getTeamLeader().getUserId())
-                .title(pr.getTitle())
-                .description(pr.getDescription())
-                .recruitDeadline(pr.getRecruitDeadline())
-                .startDate(pr.getStartDate())
-                .endDate(pr.getEndDate())
-                .fileUrl(pr.getFileUrl())
-                .status(pr.getStatus().name())
-                .viewCount(pr.getViewCount())
-                .likeCount(likeCount)
-                .recruitCount(pr.getRecruitCount())
-                .appliedCount(appliedCount)
-                .acceptedCount(acceptedCount)
-                .remainingCount(remainingCount)
-                .techStacks(techStackDTOs)
-                .recruitmentParts(partDTOs)
-                .build();
+        return convertToResponseDto(pr, userEmail);
     }
 
-    // 전체 구인글 목록 조회
     @Transactional(readOnly = true)
-    public List<ProjectRecruitmentResponse> getAllProjects() {
-        List<ProjectRecruitment> projects = projectRecruitmentRepository.findAll();
-        return projects.stream()
-                .map(this::convertToResponseDto)
-                .collect(Collectors.toList());
+    public Page<ProjectRecruitmentResponse> getAllProjects(String userEmail, Pageable pageable) {
+        Page<ProjectRecruitment> projects = projectRecruitmentRepository.findAll(pageable);
+        return projects.map(pr -> convertToResponseDto(pr, userEmail));
     }
 
-    // 사용자가 생성한 프로젝트 목록 조회
     @Transactional(readOnly = true)
     public List<ProjectRecruitmentResponse> getProjectsCreatedByUser(Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new NotFoundException("User not found"));
         List<ProjectRecruitment> projects = projectRecruitmentRepository.findByTeamLeader_UserId(userId);
         return projects.stream()
-                .map(this::convertToResponseDto)
+                .map(pr -> convertToResponseDto(pr, user.getEmail()))
                 .collect(Collectors.toList());
     }
 
-    // 확정된 프로젝트 멤버 목록 조회
     @Transactional(readOnly = true)
     public List<ProjectMemberResponseDTO> getConfirmedProjectMembers(Long projectId, Long currentUserId) {
-        // 1. 프로젝트 존재 여부 확인
-        ProjectRecruitment project = projectRecruitmentRepository.findById(projectId)
+        projectRecruitmentRepository.findById(projectId)
                 .orElseThrow(() -> new NotFoundException("프로젝트를 찾을 수 없습니다."));
 
-        // 2. 현재 사용자가 해당 프로젝트의 멤버인지 확인 (리더 또는 일반 멤버)
         projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, currentUserId)
                 .orElseThrow(() -> new AccessDeniedException("해당 프로젝트의 멤버만 팀원 목록을 볼 수 있습니다."));
 
-        // 3. 프로젝트의 모든 확정된 멤버 조회
         List<ProjectMember> members = projectMemberRepository.findAllByProject_ProjectId(projectId);
 
-        // 4. DTO로 변환
         return members.stream()
                 .map(member -> ProjectMemberResponseDTO.builder()
                         .userId(member.getUser().getUserId())
@@ -251,13 +211,11 @@ public class ProjectRecruitmentService {
                 .collect(Collectors.toList());
     }
 
-    // 구인글 수정 (전량 삭제 → 재삽입)
     @Transactional
     public void updateProject(Long id, ProjectRecruitmentRequest request) {
         ProjectRecruitment project = projectRecruitmentRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("해당 구인글이 존재하지 않습니다."));
 
-        // 1) 기본 필드 업데이트
         project.setTitle(request.getTitle());
         project.setDescription(request.getDescription());
         project.setRecruitDeadline(request.getRecruitDeadline());
@@ -267,15 +225,9 @@ public class ProjectRecruitmentService {
         if (request.getStatus() != null) project.setStatus(ProjectStatus.valueOf(request.getStatus()));
         if (request.getRecruitCount() != null) project.setRecruitCount(request.getRecruitCount());
 
-        // 2) 자식 전량 삭제 (벌크)
         projectTechStackRepository.deleteAllByProjectId(id);
         projectTechPartRepository.deleteAllByProjectId(id);
 
-        // (선택) DB에 삭제를 먼저 확정하고 싶다면 중간 flush
-        // em.flush();
-
-        // 3) 요청 바탕으로 자식 재삽입
-        // 3-1) TechStacks
         if (request.getTechStacks() != null && !request.getTechStacks().isEmpty()) {
             for (ProjectTechStackDTO tsDto : request.getTechStacks()) {
                 if (tsDto.getTechStackName() == null || tsDto.getTechStackName().isBlank()) {
@@ -312,7 +264,7 @@ public class ProjectRecruitmentService {
 
                 ProjectTechPart part = ProjectTechPart.builder()
                         .project(project)
-                        .techPart(foundTechPart) // Use the found TechPart entity
+                        .techPart(foundTechPart)
                         .recruitCount(cnt)
                         .build();
 

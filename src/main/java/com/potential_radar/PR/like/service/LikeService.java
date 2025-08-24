@@ -142,4 +142,11 @@ public class LikeService {
      private String generateLikeCountKey(TargetType targetType, Long targetId) {
         return LIKE_COUNT_KEY_PREFIX + targetType.name() + "::" + targetId;
     }
+
+    @Transactional(readOnly = true)
+    public boolean isLikedByUser(TargetType targetType, Long targetId, String username) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new NotFoundException("유저를 찾을 수 없습니다."));
+        return likeRepository.existsByUserAndTargetTypeAndTargetId(user, targetType, targetId);
+    }
 }

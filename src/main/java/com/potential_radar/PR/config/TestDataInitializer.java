@@ -43,7 +43,7 @@ public class TestDataInitializer implements CommandLineRunner {
     @Transactional
     public void run(String... args) throws Exception {
         // 이미 사용자 테스트 데이터가 있는지 확인
-        boolean hasUserData = userRepository.findByEmail("user001@naver.com").isPresent();
+        boolean hasUserData = userRepository.findByEmail("user001@example.com").isPresent();
         // TechStack 데이터가 있는지 확인 (새로 추가된 데이터)
         boolean hasTechStackData = techStackRepository.count() > 20; // 기본 데이터보다 많으면 초기화된 것으로 간주
         // 프로젝트 데이터가 있는지 확인
@@ -235,7 +235,7 @@ public class TestDataInitializer implements CommandLineRunner {
     private void initializeUsers() {
         List<TechPart> techParts = techPartRepository.findAll();
         Random random = new Random();
-        String hashedPassword = passwordEncoder.encode("1234"); // 공통 비밀번호
+        String hashedPassword = passwordEncoder.encode("password123"); // 공통 비밀번호
 
         String[] nicknames = {
             "코딩마스터001", "개발자김철수", "프론트엔드박영희", "백엔드이민수", "풀스택홍길동",
@@ -260,18 +260,30 @@ public class TestDataInitializer implements CommandLineRunner {
             "CommunityManager", "TechRecruiter", "StartupFounder", "TechConsultant", "DigitalNomad"
         };
 
+        Provider[] providers = {Provider.EMAIL, Provider.GOOGLE, Provider.KAKAO};
         ExperienceRange[] experienceRanges = ExperienceRange.values();
 
         for (int i = 0; i < 100; i++) {
             int userNum = i + 1;
+            
+            // Provider 결정 (EMAIL 60%, GOOGLE 20%, KAKAO 20%)
+            Provider provider;
+            if (i % 5 < 3) {
+                provider = Provider.EMAIL;
+            } else if (i % 5 == 3) {
+                provider = Provider.GOOGLE;
+            } else {
+                provider = Provider.KAKAO;
+            }
 
-            // User 생성 - 모든 계정을 EMAIL 로그인으로 변경
+            // User 생성
             User user = User.builder()
-                .email(String.format("user%03d@naver.com", userNum))
-                .password(hashedPassword) // 모든 계정이 1234 비밀번호 사용
+                .email(String.format("user%03d@example.com", userNum))
+                .password(provider == Provider.EMAIL ? hashedPassword : null)
                 .nickname(nicknames[i])
-                .provider(Provider.EMAIL) // 모든 계정을 EMAIL 로그인으로 설정
-                .providerUserId(null) // EMAIL 로그인이므로 null
+                .provider(provider)
+                .providerUserId(provider != Provider.EMAIL ? 
+                    provider.name().toLowerCase() + "_" + (random.nextInt(900000000) + 100000000) : null)
                 .profileImage(i % 3 != 0 ? String.format("https://example.com/profile/%03d.jpg", userNum) : null)
                 .build();
 

@@ -3,6 +3,7 @@ package com.potential_radar.PR.like.controller;
 import com.potential_radar.PR.like.domain.TargetType;
 import com.potential_radar.PR.like.dto.LikeRequestDto;
 import com.potential_radar.PR.like.dto.LikeResponseDto;
+import com.potential_radar.PR.like.dto.LikeStatusResponseDto;
 import com.potential_radar.PR.like.service.LikeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -37,5 +38,15 @@ public class LikeController {
 
         long likeCount = likeService.getLikeCount(targetType, targetId);
         return ResponseEntity.ok(likeCount);
+    }
+
+    @GetMapping("/status")
+    public ResponseEntity<LikeStatusResponseDto> getLikeStatus(
+            @RequestParam TargetType targetType,
+            @RequestParam Long targetId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        boolean isLiked = likeService.isLikedByUser(targetType, targetId, userDetails.getUsername());
+        return ResponseEntity.ok(new LikeStatusResponseDto(isLiked));
     }
 }

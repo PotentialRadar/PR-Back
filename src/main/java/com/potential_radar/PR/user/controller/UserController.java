@@ -89,4 +89,11 @@ public class UserController {
         List<ProjectRecruitmentResponse> likedProjects = likeService.getLikedProjects(userId);
         return ResponseEntity.ok(likedProjects);
     }
+
+    @GetMapping("/users/me/liked-projects")
+    public ResponseEntity<List<ProjectRecruitmentResponse>> getMyLikedProjects(Principal principal) {
+        User user = userService.findByEmail(principal.getName());
+        List<ProjectRecruitmentResponse> likedProjects = likeService.getLikedProjects(user.getUserId());
+        return ResponseEntity.ok(likedProjects);
+    }
 }

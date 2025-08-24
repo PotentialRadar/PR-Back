@@ -1,6 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 import os
+import logging
 
 from app.router.recommendation_router import router as recommendation_router
 from app.router.team_recommendation_router import router as team_recommendation_router
@@ -25,6 +28,28 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 전역 예외 처리기 추가
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    logger = logging.getLogger(__name__)
+    logger.error(f"❌ 유효성 검사 실패: {exc.errors()}")
+    try:
+        body = await request.body()
+        logger.error(f"❌ 요청 본문: {body.decode('utf-8')}")
+        body_str = body.decode('utf-8')
+    except Exception as e:
+        logger.error(f"❌ 요청 본문 읽기 실패: {e}")
+        body_str = "읽기 실패"
+    
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": "유효성 검사 실패",
+            "errors": exc.errors(),
+            "request_body": body_str
+        }
+    )
 
 # 라우터 등록
 app.include_router(recommendation_router, prefix="/api", tags=["recommendations"])

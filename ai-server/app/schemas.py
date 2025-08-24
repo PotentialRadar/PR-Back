@@ -34,7 +34,7 @@ class RecommendRequest(BaseModel):
         min_items=1,
         max_items=20
     )
-    liked_projects: List[LikedProject] = Field(
+    liked_projects: Optional[List[LikedProject]] = Field(
         default_factory=list,
         alias="likedProjects",
         description="사용자가 좋아요한 프로젝트 리스트",

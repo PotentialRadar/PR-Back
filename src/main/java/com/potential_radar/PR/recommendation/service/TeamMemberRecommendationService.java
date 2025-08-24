@@ -27,6 +27,18 @@ public class TeamMemberRecommendationService {
 
     public List<RecommendedMember> recommendTeamMembers(RecommendMemberRequest request) {
         log.info("🚀 AI 서버 호출 시작 - URL: {}/api/recommend/members", aiServerUrl);
+        log.info("🔍 요청 데이터 확인: projectId={}, requiredSkills={}, teamSize={}", 
+                request.getProjectId(), request.getRequiredSkills(), request.getTeamSize());
+        
+        // null 값 검증 및 기본값 설정
+        if (request.getProjectId() == null) {
+            log.warn("⚠️ projectId가 null입니다. 기본값 1로 설정");
+            request.setProjectId(1L);
+        }
+        if (request.getRequiredSkills() == null || request.getRequiredSkills().isEmpty()) {
+            log.warn("⚠️ requiredSkills가 null이거나 비어있습니다. 기본값 설정");
+            request.setRequiredSkills(List.of("React", "Node.js", "JavaScript"));
+        }
         
         try {
             String jsonResponse = webClient.post()

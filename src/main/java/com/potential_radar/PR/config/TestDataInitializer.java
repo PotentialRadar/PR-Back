@@ -7,6 +7,7 @@ import com.potential_radar.PR.tech.repository.TechStackRepository;
 import com.potential_radar.PR.user.domain.*;
 import com.potential_radar.PR.user.repository.UserRepository;
 import com.potential_radar.PR.user.repository.UserProfileRepository;
+import com.potential_radar.PR.user.repository.UserTechStackRepository;
 import com.potential_radar.PR.project.domain.*;
 import com.potential_radar.PR.project.repository.*;
 import com.potential_radar.PR.recommendation.repository.RecommendationHistoryRepository;
@@ -39,7 +40,9 @@ public class TestDataInitializer implements CommandLineRunner {
     private final ProjectTechStackRepository projectTechStackRepository;
     private final ProjectTechPartRepository projectTechPartRepository;
     private final ProjectApplicationRepository projectApplicationRepository;
+    private final ProjectMemberRepository projectMemberRepository;
     private final RecommendationHistoryRepository recommendationHistoryRepository;
+    private final UserTechStackRepository userTechStackRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -71,6 +74,14 @@ public class TestDataInitializer implements CommandLineRunner {
             log.info("User data already exists, skipping user initialization");
         }
         
+        // 5. 사용자 기술스택 데이터 생성 (AI 추천을 위해)
+        boolean hasUserTechStackData = userTechStackRepository.count() > 0;
+        if (!hasUserTechStackData) {
+            initializeUserTechStacks();
+        } else {
+            log.info("User tech stack data already exists, skipping initialization");
+        }
+        
         // 4. 프로젝트 데이터 생성 (기술스택 매칭 개선을 위해 항상 재생성)
         // 기존 프로젝트 데이터 삭제 (외래키 제약조건 고려하여 순서대로)
         if (hasProjectData) {
@@ -79,16 +90,20 @@ public class TestDataInitializer implements CommandLineRunner {
             recommendationHistoryRepository.deleteAll();
             log.info("Deleted recommendation histories");
             
-            // 2단계: 프로젝트 지원 삭제 (project_application)
+            // 2단계: 프로젝트 멤버 삭제 (project_member)
+            projectMemberRepository.deleteAll();
+            log.info("Deleted project members");
+            
+            // 3단계: 프로젝트 지원 삭제 (project_application)
             projectApplicationRepository.deleteAll();
             log.info("Deleted project applications");
             
-            // 3단계: 프로젝트 관련 연결 테이블 삭제
+            // 4단계: 프로젝트 관련 연결 테이블 삭제
             projectTechStackRepository.deleteAll();
             projectTechPartRepository.deleteAll();
             log.info("Deleted project relations");
             
-            // 4단계: 프로젝트 삭제
+            // 5단계: 프로젝트 삭제
             projectRecruitmentRepository.deleteAll();
             log.info("Deleted projects");
         }
@@ -405,7 +420,27 @@ public class TestDataInitializer implements CommandLineRunner {
             "게임 스트리밍 및 커뮤니티 플랫폼",
             "AI 기반 법률 자문 챗봇 서비스",
             "실시간 농작물 모니터링 스마트팜",
-            "가상현실 기반 원격 교육 시스템"
+            "가상현실 기반 원격 교육 시스템",
+            "React 기반 소셜 네트워킹 플랫폼",
+            "Spring Boot 마이크로서비스 아키텍처",
+            "Flutter 크로스플랫폼 모바일 앱",
+            "Vue.js 기반 전자상거래 사이트",
+            "Django REST API 백엔드 서버",
+            "Angular 기반 대시보드 시스템",
+            "Node.js 실시간 채팅 애플리케이션",
+            "Python 데이터 분석 플랫폼",
+            "Java 기반 엔터프라이즈 솔루션",
+            "TypeScript 기반 프로젝트 관리 도구",
+            "Go 언어 기반 고성능 API 서버",
+            "Rust 기반 시스템 프로그래밍 도구",
+            "Unity 3D 인디 게임 개발",
+            "React Native 모바일 커머스 앱",
+            "Kotlin Android 네이티브 앱",
+            "Swift iOS 소셜 미디어 앱",
+            "Docker 컨테이너 기반 DevOps 플랫폼",
+            "Kubernetes 클러스터 관리 시스템",
+            "PostgreSQL 기반 데이터베이스 설계",
+            "MongoDB NoSQL 문서 관리 시스템"
         };
 
         String[] projectDescriptions = {
@@ -438,10 +473,30 @@ public class TestDataInitializer implements CommandLineRunner {
             "게임 스트리밍과 게이머 커뮤니티 기능을 통합한 종합 플랫폼입니다.",
             "AI 기술을 활용하여 법률 질문에 대한 기초적인 자문을 제공하는 챗봇입니다.",
             "센서와 AI를 활용하여 농작물의 생육 상태를 실시간으로 모니터링합니다.",
-            "VR 기술을 활용하여 몰입감 있는 원격 교육 환경을 제공하는 시스템입니다."
+            "VR 기술을 활용하여 몰입감 있는 원격 교육 환경을 제공하는 시스템입니다.",
+            "React와 Node.js를 활용한 현대적인 소셜 네트워킹 플랫폼을 구축합니다.",
+            "Spring Boot 기반의 확장 가능한 마이크로서비스 아키텍처를 설계합니다.",
+            "Flutter를 사용하여 iOS와 Android에서 동시에 작동하는 모바일 앱을 개발합니다.",
+            "Vue.js와 최신 프론트엔드 기술을 활용한 전자상거래 웹사이트를 구현합니다.",
+            "Django REST Framework로 확장성 있는 백엔드 API 서버를 구축합니다.",
+            "Angular를 활용한 반응형 관리자 대시보드 시스템을 개발합니다.",
+            "Node.js와 Socket.io를 사용한 실시간 멀티채널 채팅 서비스를 구현합니다.",
+            "Python과 Pandas, NumPy를 활용한 빅데이터 분석 플랫폼을 구축합니다.",
+            "Java와 Spring 생태계를 활용한 대규모 엔터프라이즈 솔루션을 개발합니다.",
+            "TypeScript의 타입 안정성을 활용한 프로젝트 관리 도구를 구현합니다.",
+            "Go 언어의 동시성을 활용한 고성능 REST API 서버를 개발합니다.",
+            "Rust의 메모리 안전성을 활용한 시스템 레벨 프로그래밍 도구를 구축합니다.",
+            "Unity 3D 엔진을 활용한 3D 인디 게임을 개발하고 스팀에 출시합니다.",
+            "React Native로 크로스플랫폼 모바일 커머스 애플리케이션을 구현합니다.",
+            "Kotlin을 사용한 Android 네이티브 앱으로 최적화된 사용자 경험을 제공합니다.",
+            "Swift와 SwiftUI를 활용한 iOS 전용 소셜 미디어 앱을 개발합니다.",
+            "Docker 컨테이너 기술을 활용한 CI/CD 파이프라인과 DevOps 플랫폼을 구축합니다.",
+            "Kubernetes를 활용한 컨테이너 오케스트레이션 및 클러스터 관리 시스템을 구현합니다.",
+            "PostgreSQL의 고급 기능을 활용한 확장성 있는 데이터베이스 아키텍처를 설계합니다.",
+            "MongoDB의 유연성을 활용한 NoSQL 기반 문서 관리 및 검색 시스템을 구축합니다."
         };
 
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 50; i++) {
             // 팀 리더 선택 (랜덤하게 선택)
             User teamLeader = users.get(random.nextInt(users.size()));
             
@@ -511,14 +566,14 @@ public class TestDataInitializer implements CommandLineRunner {
             }
         }
         
-        log.info("Successfully created 100 projects with related tech parts and tech stacks");
+        log.info("Successfully created 50 projects with related tech parts and tech stacks");
     }
     
     /**
      * 프로젝트별로 적절한 기술스택을 반환합니다
      */
     private List<String> getProjectTechStacks(int projectIndex, String projectTitle) {
-        return switch (projectIndex % 30) {
+        return switch (projectIndex % 50) {
             case 0 -> Arrays.asList("React", "TypeScript", "Node.js", "Python", "PostgreSQL", "Docker");
             case 1 -> Arrays.asList("React", "JavaScript", "Node.js", "Express.js", "Socket.io", "MongoDB");
             case 2 -> Arrays.asList("Vue.js", "JavaScript", "Python", "Django", "PostgreSQL", "Redis");
@@ -527,29 +582,96 @@ public class TestDataInitializer implements CommandLineRunner {
             case 5 -> Arrays.asList("React Native", "TypeScript", "Node.js", "MongoDB", "AWS");
             case 6 -> Arrays.asList("Angular", "TypeScript", "Java", "Spring Boot", "PostgreSQL", "Docker");
             case 7 -> Arrays.asList("React", "TypeScript", "Python", "FastAPI", "PostgreSQL", "Docker");
-            case 8 -> Arrays.asList("Vue.js", "JavaScript", "Node.js", "Express.js", "MongoDB", "Jest");
-            case 9 -> Arrays.asList("Python", "Django", "React", "JavaScript", "PostgreSQL", "AWS");
-            case 10 -> Arrays.asList("React", "TypeScript", "Solidity", "Node.js", "MongoDB", "Web3.js");
-            case 11 -> Arrays.asList("React Native", "TypeScript", "Python", "Django", "PostgreSQL");
-            case 12 -> Arrays.asList("Flutter", "Dart", "Node.js", "MongoDB", "Firebase");
-            case 13 -> Arrays.asList("Java", "Spring Boot", "React", "TypeScript", "PostgreSQL", "Docker");
-            case 14 -> Arrays.asList("Unity 3D", "C#", "Node.js", "MongoDB", "AWS");
-            case 15 -> Arrays.asList("Python", "TensorFlow", "React", "TypeScript", "PostgreSQL");
-            case 16 -> Arrays.asList("React", "TypeScript", "Python", "Django", "PostgreSQL", "Redis");
-            case 17 -> Arrays.asList("Vue.js", "JavaScript", "Node.js", "PostgreSQL", "Docker");
-            case 18 -> Arrays.asList("Java", "Spring Boot", "React", "JavaScript", "PostgreSQL", "AWS");
-            case 19 -> Arrays.asList("React", "TypeScript", "Solidity", "Node.js", "MongoDB");
-            case 20 -> Arrays.asList("React Native", "TypeScript", "Python", "FastAPI", "MongoDB");
-            case 21 -> Arrays.asList("Vue.js", "JavaScript", "Java", "Spring Boot", "PostgreSQL");
-            case 22 -> Arrays.asList("React", "TypeScript", "Solidity", "Web3.js", "MongoDB");
-            case 23 -> Arrays.asList("Python", "TensorFlow", "React", "JavaScript", "PostgreSQL");
-            case 24 -> Arrays.asList("Java", "Spring Boot", "React", "TypeScript", "PostgreSQL", "Docker");
+            case 8 -> Arrays.asList("Flutter", "Dart", "Firebase", "Node.js", "MongoDB");
+            case 9 -> Arrays.asList("Python", "NumPy", "Pandas", "Scikit-learn", "PostgreSQL", "Docker");
+            case 10 -> Arrays.asList("React", "TypeScript", "Solidity", "Web3.js", "MongoDB");
+            case 11 -> Arrays.asList("Python", "TensorFlow", "React", "Node.js", "PostgreSQL");
+            case 12 -> Arrays.asList("React Native", "TypeScript", "Firebase", "AWS");
+            case 13 -> Arrays.asList("Java", "Spring Boot", "React", "PostgreSQL", "Docker", "Kubernetes");
+            case 14 -> Arrays.asList("Unity", "C#", "Blender", "Firebase");
+            case 15 -> Arrays.asList("Python", "Selenium", "React", "Node.js", "PostgreSQL");
+            case 16 -> Arrays.asList("React", "TypeScript", "Python", "TensorFlow", "PostgreSQL");
+            case 17 -> Arrays.asList("Angular", "TypeScript", "Java", "Spring Boot", "PostgreSQL");
+            case 18 -> Arrays.asList("Python", "Django", "React", "PostgreSQL", "AWS");
+            case 19 -> Arrays.asList("React", "JavaScript", "Node.js", "MongoDB", "AWS");
+            case 20 -> Arrays.asList("Python", "TensorFlow", "React", "Node.js", "MongoDB");
+            case 21 -> Arrays.asList("React", "TypeScript", "Node.js", "PostgreSQL", "Redis");
+            case 22 -> Arrays.asList("Solidity", "Web3.js", "React", "Node.js", "MongoDB");
+            case 23 -> Arrays.asList("Python", "TensorFlow", "React", "Node.js", "PostgreSQL");
+            case 24 -> Arrays.asList("Java", "Spring Boot", "React", "PostgreSQL", "AWS");
             case 25 -> Arrays.asList("React", "TypeScript", "Node.js", "PostgreSQL", "Docker");
-            case 26 -> Arrays.asList("Unity 3D", "C#", "React", "JavaScript", "MongoDB");
-            case 27 -> Arrays.asList("Python", "Django", "React", "TypeScript", "PostgreSQL");
+            case 26 -> Arrays.asList("Unity", "C#", "React", "Node.js", "MongoDB");
+            case 27 -> Arrays.asList("Python", "TensorFlow", "React", "PostgreSQL", "Docker");
             case 28 -> Arrays.asList("Java", "Spring Boot", "Python", "PostgreSQL", "Docker");
-            case 29 -> Arrays.asList("React", "TypeScript", "Unity 3D", "C#", "MongoDB");
+            case 29 -> Arrays.asList("Unity", "C#", "Blender", "Node.js", "MongoDB");
+            case 30 -> Arrays.asList("React", "TypeScript", "Node.js", "MongoDB", "Docker");
+            case 31 -> Arrays.asList("Java", "Spring Boot", "PostgreSQL", "Docker", "Kubernetes");
+            case 32 -> Arrays.asList("Flutter", "Dart", "Firebase", "MongoDB");
+            case 33 -> Arrays.asList("Vue.js", "JavaScript", "Node.js", "PostgreSQL", "Docker");
+            case 34 -> Arrays.asList("Python", "Django", "PostgreSQL", "Redis", "Docker");
+            case 35 -> Arrays.asList("Angular", "TypeScript", "Java", "PostgreSQL", "Docker");
+            case 36 -> Arrays.asList("Node.js", "JavaScript", "Socket.io", "MongoDB", "Redis");
+            case 37 -> Arrays.asList("Python", "Pandas", "NumPy", "PostgreSQL", "Docker");
+            case 38 -> Arrays.asList("Java", "Spring Boot", "PostgreSQL", "Docker", "AWS");
+            case 39 -> Arrays.asList("TypeScript", "React", "Node.js", "PostgreSQL", "Docker");
+            case 40 -> Arrays.asList("Go", "PostgreSQL", "Redis", "Docker", "Kubernetes");
+            case 41 -> Arrays.asList("Rust", "PostgreSQL", "Docker", "Linux");
+            case 42 -> Arrays.asList("Unity", "C#", "Blender", "Firebase");
+            case 43 -> Arrays.asList("React Native", "TypeScript", "Firebase", "MongoDB");
+            case 44 -> Arrays.asList("Kotlin", "Android", "Firebase", "SQLite");
+            case 45 -> Arrays.asList("Swift", "iOS", "Firebase", "CoreData");
+            case 46 -> Arrays.asList("Docker", "Kubernetes", "Jenkins", "AWS", "Linux");
+            case 47 -> Arrays.asList("Kubernetes", "Docker", "Helm", "AWS", "Linux");
+            case 48 -> Arrays.asList("PostgreSQL", "Docker", "pgAdmin", "AWS");
+            case 49 -> Arrays.asList("MongoDB", "Node.js", "Express.js", "Docker");
             default -> Arrays.asList("JavaScript", "Node.js", "MongoDB");
         };
+    }
+    
+    /**
+     * 사용자 기술스택 데이터 초기화
+     * 각 사용자에게 3-7개의 기술스택을 랜덤으로 할당
+     */
+    private void initializeUserTechStacks() {
+        log.info("Initializing user tech stack data...");
+        
+        List<User> users = userRepository.findAll();
+        List<TechStack> techStacks = techStackRepository.findAll();
+        Random random = new Random();
+        
+        if (users.isEmpty() || techStacks.isEmpty()) {
+            log.warn("Required data not found. Users: {}, TechStacks: {}", 
+                users.size(), techStacks.size());
+            return;
+        }
+        
+        for (User user : users) {
+            // 각 사용자에게 3-7개의 기술스택 할당
+            int techStackCount = random.nextInt(5) + 3; // 3-7개
+            List<TechStack> selectedTechStacks = new java.util.ArrayList<>();
+            
+            // 중복 없이 기술스택 선택
+            for (int i = 0; i < techStackCount; i++) {
+                TechStack techStack;
+                do {
+                    techStack = techStacks.get(random.nextInt(techStacks.size()));
+                } while (selectedTechStacks.contains(techStack));
+                
+                selectedTechStacks.add(techStack);
+                
+                // UserTechStack 생성
+                UserTechStack userTechStack = UserTechStack.builder()
+                    .user(user)
+                    .stack(techStack)
+                    .skillLevel(random.nextInt(5) + 1) // 1-5 레벨
+                    .build();
+                
+                userTechStackRepository.save(userTechStack);
+            }
+        }
+        
+        long totalUserTechStacks = userTechStackRepository.count();
+        log.info("Successfully created {} user tech stack relationships for {} users", 
+            totalUserTechStacks, users.size());
     }
 }

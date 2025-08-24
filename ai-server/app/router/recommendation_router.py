@@ -73,10 +73,29 @@ def get_recommended_projects(
 ) -> List[ProjectRecommendation]:
     # 전처리: 요청 기술스택 정규화
     tech_stack_dicts = [ts.dict() for ts in request.tech_stacks]
-    user_norm = normalize_tech_stacks(tech_stack_dicts, min_level=1, max_level=5)
+    user_norm = normalize_tech_stacks(tech_stack_dicts, min_level=1, max_level=5, allow_unknown=True)
     user_names = to_name_list(user_norm)
     
+    # 개발도구를 실제 기술스택으로 확장
+    from app.utils.preprocess import expand_dev_tools_to_tech_stacks
+    user_names_expanded = expand_dev_tools_to_tech_stacks(user_names)
+    logger.info(f"🔧 개발도구 확장 전: {user_names}")
+    logger.info(f"🚀 개발도구 확장 후: {user_names_expanded}")
+    user_names = user_names_expanded
+    
     logger.info(f"🔍 사용자 기술스택: {user_names}")
+    
+    # 디버깅: DB에서 로드된 기술스택 확인
+    from app.utils.preprocess import get_allowed_tech
+    allowed_techs = get_allowed_tech()
+    logger.info(f"🔍 DB에서 로드된 기술스택 개수: {len(allowed_techs)}")
+    logger.info(f"🔍 사용자 기술 중 DB에 있는 것들: {[tech for tech in user_names if tech in allowed_techs]}")
+    logger.info(f"🔍 사용자 기술 중 DB에 없는 것들: {[tech for tech in user_names if tech not in allowed_techs]}")
+    
+    # 샘플로 DB 기술스택 몇 개 출력
+    sample_techs = list(allowed_techs)[:10]
+    logger.info(f"🔍 DB 기술스택 샘플: {sample_techs}")
+    
     
     # 좋아요 패턴 분석 (새로 추가)
     like_analyzer = LikePatternAnalyzer()
@@ -112,7 +131,7 @@ def get_recommended_projects(
     all_projects = []
     for p in db_projects:
         tech_stacks = [ts.tech_stack.name for ts in p.tech_stacks if ts.tech_stack]
-        logger.info(f"🔍 프로젝트 {p.project_id} ({p.title}): {tech_stacks}")
+        logger.debug(f"🔍 프로젝트 {p.project_id} ({p.title}): {tech_stacks}")
         
         all_projects.append(ProjectRecommendation(
             projectId=p.project_id,
@@ -123,6 +142,13 @@ def get_recommended_projects(
         ))
     
     logger.info(f"📊 총 {len(all_projects)}개 프로젝트 변환 완료")
+    
+    # 프로젝트에서 실제 사용되는 기술스택 확인
+    project_techs_sample = []
+    for p in all_projects[:3]:  # 처음 3개 프로젝트만
+        logger.info(f"🔍 프로젝트 {p.projectId} 기술스택: {p.projectTechStacks}")
+        project_techs_sample.extend(p.projectTechStacks[:3])  # 각 프로젝트에서 3개씩
+    logger.info(f"🔍 실제 프로젝트들이 사용하는 기술스택 샘플: {project_techs_sample[:10]}")
 
     scored: List[ProjectRecommendation] = []
     explainer = RecommendationExplainer()
@@ -130,7 +156,7 @@ def get_recommended_projects(
     for p in all_projects:
         # 프로젝트 스택도 정규화하여 공정 비교
         proj_raw = [{"name": name, "level": 3} for name in p.projectTechStacks]
-        proj_norm = normalize_tech_stacks(proj_raw, min_level=1, max_level=5)
+        proj_norm = normalize_tech_stacks(proj_raw, min_level=1, max_level=5, allow_unknown=True)
         proj_names = to_name_list(proj_norm)
         
         logger.debug(f"프로젝트 {p.projectId} 기술스택: {proj_names}")
@@ -167,16 +193,16 @@ def get_recommended_projects(
             score = tech_score
             logger.debug(f"기술스택 점수만 사용 - 프로젝트 {p.projectId}: {score:.3f}")
 
-        logger.info(f"🔍 점수 계산 - 프로젝트 {p.projectId} ({p.title}): overlap={overlap:.2f}, tech_score={tech_score:.4f}, final_score={score:.4f}")
-        logger.info(f"  사용자 기술: {user_names}")
-        logger.info(f"  프로젝트 기술: {proj_names}")
-        logger.info(f"  교집합: {u_set & p_set}")
+        logger.debug(f"🔍 점수 계산 - 프로젝트 {p.projectId} ({p.title}): overlap={overlap:.2f}, tech_score={tech_score:.4f}, final_score={score:.4f}")
+        logger.debug(f"  사용자 기술: {user_names}")
+        logger.debug(f"  프로젝트 기술: {proj_names}")
+        logger.debug(f"  교집합: {u_set & p_set}")
 
         # Explanation 생성
         try:
-            logger.info(f"설명 생성 시작 - 프로젝트 {p.projectId}: {p.title}")
-            logger.info(f"사용자 기술: {user_names}")
-            logger.info(f"프로젝트 기술: {proj_names}")
+            logger.debug(f"설명 생성 시작 - 프로젝트 {p.projectId}: {p.title}")
+            logger.debug(f"사용자 기술: {user_names}")
+            logger.debug(f"프로젝트 기술: {proj_names}")
             
             explanation_data = explainer.generate_explanation(
                 user_techs=user_names,
@@ -187,9 +213,9 @@ def get_recommended_projects(
                 match_score=score
             )
             
-            logger.info(f"설명 데이터 생성됨: {explanation_data}")
+            logger.debug(f"설명 데이터 생성됨: {explanation_data}")
             explanation = RecommendationExplanation(**explanation_data)
-            logger.info(f"설명 객체 생성 완료: {explanation}")
+            logger.debug(f"설명 객체 생성 완료: {explanation}")
         except Exception as e:
             logger.error(f"설명 생성 실패 (프로젝트 {p.projectId}): {e}")
             logger.error(f"예외 상세: {type(e).__name__}: {str(e)}")

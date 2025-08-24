@@ -1,6 +1,5 @@
 package com.potential_radar.PR.recommendation.service;
 
-import com.potential_radar.PR.common.exception.RecommendationServiceException;
 import com.potential_radar.PR.like.domain.Like;
 import com.potential_radar.PR.like.domain.TargetType;
 import com.potential_radar.PR.like.repository.LikeRepository;
@@ -13,7 +12,9 @@ import com.potential_radar.PR.recommendation.dto.RecommendRequest;
 import com.potential_radar.PR.recommendation.dto.RecommendedProjectResponse;
 import com.potential_radar.PR.recommendation.repository.RecommendationHistoryRepository;
 import com.potential_radar.PR.user.domain.User;
+import com.potential_radar.PR.user.domain.UserTechStack;
 import com.potential_radar.PR.user.repository.UserRepository;
+import com.potential_radar.PR.user.repository.UserTechStackRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,6 +39,7 @@ public class RecommendationService {
     private final ProjectRecruitmentRepository projectRecruitmentRepository;
     private final ProjectApplicationRepository projectApplicationRepository;
     private final LikeRepository likeRepository;
+    private final UserTechStackRepository userTechStackRepository;
 
     // AI 모델 버전을 명시적으로 관리합니다.
     private static final String CURRENT_MODEL_VERSION = "1.0-hybrid";
@@ -48,13 +50,15 @@ public class RecommendationService {
                                  UserRepository userRepository,
                                  ProjectRecruitmentRepository projectRecruitmentRepository,
                                  ProjectApplicationRepository projectApplicationRepository,
-                                 LikeRepository likeRepository) {
+                                 LikeRepository likeRepository,
+                                 UserTechStackRepository userTechStackRepository) {
         this.pythonApiHost = pythonApiHost;
         this.recommendationHistoryRepository = recommendationHistoryRepository;
         this.userRepository = userRepository;
         this.projectRecruitmentRepository = projectRecruitmentRepository;
         this.projectApplicationRepository = projectApplicationRepository;
         this.likeRepository = likeRepository;
+        this.userTechStackRepository = userTechStackRepository;
         this.webClient = webClientBuilder.baseUrl(pythonApiHost).build();
     }
 
@@ -77,7 +81,12 @@ public class RecommendationService {
                 strict, topN, minScore, minOverlap);
 
         try {
-            // 좋아요 데이터 포함 여부 확인 및 수집  
+            // 1. 사용자 기술스택 데이터 수집
+            List<RecommendRequest.TechStackForAI> userTechStacks = getUserTechStacks(request.getUserId());
+            request.setTechStacks(userTechStacks);
+            log.info("🔧 사용자 기술스택 수집 완료: {}", userTechStacks);
+            
+            // 2. 좋아요 데이터 포함 여부 확인 및 수집  
             log.info("🔍 좋아요 데이터 포함 여부 확인: includeLikes={}", request.isIncludeLikes());
             if (request.isIncludeLikes()) {
                 List<LikedProject> likedProjects = getUserLikedProjects(request.getUserId());
@@ -135,7 +144,13 @@ public class RecommendationService {
 
             return recommendedProjects;
         } catch (WebClientResponseException e) {
-            log.error("FastAPI 응답 오류: {}", e.getResponseBodyAsString());
+            log.error("FastAPI 응답 오류: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
+            
+            // AI 서버 오류 시 빈 리스트 반환
+            if (e.getStatusCode().is4xxClientError() || e.getStatusCode().is5xxServerError()) {
+                log.warn("AI 서버 오류로 인한 빈 리스트 반환");
+                return Collections.emptyList();
+            }
             throw e;
         } catch (Exception e) {
             log.error("추천 서비스 예외: {}", e.getMessage(), e);
@@ -264,6 +279,49 @@ public class RecommendationService {
         } catch (Exception e) {
             log.error("❌ Like를 LikedProject로 변환 실패 (likeId: {}): {}", like.getId(), e.getMessage());
             return null;
+        }
+    }
+    
+    /**
+     * 사용자의 기술스택 데이터 수집
+     * DB에서 사용자의 기술스택을 조회하여 이름 리스트로 변환
+     */
+    private List<RecommendRequest.TechStackForAI> getUserTechStacks(Long userId) {
+        try {
+            log.info("🔧 사용자 {}의 기술스택 데이터 수집 시작", userId);
+            
+            // 사용자 존재 여부 확인
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다: " + userId));
+            
+            // 사용자 기술스택 조회
+            List<UserTechStack> userTechStacks = userTechStackRepository.findByUserWithTechStack(user);
+            
+            log.info("🔍 사용자 {}의 기술스택 {}개 발견", userId, userTechStacks.size());
+            
+            if (userTechStacks.isEmpty()) {
+                log.warn("⚠️ 사용자 {}는 등록된 기술스택이 없습니다", userId);
+                return List.of();
+            }
+            
+            // UserTechStack을 AI 서버용 DTO로 변환
+            List<RecommendRequest.TechStackForAI> techStacksForAI = userTechStacks.stream()
+                    .map(uts -> new RecommendRequest.TechStackForAI(
+                        uts.getStack().getName().toLowerCase(), // Python에서 소문자로 처리
+                        uts.getSkillLevel()
+                    ))
+                    .toList();
+                    
+            log.info("🎯 사용자 {}의 기술스택 변환 완료:", userId);
+            techStacksForAI.forEach(tech -> 
+                log.info("  - {} (레벨: {})", tech.getName(), tech.getLevel())
+            );
+            return techStacksForAI;
+                    
+        } catch (Exception e) {
+            log.error("❌ 사용자 기술스택 데이터 수집 실패 (userId: {}): {}", userId, e.getMessage(), e);
+            // 기술스택 데이터 수집 실패는 전체 추천을 중단시키지 않음
+            return List.of();
         }
     }
 }

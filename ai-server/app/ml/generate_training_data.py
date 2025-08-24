@@ -78,12 +78,37 @@ def generate_training_data():
                 "tech_stacks": [ts.tech_stack.name for ts in p.tech_stacks]
             })
         
+        # 실제 DB 사용자 기술스택 가져오기 (Raw SQL 사용)
+        user_tech_query = """
+        SELECT u.user_id, u.email, ts.name as tech_name, uts.skill_level
+        FROM users u 
+        JOIN user_tech_stack uts ON u.user_id = uts.user_id
+        JOIN tech_stack ts ON uts.stack_id = ts.tech_stack_id
+        ORDER BY u.user_id
+        """
+        
+        from sqlalchemy import text
+        result = db.execute(text(user_tech_query)).fetchall()
+        
+        # 사용자별로 기술스택 그룹핑
+        user_data = {}
+        for row in result:
+            user_id = row.user_id
+            if user_id not in user_data:
+                user_data[user_id] = {"email": row.email, "techs": []}
+            user_data[user_id]["techs"].append({"name": row.tech_name, "level": row.skill_level})
+        
+        print(f"데이터베이스에서 {len(user_data)}명의 사용자 로드")
+        
         # 훈련 데이터 생성
         training_data = []
         
-        for user_profile in USER_PROFILES:
-            user_name = user_profile["name"]
-            user_techs = user_profile["techs"]
+        for user_id, user_info in user_data.items():
+            user_name = f"User_{user_id} ({user_info['email']})"
+            user_techs = user_info["techs"]
+            
+            if not user_techs:  # 기술스택이 없는 사용자는 건너뛰기
+                continue
             
             # 사용자 기술스택 정규화
             user_norm = normalize_tech_stacks(user_techs, min_level=1, max_level=5)

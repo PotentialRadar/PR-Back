@@ -11,6 +11,7 @@ import com.potential_radar.PR.user.repository.UserTechStackRepository;
 import com.potential_radar.PR.project.domain.*;
 import com.potential_radar.PR.project.repository.*;
 import com.potential_radar.PR.recommendation.repository.RecommendationHistoryRepository;
+import com.potential_radar.PR.invitation.repository.TeamInvitationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -43,6 +44,7 @@ public class TestDataInitializer implements CommandLineRunner {
     private final ProjectMemberRepository projectMemberRepository;
     private final RecommendationHistoryRepository recommendationHistoryRepository;
     private final UserTechStackRepository userTechStackRepository;
+    private final TeamInvitationRepository teamInvitationRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -90,20 +92,24 @@ public class TestDataInitializer implements CommandLineRunner {
             recommendationHistoryRepository.deleteAll();
             log.info("Deleted recommendation histories");
             
-            // 2단계: 프로젝트 멤버 삭제 (project_member)
+            // 2단계: 팀 초대 삭제 (team_invitations)
+            teamInvitationRepository.deleteAll();
+            log.info("Deleted team invitations");
+            
+            // 3단계: 프로젝트 멤버 삭제 (project_member)
             projectMemberRepository.deleteAll();
             log.info("Deleted project members");
             
-            // 3단계: 프로젝트 지원 삭제 (project_application)
+            // 4단계: 프로젝트 지원 삭제 (project_application)
             projectApplicationRepository.deleteAll();
             log.info("Deleted project applications");
             
-            // 4단계: 프로젝트 관련 연결 테이블 삭제
+            // 5단계: 프로젝트 관련 연결 테이블 삭제
             projectTechStackRepository.deleteAll();
             projectTechPartRepository.deleteAll();
             log.info("Deleted project relations");
             
-            // 5단계: 프로젝트 삭제
+            // 6단계: 프로젝트 삭제
             projectRecruitmentRepository.deleteAll();
             log.info("Deleted projects");
         }
@@ -497,8 +503,8 @@ public class TestDataInitializer implements CommandLineRunner {
         };
 
         for (int i = 0; i < 50; i++) {
-            // 팀 리더 선택 (랜덤하게 선택)
-            User teamLeader = users.get(random.nextInt(users.size()));
+            // 팀 리더 선택 (user001@example.com을 고정으로 설정하여 테스트 용이성 확보)
+            User teamLeader = users.get(0); // 첫 번째 사용자를 항상 팀 리더로 설정
             
             // 프로젝트 생성
             LocalDate today = LocalDate.now();

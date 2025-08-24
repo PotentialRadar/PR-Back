@@ -5,6 +5,8 @@ import com.potential_radar.PR.invitation.domain.InvitationStatus;
 import com.potential_radar.PR.invitation.domain.TeamInvitation;
 import com.potential_radar.PR.invitation.dto.TeamInvitationDto;
 import com.potential_radar.PR.invitation.repository.TeamInvitationRepository;
+import com.potential_radar.PR.notification.domain.NotificationType;
+import com.potential_radar.PR.notification.service.NotificationService;
 import com.potential_radar.PR.project.domain.ProjectRecruitment;
 import com.potential_radar.PR.project.repository.ProjectRecruitmentRepository;
 import com.potential_radar.PR.user.domain.User;
@@ -27,10 +29,7 @@ public class TeamInvitationService {
     private final TeamInvitationRepository teamInvitationRepository;
     private final UserRepository userRepository;
     private final ProjectRecruitmentRepository projectRepository;
-    
-    // 알림 서비스가 나중에 구현되면 연동 가능하게 Optional로 설정
-    // @Autowired(required = false)
-    // private NotificationService notificationService;
+    private final NotificationService notificationService;
 
     /**
      * 팀원 초대 보내기
@@ -87,10 +86,25 @@ public class TeamInvitationService {
 
             TeamInvitation savedInvitation = teamInvitationRepository.save(invitation);
 
-            // 8. 향후 알림 서비스 연동 지점
-            // if (notificationService != null) {
-            //     notificationService.sendInvitationNotification(savedInvitation);
-            // }
+            // 8. 알림 전송
+            try {
+                String notificationContent = String.format("%s님이 '%s' 프로젝트에 초대했습니다.", 
+                    inviter.getNickname(), project.getTitle());
+                String notificationUrl = "/projects/" + project.getProjectId();
+                
+                notificationService.send(
+                    invitee,
+                    NotificationType.INVITATION,
+                    notificationContent,
+                    notificationUrl,
+                    savedInvitation.getId(),
+                    savedInvitation.getCreatedAt()
+                );
+                
+                log.info("팀 초대 알림 전송 완료: {} → {}", inviter.getNickname(), invitee.getNickname());
+            } catch (Exception e) {
+                log.warn("팀 초대 알림 전송 실패: {}", e.getMessage());
+            }
 
             log.info("팀원 초대 전송 완료: 프로젝트 {} → 사용자 {}", project.getTitle(), invitee.getNickname());
 

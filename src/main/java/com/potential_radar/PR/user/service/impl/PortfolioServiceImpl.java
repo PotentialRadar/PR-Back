@@ -1,5 +1,8 @@
 package com.potential_radar.PR.user.service.impl;
 
+import com.potential_radar.PR.project.domain.ProjectMember;
+import com.potential_radar.PR.project.repository.ProjectMemberRepository;
+import com.potential_radar.PR.project.repository.ProjectTechStackRepository;
 import com.potential_radar.PR.tech.domain.TechStack;
 import com.potential_radar.PR.tech.repository.TechStackRepository;
 import com.potential_radar.PR.user.domain.*;
@@ -9,6 +12,7 @@ import com.potential_radar.PR.user.dto.education.UserEducationRequest;
 import com.potential_radar.PR.user.dto.education.UserEducationResponse;
 import com.potential_radar.PR.user.dto.experience.UserExperienceRequest;
 import com.potential_radar.PR.user.dto.experience.UserExperienceResponse;
+import com.potential_radar.PR.user.dto.project.UserProjectResponse;
 import com.potential_radar.PR.user.dto.techStack.UserTechStackRequest;
 import com.potential_radar.PR.user.dto.techStack.UserTechStackResponse;
 import com.potential_radar.PR.user.repository.*;
@@ -30,6 +34,8 @@ public class PortfolioServiceImpl implements PortfolioService {
     private final UserExperienceRepository experienceRepository;
     private final UserTechStackRepository techStackRepository;
     private final TechStackRepository stackRepository;
+    private final ProjectMemberRepository projectMemberRepository;
+    private final ProjectTechStackRepository projectTechStackRepository;
     
     @Override
     public UpdatedUserPortfolioResponse getPortfolio(String email) {
@@ -56,6 +62,8 @@ public class PortfolioServiceImpl implements PortfolioService {
                 .map(UserTechStackResponse::from)
                 .toList();
         
+        List<UserProjectResponse> projects = getUserProjects(user.getUserId());
+        
         return new UpdatedUserPortfolioResponse(
                 user.getUserId(),
                 user.getProfileImage(),
@@ -65,7 +73,8 @@ public class PortfolioServiceImpl implements PortfolioService {
                 profile != null ? profile.getBio() : null,
                 educations,
                 experiences,
-                techStacks
+                techStacks,
+                projects
         );
     }
     
@@ -154,5 +163,31 @@ public class PortfolioServiceImpl implements PortfolioService {
             profile.setBio(bio);
             userProfileRepository.save(profile);
         }
+    }
+    
+    private List<UserProjectResponse> getUserProjects(Long userId) {
+        List<ProjectMember> projectMembers = projectMemberRepository.findAllByUser_UserId(userId);
+        
+        return projectMembers.stream()
+                .map(member -> {
+                    List<String> techStacks = projectTechStackRepository
+                            .findByProject_ProjectId(member.getProject().getProjectId())
+                            .stream()
+                            .map(pts -> pts.getTechStack().getName())
+                            .toList();
+                    
+                    return UserProjectResponse.builder()
+                            .projectId(member.getProject().getProjectId())
+                            .title(member.getProject().getTitle())
+                            .description(member.getProject().getDescription())
+                            .status(member.getProject().getStatus().name())
+                            .role(member.getRole().name())
+                            .techPart(member.getTechPart())
+                            .startDate(member.getProject().getStartDate())
+                            .endDate(member.getProject().getEndDate())
+                            .techStacks(techStacks)
+                            .build();
+                })
+                .toList();
     }
 }

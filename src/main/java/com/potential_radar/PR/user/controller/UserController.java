@@ -7,6 +7,8 @@ import com.potential_radar.PR.project.dto.ProjectRecruitmentResponse;
 import com.potential_radar.PR.user.dto.LoginResponse;
 import com.potential_radar.PR.user.dto.UserLoginRequest;
 import com.potential_radar.PR.user.dto.UserSignupRequest;
+import com.potential_radar.PR.user.dto.editInfo.UpdatedUserProfileResponse;
+import com.potential_radar.PR.user.dto.editInfo.UserProfileUpdateRequest;
 import com.potential_radar.PR.user.service.TokenService;
 import com.potential_radar.PR.user.service.UserService;
 import jakarta.validation.Valid;
@@ -58,9 +60,9 @@ public class UserController {
 
     // 개인정보 조회
     @GetMapping("/user/profile")
-    public ResponseEntity<UserProfileResponse> getUserProfile(Principal principal) {
+    public ResponseEntity<UpdatedUserProfileResponse> getUserProfile(Principal principal) {
         String email = principal.getName();
-        UserProfileResponse profile = userService.getUserProfile(email);
+        UpdatedUserProfileResponse profile = userService.getUserProfile(email);
         return ResponseEntity.ok(profile);
     }
 
@@ -82,7 +84,7 @@ public class UserController {
         return ResponseEntity.ok(Map.of("message", "회원 탈퇴가 완료되었습니다"));
     }
 
-    @GetMapping("/users/{userId}/likes/projects")
+    @GetMapping("/user/{userId}/likes/projects")
     public ResponseEntity<List<ProjectRecruitmentResponse>> getLikedProjects(@PathVariable Long userId) {
         List<ProjectRecruitmentResponse> likedProjects = likeService.getLikedProjects(userId);
         return ResponseEntity.ok(likedProjects);

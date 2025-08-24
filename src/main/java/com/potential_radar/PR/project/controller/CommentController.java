@@ -60,7 +60,7 @@ public class CommentController {
                 .orElseThrow(() -> new UsernameNotFoundException("DB에서 사용자를 찾을 수 없습니다: " + userEmail));
         Long userId = user.getUserId();
 
-        CommentResponseDto createdComment = commentService.createComment(projectId, userId, request);
+        CommentResponseDto createdComment = commentService.createCommentWithNotification(projectId, userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdComment);
     }
 

@@ -49,7 +49,7 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(Principal principal) {
-        log.info("🔍 /users/me 호출됨 - Principal: {}", principal);
+        log.info("🔍 /user/me 호출됨 - Principal: {}", principal);
         
         if (principal == null) {
             log.error("❌ Principal이 null입니다");

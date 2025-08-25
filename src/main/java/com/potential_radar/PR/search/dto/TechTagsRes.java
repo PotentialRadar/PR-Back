@@ -13,6 +13,7 @@ import java.util.List;
 @NoArgsConstructor
 public class TechTagsRes {
     private List<String> techParts;
+    private List<String> techStacks; // 모든 기술 스택 이름 리스트 추가
     private List<PopularTechStack> popularTechStacks;
     
     @Getter

@@ -114,6 +114,31 @@ public class SearchController {
         return ResponseEntity.ok(techTags);
     }
 
+    // 필터별 결과 수 미리보기 엔드포인트
+    @GetMapping("/projects/count-preview")
+    public ResponseEntity<Map<String, Object>> getProjectCountPreview(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) List<String> techParts,
+            @RequestParam(required = false) List<String> techStacks,
+            @RequestParam(required = false) List<String> statuses) {
+
+        ProjectSearchReq request = ProjectSearchReq.builder()
+                .keyword(keyword)
+                .techParts(techParts)
+                .techStacks(techStacks)
+                .statuses(statuses)
+                .page(0)
+                .size(1) // 결과 수만 필요하므로 최소 size
+                .build();
+
+        SearchResult<ProjectSearchRes> result = searchService.searchProjects(request);
+        
+        return ResponseEntity.ok(Map.of(
+                "totalCount", result.getTotalElements(),
+                "searchTime", result.getSearchTimeMs()
+        ));
+    }
+
     // 데이터 동기화 엔드포인트
     @PostMapping("/sync")
     public ResponseEntity<Map<String, String>> syncData() {

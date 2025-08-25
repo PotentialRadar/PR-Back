@@ -1,9 +1,9 @@
 package com.potential_radar.PR.recommendation.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 
 import java.util.List;
 
@@ -27,7 +27,16 @@ public class RecommendedMember {
     private Double matchScore;
     
     @JsonProperty("userTechStacks")
-    private List<UserTechStack> userTechStacks;
+    private List<UserTechStackSimple> userTechStacks;
+    
+    // AI 서버 응답용 간단한 기술스택 DTO
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class UserTechStackSimple {
+        private String name;
+        private Integer level;
+    }
     
     @JsonProperty("explanation")
     private MemberExplanation explanation;

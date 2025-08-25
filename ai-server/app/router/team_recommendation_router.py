@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 import logging
+from sqlalchemy.orm import Session
 
 from app.schemas import (
     RecommendMemberRequest, 
@@ -8,103 +9,12 @@ from app.schemas import (
     MemberExplanation,
     UserTechStack
 )
+from app.database import get_db
+from app.models import Project, ProjectTechStack, User, UserProfile, UserTechStack as UserTechStackModel, TechStack
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# 목업 데이터 (실제 AI 모델 연동 전까지 사용)
-MOCK_USERS_DATABASE = [
-    {
-        "userId": 1,
-        "name": "김개발자",
-        "email": "kim.developer@example.com",
-        "profileImage": "https://api.dicebear.com/7.x/avataaars/svg?seed=1",
-        "userTechStacks": [
-            {"name": "React", "level": 4},
-            {"name": "TypeScript", "level": 3},
-            {"name": "JavaScript", "level": 5}
-        ],
-        "experience": "4년",
-        "portfolioCount": 8,
-        "completedProjects": 4,
-        "averageRating": 4.6,
-        "lastActiveDate": "2025-08-15",
-        "isAvailable": True,
-        "currentProjectCount": 1
-    },
-    {
-        "userId": 3,
-        "name": "이백엔드",
-        "email": "lee.backend@example.com",
-        "profileImage": "https://api.dicebear.com/7.x/avataaars/svg?seed=3",
-        "userTechStacks": [
-            {"name": "Node.js", "level": 5},
-            {"name": "Python", "level": 4},
-            {"name": "PostgreSQL", "level": 3}
-        ],
-        "experience": "5년",
-        "portfolioCount": 15,
-        "completedProjects": 2,
-        "averageRating": 4.8,
-        "lastActiveDate": "2025-08-14",
-        "isAvailable": True,
-        "currentProjectCount": 0
-    },
-    {
-        "userId": 4,
-        "name": "정모바일",
-        "email": "jung.mobile@example.com",
-        "profileImage": "https://api.dicebear.com/7.x/avataaars/svg?seed=4",
-        "userTechStacks": [
-            {"name": "Flutter", "level": 4},
-            {"name": "React Native", "level": 3},
-            {"name": "Firebase", "level": 4}
-        ],
-        "experience": "3년",
-        "portfolioCount": 6,
-        "completedProjects": 2,
-        "averageRating": 4.2,
-        "lastActiveDate": "2025-08-16",
-        "isAvailable": True,
-        "currentProjectCount": 0
-    },
-    {
-        "userId": 5,
-        "name": "최AI",
-        "email": "choi.ai@example.com",
-        "profileImage": "https://api.dicebear.com/7.x/avataaars/svg?seed=5",
-        "userTechStacks": [
-            {"name": "Python", "level": 5},
-            {"name": "TensorFlow", "level": 4},
-            {"name": "PyTorch", "level": 3}
-        ],
-        "experience": "4년",
-        "portfolioCount": 12,
-        "completedProjects": 2,
-        "averageRating": 4.7,
-        "lastActiveDate": "2025-08-17",
-        "isAvailable": True,
-        "currentProjectCount": 1
-    },
-    {
-        "userId": 6,
-        "name": "강데브옵스",
-        "email": "kang.devops@example.com",
-        "profileImage": "https://api.dicebear.com/7.x/avataaars/svg?seed=6",
-        "userTechStacks": [
-            {"name": "AWS", "level": 5},
-            {"name": "Docker", "level": 4},
-            {"name": "Kubernetes", "level": 4}
-        ],
-        "experience": "5년",
-        "portfolioCount": 10,
-        "completedProjects": 3,
-        "averageRating": 4.5,
-        "lastActiveDate": "2025-08-13",
-        "isAvailable": True,
-        "currentProjectCount": 0
-    }
-]
 
 def calculate_match_score(user_skills: List[dict], required_skills: List[str]) -> float:
     """기술 스택 매칭 점수 계산"""
@@ -158,13 +68,15 @@ def generate_explanation(user: dict, required_skills: List[str], match_score: fl
         simple_explanation = f"{user['experience']} 경력의 숙련된 개발자"
     
     # 경험 매칭 설명
-    experience_years = int(user["experience"].replace("년", ""))
-    if experience_years >= 5:
+    experience_text = user["experience"]
+    if "10년 이상" in experience_text or "5-10년" in experience_text:
         experience_match = "고급 개발자로 팀 리드 경험 보유"
-    elif experience_years >= 3:
+    elif "3-5년" in experience_text:
         experience_match = "중급 개발자로 안정적인 개발 가능"
-    else:
+    elif "1-3년" in experience_text or "1년 미만" in experience_text:
         experience_match = "주니어 개발자로 빠른 학습 능력 보유"
+    else:
+        experience_match = f"{experience_text} 개발자로 성장 잠재력 보유"
     
     return MemberExplanation(
         main_reason=main_reason,
@@ -175,19 +87,97 @@ def generate_explanation(user: dict, required_skills: List[str], match_score: fl
         experience_match=experience_match
     )
 
+def get_users_from_db(db: Session) -> List[dict]:
+    """실제 DB에서 사용자 데이터를 가져오는 함수"""
+    try:
+        users = db.query(User).join(UserProfile, User.user_id == UserProfile.user_id, isouter=True).all()
+        logger.info(f"🔍 DB에서 조회된 총 사용자 수: {len(users)}")
+        
+        users_data = []
+        for user in users:
+            # 사용자 기술스택 조회 (올바른 JOIN 조건 사용)
+            user_tech_stacks = db.query(UserTechStackModel).join(
+                TechStack, UserTechStackModel.stack_id == TechStack.stack_id
+            ).filter(
+                UserTechStackModel.user_id == user.user_id
+            ).all()
+            logger.info(f"👤 사용자 {user.nickname}({user.user_id})의 기술스택 수: {len(user_tech_stacks)}")
+            
+            tech_stacks = [
+                {"name": uts.stack.name, "level": uts.skill_level}
+                for uts in user_tech_stacks
+            ]
+            
+            if tech_stacks:
+                logger.info(f"🛠️ {user.nickname}의 기술스택: {[ts['name'] for ts in tech_stacks]}")
+            
+            # 경험 범위를 년수로 변환
+            experience_range = user.profile.experience_range if user.profile else "FRESHER"
+            experience_text = {
+                "FRESHER": "신입",
+                "LT_1": "1년 미만",
+                "Y1_3": "1-3년", 
+                "Y3_5": "3-5년",
+                "Y5_10": "5-10년",
+                "GE_10": "10년 이상",
+                "ETC": "기타"
+            }.get(experience_range, "1-3년")
+            
+            user_data = {
+                "userId": user.user_id,
+                "name": user.nickname,
+                "email": user.email,
+                "profileImage": user.profile_image or f"https://api.dicebear.com/7.x/avataaars/svg?seed={user.user_id}",
+                "userTechStacks": tech_stacks,
+                "experience": experience_text,
+                "portfolioCount": 0,  # 추후 실제 포트폴리오 테이블과 연동
+                "completedProjects": 0,  # 추후 실제 프로젝트 완료 데이터와 연동
+                "averageRating": float(user.profile.reputation_score) if user.profile and user.profile.reputation_score else 4.0,
+                "lastActiveDate": "2025-08-24",  # 추후 실제 활동 데이터와 연동
+                "isAvailable": True,
+                "currentProjectCount": 0  # 추후 실제 참여 중인 프로젝트 수와 연동
+            }
+            users_data.append(user_data)
+        
+        return users_data
+        
+    except Exception as e:
+        logger.error(f"DB에서 사용자 데이터 조회 실패: {e}")
+        return []
+
 @router.post("/recommend/members", response_model=List[RecommendedMember])
-async def recommend_team_members(request: RecommendMemberRequest) -> List[RecommendedMember]:
+async def recommend_team_members(request: RecommendMemberRequest, db: Session = Depends(get_db)) -> List[RecommendedMember]:
     """팀원 추천 API"""
-    logger.info(f"🤖 팀원 추천 요청 - 프로젝트 ID: {request.projectId}, 필요 기술: {request.requiredSkills}")
+    logger.info(f"🤖 팀원 추천 요청 받음")
+    logger.info(f"🔍 요청 데이터: {request}")
+    logger.info(f"🔍 프로젝트 ID: {request.projectId}, 필요 기술: {request.requiredSkills}, 팀 크기: {request.teamSize}")
     
     try:
-        # 1. 매칭 점수 계산 및 정렬
+        # 1. DB에서 실제 사용자 데이터 조회
+        logger.info("DB에서 실제 사용자 데이터를 조회합니다.")
+        users_data = get_users_from_db(db)
+        logger.info(f"📊 DB에서 {len(users_data)}명의 사용자 데이터 조회")
+        
+        # DB 조회 결과 확인
+        if not users_data:
+            logger.warning("DB에서 조회된 사용자가 없습니다.")
+            return []
+        
+        # 2. 매칭 점수 계산 및 정렬
         candidates = []
-        for user in MOCK_USERS_DATABASE:
+        logger.info(f"🎯 매칭 대상 기술: {request.requiredSkills}")
+        
+        for user in users_data:
             if not user["isAvailable"]:
+                logger.info(f"❌ {user['name']} - 참여 불가능 상태")
                 continue
+            
+            user_skills = [skill["name"] for skill in user["userTechStacks"]]
+            logger.info(f"👤 {user['name']}의 기술스택: {user_skills}")
                 
             match_score = calculate_match_score(user["userTechStacks"], request.requiredSkills)
+            logger.info(f"📊 {user['name']} 매칭 점수: {match_score}")
+            
             explanation = generate_explanation(user, request.requiredSkills, match_score)
             
             recommended_member = RecommendedMember(
@@ -212,10 +202,10 @@ async def recommend_team_members(request: RecommendMemberRequest) -> List[Recomm
             
             candidates.append(recommended_member)
         
-        # 2. 매칭 점수 순으로 정렬
+        # 3. 매칭 점수 순으로 정렬
         candidates.sort(key=lambda x: x.matchScore, reverse=True)
         
-        # 3. 요청된 팀 크기만큼 반환
+        # 4. 요청된 팀 크기만큼 반환
         result = candidates[:request.teamSize]
         
         logger.info(f"✅ 팀원 추천 완료 - 추천된 팀원 수: {len(result)}")

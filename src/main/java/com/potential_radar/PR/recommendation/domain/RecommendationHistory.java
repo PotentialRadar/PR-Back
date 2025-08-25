@@ -1,5 +1,6 @@
 package com.potential_radar.PR.recommendation.domain;
 
+import com.potential_radar.PR.common.domain.BaseTimeEntity;
 import com.potential_radar.PR.project.domain.ProjectRecruitment;
 import com.potential_radar.PR.user.domain.User;
 import jakarta.persistence.*;
@@ -7,17 +8,12 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "recommendation_history")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@EntityListeners(AuditingEntityListener.class)
-public class RecommendationHistory {
+public class RecommendationHistory extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -48,9 +44,6 @@ public class RecommendationHistory {
     @Column(name = "is_converted", nullable = false)
     private boolean isConverted = false; // 지원/좋아요 등 전환 여부
 
-    @CreatedDate
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
 
     @Builder
     public RecommendationHistory(User user, ProjectRecruitment recommendedProject, User recommendedMember, Double matchScore, String modelVersion) {

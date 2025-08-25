@@ -24,19 +24,83 @@ ALIAS_MAP = {
     "k8s": "kubernetes",   # Kubernetes 약어
     "springboot": "spring boot",
     "jpa": "spring data jpa",
-    # 필요한 약어/표기 계속 추가
+    # 개발 도구들
+    "vscode": "visual studio code",
+    "vs code": "visual studio code",
+    "intellij": "intellij idea",
+    "pycharm": "intellij idea",
+    "webstorm": "intellij idea",
+    "netbeans": "netbeans ide",
 }
 
-# ALLOWED_TECH도 팀에서 실제 쓰는 스택 추가
-ALLOWED_TECH = {
-    "spring", "spring boot", "spring data jpa",
-    "vue.js", "react", "node.js", "express",
-    "python", "fastapi", "redis", "docker", "kubernetes",
-    "postgresql", "mysql", "mariadb", "mongodb",
-    "typescript", "javascript",
-    "next.js", "nestjs", "opensearch", "elasticsearch",
-    "sse", "websocket"
+# 데이터베이스에서 동적으로 가져올 기술스택 캐시
+_ALLOWED_TECH_CACHE = None
+
+def get_allowed_tech_from_db():
+    """데이터베이스에서 실제 기술스택들을 가져옵니다."""
+    global _ALLOWED_TECH_CACHE
+    
+    if _ALLOWED_TECH_CACHE is not None:
+        return _ALLOWED_TECH_CACHE
+    
+    try:
+        from app.database import get_db
+        from app.models import TechStack
+        
+        # DB 연결해서 실제 기술스택들 가져오기
+        db = next(get_db())
+        tech_stacks = db.query(TechStack).all()
+        
+        # 소문자로 정규화해서 set 생성
+        _ALLOWED_TECH_CACHE = {stack.name.lower() for stack in tech_stacks}
+        
+        dprint(f"[DEBUG] Loaded {len(_ALLOWED_TECH_CACHE)} tech stacks from database")
+        return _ALLOWED_TECH_CACHE
+        
+    except Exception as e:
+        dprint(f"[DEBUG] Failed to load tech stacks from DB: {e}")
+        # DB 연결 실패시 fallback으로 기본 세트 사용
+        return get_fallback_allowed_tech()
+
+def get_fallback_allowed_tech():
+    """DB 연결 실패시 사용할 기본 기술스택들"""
+    return {
+        # 핵심 기술들만
+        "react", "vue.js", "angular", "next.js", "typescript", "javascript",
+        "spring boot", "node.js", "express.js", "django", "fastapi", "java", "python", "c#",
+        "postgresql", "mongodb", "redis", "mysql", "docker", "kubernetes", "aws",
+        "react native", "flutter", "unity 3d", "tensorflow", "solidity", "web3.js"
+    }
+
+# 기존 하드코딩된 ALLOWED_TECH는 제거하고 함수로 대체
+def get_allowed_tech():
+    """허용된 기술스택 세트를 반환합니다. DB에서 동적으로 가져옵니다."""
+    return get_allowed_tech_from_db()
+
+# 개발도구 -> 실제 개발 기술스택 확장 매핑
+DEV_TOOL_EXPANSIONS = {
+    "visual studio code": ["javascript", "typescript", "python", "react", "node.js"],
+    "intellij idea": ["java", "kotlin", "spring boot", "scala"],
+    "pycharm": ["python", "django", "fastapi", "tensorflow"],
+    "webstorm": ["javascript", "typescript", "react", "vue.js", "node.js"],
+    "android studio": ["kotlin", "java", "android sdk", "flutter"],
+    "xcode": ["swift", "objective-c", "ios", "swiftui"],
+    "github actions": ["docker", "kubernetes", "ci/cd", "devops"],
+    "qlikview": ["sql", "data analysis", "business intelligence"],
+    "cisco": ["networking", "tcp/ip", "network security"],
+    "vulkan": ["c++", "graphics programming", "game development"]
 }
+
+def expand_dev_tools_to_tech_stacks(tech_names: List[str]) -> List[str]:
+    """개발도구를 실제 기술스택들로 확장합니다."""
+    expanded = set(tech_names)  # 기존 기술스택들은 유지
+    
+    for tech in tech_names:
+        if tech in DEV_TOOL_EXPANSIONS:
+            expanded.update(DEV_TOOL_EXPANSIONS[tech])
+            dprint(f"[DEBUG] 개발도구 '{tech}' -> {DEV_TOOL_EXPANSIONS[tech]}로 확장")
+    
+    return list(expanded)
 
 
 def _canonicalize(name: str) -> str:
@@ -95,7 +159,7 @@ def normalize_tech_stacks(
             level = (min_level + max_level) // 2
         level = max(min_level, min(max_level, level))
 
-        if not allow_unknown and name not in ALLOWED_TECH:
+        if not allow_unknown and name not in get_allowed_tech():
             continue
 
         if name in merged:

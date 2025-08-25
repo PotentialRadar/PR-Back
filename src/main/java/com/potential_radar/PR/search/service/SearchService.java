@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.data.elasticsearch.core.query.Query;
 import org.springframework.data.domain.Sort;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -294,6 +295,7 @@ public class SearchService {
         boolean isPopularSearch = isPopularSearch(request);
         if (isPopularSearch) {
             log.info("Popular search detected, checking Redis cache");
+
             SearchResult<ProjectSearchRes> cachedResult = searchCacheService.getCachedSearchResult(request);
             if (cachedResult != null) {
                 long cacheHitTime = System.currentTimeMillis() - startTime;
@@ -320,58 +322,57 @@ public class SearchService {
         Criteria finalCriteria = null;
         boolean hasConditions = false;
 
-        // 키워드 검색 - matches를 사용하여 공백 문제 해결
+        // 키워드 검색 - 기술스택/기술파트는 소문자로 변환하여 검색
         if (request.getKeyword() != null && !request.getKeyword().trim().isEmpty()) {
             String keyword = request.getKeyword().trim();
-            log.info("Applying keyword filter: '{}'", keyword);
+            String keywordLower = keyword.toLowerCase(); // 기술스택/기술파트용 소문자 키워드
+            log.info("Applying keyword filter: '{}' (lowercase: '{}')", keyword, keywordLower);
             
             // 키워드는 모든 필드에서 검색 (제목, 설명, 기술스택, 기술파트)
-            Criteria keywordCriteria = new Criteria("title").matches(keyword)
-                    .or(new Criteria("description").matches(keyword))
-                    .or(new Criteria("title.text").matches(keyword))
-                    .or(new Criteria("description.text").matches(keyword))
-                    .or(new Criteria("techStacks").matches(keyword))
-                    .or(new Criteria("techParts").matches(keyword));
+            Criteria keywordCriteria = new Criteria("title").contains(keyword)
+                    .or(new Criteria("description").contains(keyword))
+                    .or(new Criteria("title.text").contains(keyword))
+                    .or(new Criteria("description.text").contains(keyword))
+                    .or(new Criteria("techStacks").contains(keywordLower))
+                    .or(new Criteria("techParts").contains(keywordLower));
             
             finalCriteria = keywordCriteria;
             hasConditions = true;
         }
 
-        // 기술 파트 필터
+        // 모든 필터를 OR 조건으로 통합
+        List<Criteria> filterCriteriaList = new ArrayList<>();
+        
+        // 기술 파트 필터 추가
         if (request.getTechParts() != null && !request.getTechParts().isEmpty()) {
-            log.info("Applying tech parts filter: {}", request.getTechParts());
-            Criteria techPartsCriteria = new Criteria("techParts").in(request.getTechParts());
-            
-            if (hasConditions) {
-                finalCriteria = finalCriteria.and(techPartsCriteria);
-            } else {
-                finalCriteria = techPartsCriteria;
-                hasConditions = true;
-            }
+            log.info("Adding tech parts filter: {}", request.getTechParts());
+            filterCriteriaList.add(new Criteria("techParts").in(request.getTechParts()));
         }
 
-        // 기술 스택 필터
+        // 기술 스택 필터 추가
         if (request.getTechStacks() != null && !request.getTechStacks().isEmpty()) {
-            log.info("Applying tech stacks filter: {}", request.getTechStacks());
-            Criteria techStacksCriteria = new Criteria("techStacks").in(request.getTechStacks());
-            
-            if (hasConditions) {
-                finalCriteria = finalCriteria.and(techStacksCriteria);
-            } else {
-                finalCriteria = techStacksCriteria;
-                hasConditions = true;
-            }
+            log.info("Adding tech stacks filter: {}", request.getTechStacks());
+            filterCriteriaList.add(new Criteria("techStacks").in(request.getTechStacks()));
         }
 
-        // 상태 필터
+        // 상태 필터 추가
         if (request.getStatuses() != null && !request.getStatuses().isEmpty()) {
-            log.info("Applying status filter: {}", request.getStatuses());
-            Criteria statusCriteria = new Criteria("status").in(request.getStatuses());
+            log.info("Adding status filter: {}", request.getStatuses());
+            filterCriteriaList.add(new Criteria("status").in(request.getStatuses()));
+        }
+        
+        // 모든 필터를 OR 조건으로 결합
+        if (!filterCriteriaList.isEmpty()) {
+            Criteria allFiltersCriteria = filterCriteriaList.get(0);
+            for (int i = 1; i < filterCriteriaList.size(); i++) {
+                allFiltersCriteria = allFiltersCriteria.or(filterCriteriaList.get(i));
+            }
             
             if (hasConditions) {
-                finalCriteria = finalCriteria.and(statusCriteria);
+                // 키워드 검색이 있으면 AND로 결합
+                finalCriteria = finalCriteria.and(allFiltersCriteria);
             } else {
-                finalCriteria = statusCriteria;
+                finalCriteria = allFiltersCriteria;
                 hasConditions = true;
             }
         }

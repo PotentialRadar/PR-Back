@@ -6,6 +6,7 @@ import com.potential_radar.PR.user.domain.UserProfile;
 import com.potential_radar.PR.user.dto.education.UserEducationResponse;
 import com.potential_radar.PR.user.dto.experience.UserExperienceResponse;
 import com.potential_radar.PR.user.dto.project.UserProjectResponse;
+import com.potential_radar.PR.user.dto.review.UserReceivedReviewResponse;
 import com.potential_radar.PR.user.dto.techStack.UserTechStackResponse;
 
 import java.math.BigDecimal;
@@ -32,14 +33,15 @@ public record OfficialPotfolioResponse(
         List<UserEducationResponse> educations,
         List<UserExperienceResponse> experiences,
         List<UserTechStackResponse> techStacks,
-        List<UserProjectResponse> projects
-        // TODO :  받은 리뷰 리스트
+        List<UserProjectResponse> projects,
+        List<UserReceivedReviewResponse> receivedReviews
 ) {
     public OfficialPotfolioResponse(UserProfile userProfile, User user,
                                    List<UserEducationResponse> educations,
                                    List<UserExperienceResponse> experiences,
                                    List<UserTechStackResponse> techStacks,
-                                   List<UserProjectResponse> projects) {
+                                   List<UserProjectResponse> projects,
+                                   List<UserReceivedReviewResponse> receivedReviews) {
         this(
                 userProfile.getUser().getUserId(),
                 userProfile.getUser().getNickname(),
@@ -61,7 +63,8 @@ public record OfficialPotfolioResponse(
                 educations,
                 experiences,
                 techStacks,
-                projects
+                projects,
+                receivedReviews
         );
     }
 }

@@ -8,12 +8,14 @@ import com.potential_radar.PR.user.dto.education.UserEducationResponse;
 import com.potential_radar.PR.user.dto.experience.UserExperienceResponse;
 import com.potential_radar.PR.user.dto.myPortfolio.OfficialPotfolioResponse;
 import com.potential_radar.PR.user.dto.project.UserProjectResponse;
+import com.potential_radar.PR.user.dto.review.UserReceivedReviewResponse;
 import com.potential_radar.PR.user.dto.techStack.UserTechStackResponse;
 import com.potential_radar.PR.user.repository.UserEducationRepository;
 import com.potential_radar.PR.user.repository.UserExperienceRepository;
 import com.potential_radar.PR.user.repository.UserProfileRepository;
 import com.potential_radar.PR.user.repository.UserTechStackRepository;
 import com.potential_radar.PR.user.service.PublicPortfolioService;
+import com.potential_radar.PR.user.service.UserReviewService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,6 +35,7 @@ public class PublicPortfolioServiceImpl implements PublicPortfolioService {
     private final UserTechStackRepository userTechStackRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final ProjectTechStackRepository projectTechStackRepository;
+    private final UserReviewService userReviewService;
     
     @Override
     public OfficialPotfolioResponse getPublicPortfolio(Long portfolioId) {
@@ -68,16 +71,20 @@ public class PublicPortfolioServiceImpl implements PublicPortfolioService {
         // 프로젝트 이력 조회
         List<UserProjectResponse> projects = getUserProjects(portfolioId);
         
-        log.info("공개 포트폴리오 조회 성공: userId = {}, nickname = {}, 교육 {개}, 경력 {}개, 기술스택 {}개, 프로젝트 {}개", 
+        // 받은 리뷰 조회
+        List<UserReceivedReviewResponse> receivedReviews = userReviewService.getReceivedReviews(portfolioId);
+        
+        log.info("공개 포트폴리오 조회 성공: userId = {}, nickname = {}, 교육 {개}, 경력 {}개, 기술스택 {}개, 프로젝트 {}개, 리뷰 {}개", 
                 userProfile.getUser().getUserId(), 
                 userProfile.getUser().getNickname(),
                 educations.size(),
                 experiences.size(),
                 techStacks.size(),
-                projects.size());
+                projects.size(),
+                receivedReviews.size());
         
         return new OfficialPotfolioResponse(userProfile, userProfile.getUser(), 
-                educations, experiences, techStacks, projects);
+                educations, experiences, techStacks, projects, receivedReviews);
     }
     
     private List<UserProjectResponse> getUserProjects(Long userId) {

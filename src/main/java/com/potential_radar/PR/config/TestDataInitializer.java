@@ -8,6 +8,7 @@ import com.potential_radar.PR.user.domain.*;
 import com.potential_radar.PR.user.repository.UserRepository;
 import com.potential_radar.PR.user.repository.UserProfileRepository;
 import com.potential_radar.PR.user.repository.UserTechStackRepository;
+import com.potential_radar.PR.user.repository.PortfolioProjectRepository;
 import com.potential_radar.PR.project.domain.*;
 import com.potential_radar.PR.project.repository.*;
 import com.potential_radar.PR.recommendation.repository.RecommendationHistoryRepository;
@@ -43,6 +44,8 @@ public class TestDataInitializer implements CommandLineRunner {
     private final ProjectMemberRepository projectMemberRepository;
     private final RecommendationHistoryRepository recommendationHistoryRepository;
     private final UserTechStackRepository userTechStackRepository;
+    private final PortfolioProjectRepository portfolioProjectRepository;
+    private final TeamMemberReviewRepository teamMemberReviewRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -89,24 +92,35 @@ public class TestDataInitializer implements CommandLineRunner {
             recommendationHistoryRepository.deleteAll();
             log.info("Deleted recommendation histories");
 
-            // 2단계: 프로젝트 멤버 삭제 (project_member)
+            // 2단계: 팀 멤버 리뷰 삭제 (team_member_review)
+            teamMemberReviewRepository.deleteAll();
+            log.info("Deleted team member reviews");
+
+            // 3단계: 포트폴리오 프로젝트 삭제 (portfolio_project)
+            portfolioProjectRepository.deleteAll();
+            log.info("Deleted portfolio projects");
+
+            // 4단계: 프로젝트 멤버 삭제 (project_member)
             projectMemberRepository.deleteAll();
             log.info("Deleted project members");
 
-            // 3단계: 프로젝트 지원 삭제 (project_application)
+            // 5단계: 프로젝트 지원 삭제 (project_application)
             projectApplicationRepository.deleteAll();
             log.info("Deleted project applications");
 
-            // 4단계: 프로젝트 관련 연결 테이블 삭제
+            // 6단계: 프로젝트 관련 연결 테이블 삭제
             projectTechStackRepository.deleteAll();
             projectTechPartRepository.deleteAll();
             log.info("Deleted project relations");
 
-            // 5단계: 프로젝트 삭제
+            // 7단계: 프로젝트 삭제
             projectRecruitmentRepository.deleteAll();
             log.info("Deleted projects");
         }
         initializeProjects();
+
+        // 6. 팀 멤버 리뷰 데이터 생성 (프로젝트 완료 후)
+        initializeTeamMemberReviews();
 
         log.info("Test data initialization completed successfully!");
     }
@@ -707,5 +721,90 @@ public class TestDataInitializer implements CommandLineRunner {
         long totalUserTechStacks = userTechStackRepository.count();
         log.info("Successfully created {} user tech stack relationships for {} users",
                 totalUserTechStacks, users.size());
+    }
+
+    /**
+     * 팀 멤버 리뷰 데이터 초기화
+     * 완료된 프로젝트의 멤버들이 서로 리뷰를 작성하도록 시뮬레이션
+     */
+    private void initializeTeamMemberReviews() {
+        log.info("Initializing team member review data...");
+
+        List<ProjectRecruitment> completedProjects = projectRecruitmentRepository.findAll()
+                .stream()
+                .filter(project -> project.getStatus() == ProjectStatus.COMPLETED || 
+                        (project.getEndDate() != null && project.getEndDate().isBefore(LocalDate.now().minusDays(3))))
+                .toList();
+
+        if (completedProjects.isEmpty()) {
+            log.info("No completed projects found for review generation");
+            return;
+        }
+
+        Random random = new Random();
+        int totalReviews = 0;
+
+        String[] positiveComments = {
+                "정말 훌륭한 팀원이었습니다! 프로젝트에 큰 도움이 되었어요.",
+                "커뮤니케이션이 원활하고 책임감이 강한 개발자입니다.",
+                "기술적 역량이 뛰어나고 팀워크가 좋습니다.",
+                "문제 해결 능력이 뛰어나고 적극적으로 참여해주셨습니다.",
+                "코드 품질이 우수하고 일정 관리를 잘 해주셨어요.",
+                "창의적인 아이디어를 많이 제안해주시고 실행력이 좋습니다.",
+                "다른 팀원들과의 협업이 매우 원활했습니다.",
+                "기한을 잘 지키시고 꼼꼼하게 작업해주셨습니다."
+        };
+
+        String[] neutralComments = {
+            "전반적으로 무난한 팀원이었습니다.",
+            "맡은 역할을 잘 수행해주셨습니다.",
+            "프로젝트에 성실하게 참여해주셨어요.",
+            "기본기가 탄탄한 개발자입니다.",
+            "주어진 업무를 차근차근 완수해주셨습니다."
+        };
+
+        for (ProjectRecruitment project : completedProjects) {
+            List<ProjectMember> projectMembers = projectMemberRepository
+                    .findAllByProject_ProjectId(project.getProjectId());
+
+            if (projectMembers.size() < 2) {
+                continue; // 멤버가 2명 미만이면 리뷰 생성 안함
+            }
+
+            // 각 멤버가 다른 멤버들을 리뷰 (50% 확률로)
+            for (ProjectMember reviewer : projectMembers) {
+                for (ProjectMember reviewee : projectMembers) {
+                    if (reviewer.equals(reviewee)) {
+                        continue; // 자기 자신은 리뷰하지 않음
+                    }
+
+                    // 50% 확률로 리뷰 생성
+                    if (random.nextBoolean()) {
+                        int rating = random.nextInt(3) + 3; // 3-5점 (대부분 긍정적)
+                        String comment;
+
+                        if (rating >= 4) {
+                            comment = positiveComments[random.nextInt(positiveComments.length)];
+                        } else {
+                            comment = neutralComments[random.nextInt(neutralComments.length)];
+                        }
+
+                        TeamMemberReview review = TeamMemberReview.builder()
+                                .project(project)
+                                .reviewer(reviewer.getUser())
+                                .reviewee(reviewee.getUser())
+                                .rating(rating)
+                                .comment(comment)
+                                .build();
+
+                        teamMemberReviewRepository.save(review);
+                        totalReviews++;
+                    }
+                }
+            }
+        }
+
+        log.info("Successfully created {} team member reviews for {} completed projects",
+                totalReviews, completedProjects.size());
     }
 }

@@ -560,12 +560,47 @@ public class TestDataInitializer implements CommandLineRunner {
                 });
             }
 
+            // 프로젝트 멤버 생성 (팀 리더 + 랜덤 멤버들)
+            // 1. 팀 리더를 프로젝트 멤버로 추가
+            ProjectMember teamLeaderMember = ProjectMember.builder()
+                    .project(savedProject)
+                    .user(teamLeader)
+                    .role(ProjectMember.Role.LEADER)
+                    .techPart(selectedTechParts.get(0).getName()) // 첫 번째 기술 파트
+                    .build();
+            projectMemberRepository.save(teamLeaderMember);
+
+            // 2. 추가 멤버들 생성 (2-5명)
+            int additionalMemberCount = random.nextInt(4) + 2; // 2-5명
+            List<User> projectMembers = new java.util.ArrayList<>();
+            projectMembers.add(teamLeader); // 중복 방지를 위해 팀 리더 추가
+
+            for (int j = 0; j < additionalMemberCount; j++) {
+                User member;
+                do {
+                    member = users.get(random.nextInt(users.size()));
+                } while (projectMembers.contains(member));
+
+                projectMembers.add(member);
+
+                // 기술 파트는 프로젝트의 기술 파트 중 랜덤 선택
+                String memberTechPart = selectedTechParts.get(random.nextInt(selectedTechParts.size())).getName();
+
+                ProjectMember projectMember = ProjectMember.builder()
+                        .project(savedProject)
+                        .user(member)
+                        .role(ProjectMember.Role.MEMBER)
+                        .techPart(memberTechPart)
+                        .build();
+                projectMemberRepository.save(projectMember);
+            }
+
             if ((i + 1) % 10 == 0) {
-                log.info("Created {} projects...", i + 1);
+                log.info("Created {} projects with members...", i + 1);
             }
         }
 
-        log.info("Successfully created 50 projects with related tech parts and tech stacks");
+        log.info("Successfully created 50 projects with related tech parts, tech stacks, and members");
     }
 
     /**

@@ -121,7 +121,8 @@ public class UserServiceImpl implements UserService {
             if (userRepository.existsByNickname(request.nickname())) {
                 throw new IllegalArgumentException("이미 사용 중인 닉네임입니다");
             }
-            userRepository.updateNickname(user.getUserId(), request.nickname());
+            // JPA 엔티티 객체도 함께 업데이트
+            user.setNickname(request.nickname());
         }
 
         // 프로필 정보 업데이트

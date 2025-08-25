@@ -19,7 +19,9 @@ public record UserPortfolioUpdateRequest(
         List<UserExperienceRequest> experiences,
         
         @Valid
-        List<UserTechStackRequest> techStacks
+        List<UserTechStackRequest> techStacks,
+        
+        List<Long> selectedProjectIds
         
 ) {
 }

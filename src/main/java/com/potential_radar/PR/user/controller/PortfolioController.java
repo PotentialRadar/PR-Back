@@ -6,6 +6,9 @@ import com.potential_radar.PR.user.dto.education.UserEducationRequest;
 import com.potential_radar.PR.user.dto.education.UserEducationResponse;
 import com.potential_radar.PR.user.dto.experience.UserExperienceRequest;
 import com.potential_radar.PR.user.dto.experience.UserExperienceResponse;
+import com.potential_radar.PR.user.dto.project.PortfolioProjectSelectionRequest;
+import com.potential_radar.PR.user.dto.project.UserAvailableProjectsResponse;
+import com.potential_radar.PR.user.dto.project.UserProjectResponse;
 import com.potential_radar.PR.user.dto.techStack.UserTechStackRequest;
 import com.potential_radar.PR.user.dto.techStack.UserTechStackResponse;
 import com.potential_radar.PR.user.service.EducationService;
@@ -171,5 +174,50 @@ public class PortfolioController {
         String email = principal.getName();
         techStackService.deleteTechStack(email, techStackId);
         return ResponseEntity.ok(Map.of("message", "기술 스택이 삭제되었습니다"));
+    }
+
+    // === 포트폴리오 프로젝트 선택 관리 ===
+    
+    @GetMapping("/available-projects")
+    public ResponseEntity<List<UserAvailableProjectsResponse>> getAvailableProjects(Principal principal) {
+        String email = principal.getName();
+        List<UserAvailableProjectsResponse> projects = portfolioService.getAvailableProjects(email);
+        return ResponseEntity.ok(projects);
+    }
+    
+    @PutMapping("/portfolio/projects")
+    public ResponseEntity<Object> updatePortfolioProjectSelection(
+            @Valid @RequestBody PortfolioProjectSelectionRequest request,
+            Principal principal) {
+        String email = principal.getName();
+        portfolioService.updateProjectSelection(email, request.selectedProjectIds());
+        return ResponseEntity.ok(Map.of("message", "포트폴리오 프로젝트 선택이 업데이트되었습니다"));
+    }
+    
+    // === 포트폴리오 선택된 프로젝트 CRUD ===
+    
+    @GetMapping("/projects")
+    public ResponseEntity<List<UserProjectResponse>> getSelectedProjects(Principal principal) {
+        String email = principal.getName();
+        List<UserProjectResponse> projects = portfolioService.getSelectedProjects(email);
+        return ResponseEntity.ok(projects);
+    }
+    
+    @PostMapping("/projects/{projectId}")
+    public ResponseEntity<UserProjectResponse> addProjectToPortfolio(
+            @PathVariable Long projectId,
+            Principal principal) {
+        String email = principal.getName();
+        UserProjectResponse response = portfolioService.addProjectToPortfolio(email, projectId);
+        return ResponseEntity.ok(response);
+    }
+    
+    @DeleteMapping("/projects/{projectId}")
+    public ResponseEntity<Object> removeProjectFromPortfolio(
+            @PathVariable Long projectId,
+            Principal principal) {
+        String email = principal.getName();
+        portfolioService.removeProjectFromPortfolio(email, projectId);
+        return ResponseEntity.ok(Map.of("message", "프로젝트가 포트폴리오에서 제거되었습니다"));
     }
 }

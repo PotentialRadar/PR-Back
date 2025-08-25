@@ -57,8 +57,7 @@ public class TestDataInitializer implements CommandLineRunner {
 
         log.info("Initializing test data...");
 
-        // 1. TechPart 데이터 생성
-        initializeTechParts();
+        // 1. TechPart Entity에서 @PostConstructor로 초기화 시킴
 
         // 2. TechStack 데이터 생성 (항상 실행하여 새 데이터 추가)
         if (!hasTechStackData) {

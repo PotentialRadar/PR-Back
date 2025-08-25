@@ -13,9 +13,12 @@ import com.potential_radar.PR.project.dto.ProjectRecruitmentResponse;
 import com.potential_radar.PR.project.dto.ProjectTechStackDTO;
 import com.potential_radar.PR.project.repository.ProjectApplicationRepository;
 import com.potential_radar.PR.project.repository.ProjectRecruitmentRepository;
+import com.potential_radar.PR.project.service.ProjectRecruitmentService;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,10 +33,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class LikeService {
 
+    private static final Logger logger = LoggerFactory.getLogger(LikeService.class);
+
     private final LikeRepository likeRepository;
     private final UserRepository userRepository;
     private final ProjectRecruitmentRepository projectRecruitmentRepository;
     private final ProjectApplicationRepository projectApplicationRepository;
+    private final ProjectRecruitmentService projectRecruitmentService; // ProjectRecruitmentService 주입
     private final RedisTemplate<String, Object> redisTemplate;
 
     private static final String LIKE_COUNT_KEY_PREFIX = "likeCount::";
@@ -55,7 +61,7 @@ public class LikeService {
         );
 
         long likeCount = likeRepository.countByTargetTypeAndTargetId(requestDto.getTargetType(), requestDto.getTargetId());
-        boolean isLiked = likeRepository.existsByUserAndTargetTypeAndTargetId(user, requestDto.getTargetType(), requestDto.getTargetId());
+        boolean isLiked = likeRepository.findByUserAndTargetTypeAndTargetId(user, requestDto.getTargetType(), requestDto.getTargetId()).isPresent();
 
         //캐시 업데이트
         String key = generateLikeCountKey(requestDto.getTargetType(), requestDto.getTargetId());
@@ -86,7 +92,7 @@ public class LikeService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("유저를 찾을 수 없습니다."));
 
-        List<Like> likes = likeRepository.findAllByUserAndTargetType(user, TargetType.PROJECT);
+        List<Like> likes = likeRepository.findByUserAndTargetType(user, TargetType.PROJECT);
         if (likes.isEmpty()) {
             return Collections.emptyList();
         }
@@ -96,46 +102,11 @@ public class LikeService {
                 .collect(Collectors.toList());
 
         List<ProjectRecruitment> projects = projectRecruitmentRepository.findAllById(projectIds);
+        logger.debug("Number of projects found for liked projects: {}", projects.size());
         List<ProjectRecruitmentResponse> responses = new ArrayList<>();
 
         for (ProjectRecruitment pr : projects) {
-            List<ProjectTechStackDTO> techStackDTOs = pr.getTechStacks().stream()
-                    .map(ts -> ProjectTechStackDTO.builder()
-                            .techStackName(ts.getTechStack().getName()) // Get name from TechStack entity
-                            .recruitCount(ts.getRecruitCount())
-                            .build())
-                    .collect(Collectors.toList());
-
-            List<ProjectPartRecruitmentDTO> partDTOs = pr.getTechParts().stream()
-                    .map(pt -> ProjectPartRecruitmentDTO.builder()
-                            .partName(pt.getTechPart().getName()) // Get name from TechPart entity
-                            .recruitCount(pt.getRecruitCount())
-                            .build())
-                    .collect(Collectors.toList());
-
-            int appliedCount = projectApplicationRepository.countByProject_ProjectId(pr.getProjectId());
-            int acceptedCount = projectApplicationRepository.countByProject_ProjectIdAndStatus(
-                    pr.getProjectId(), ProjectApplication.ApplicationStatus.ACCEPTED);
-            int remainingCount = pr.getRecruitCount() - acceptedCount;
-
-            responses.add(ProjectRecruitmentResponse.builder()
-                    .projectId(pr.getProjectId())
-                    .teamLeaderId(pr.getTeamLeader().getUserId())
-                    .title(pr.getTitle())
-                    .description(pr.getDescription())
-                    .recruitDeadline(pr.getRecruitDeadline())
-                    .startDate(pr.getStartDate())
-                    .endDate(pr.getEndDate())
-                    .fileUrl(pr.getFileUrl())
-                    .status(pr.getStatus().name())
-                    .viewCount(pr.getViewCount())
-                    .recruitCount(pr.getRecruitCount())
-                    .appliedCount(appliedCount)
-                    .acceptedCount(acceptedCount)
-                    .remainingCount(remainingCount)
-                    .techStacks(techStackDTOs)
-                    .recruitmentParts(partDTOs)
-                    .build());
+            responses.add(projectRecruitmentService.convertToResponseDto(pr, user.getEmail()));
         }
         return responses;
     }
@@ -147,6 +118,6 @@ public class LikeService {
     public boolean isLikedByUser(TargetType targetType, Long targetId, String username) {
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new NotFoundException("유저를 찾을 수 없습니다."));
-        return likeRepository.existsByUserAndTargetTypeAndTargetId(user, targetType, targetId);
+        return likeRepository.findByUserAndTargetTypeAndTargetId(user, targetType, targetId).isPresent();
     }
 }

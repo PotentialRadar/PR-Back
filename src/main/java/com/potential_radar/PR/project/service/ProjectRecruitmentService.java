@@ -6,7 +6,6 @@ import com.potential_radar.PR.common.exception.NotFoundException;
 
 import com.potential_radar.PR.like.domain.TargetType;
 import com.potential_radar.PR.like.repository.LikeRepository;
-import com.potential_radar.PR.like.service.LikeService;
 import com.potential_radar.PR.project.domain.*;
 import com.potential_radar.PR.project.dto.*;
 import com.potential_radar.PR.project.repository.*;
@@ -17,6 +16,8 @@ import com.potential_radar.PR.tech.repository.TechStackRepository;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
@@ -27,6 +28,7 @@ import org.springframework.data.domain.Pageable;
 @Service
 @RequiredArgsConstructor
 public class ProjectRecruitmentService {
+    private static final Logger logger = LoggerFactory.getLogger(ProjectRecruitmentService.class);
     private final ProjectRecruitmentRepository projectRecruitmentRepository;
     private final ProjectApplicationRepository projectApplicationRepository;
     private final ProjectMemberRepository projectMemberRepository;
@@ -35,16 +37,16 @@ public class ProjectRecruitmentService {
     private final ProjectCommentRepository projectCommentRepository;
     private final TechStackRepository techStackRepository;
     private final TechPartRepository techPartRepository;
-    private final LikeService likeService;
     private final LikeRepository likeRepository;
     private final UserRepository userRepository;
 
     public ProjectRecruitmentResponse convertToResponseDto(ProjectRecruitment pr, String userEmail) {
+        logger.debug("Entering convertToResponseDto for Project ID: {}", pr.getProjectId());
         boolean isLiked = false;
         if (userEmail != null) {
             Optional<User> userOpt = userRepository.findByEmail(userEmail);
             if (userOpt.isPresent()) {
-                isLiked = likeRepository.existsByUserAndTargetTypeAndTargetId(userOpt.get(), TargetType.PROJECT, pr.getProjectId());
+                isLiked = likeRepository.findByUserAndTargetTypeAndTargetId(userOpt.get(), TargetType.PROJECT, pr.getProjectId()).isPresent();
             }
         }
 
@@ -66,7 +68,7 @@ public class ProjectRecruitmentService {
         int acceptedCount = projectApplicationRepository.countByProject_ProjectIdAndStatus(
                 pr.getProjectId(), ProjectApplication.ApplicationStatus.ACCEPTED);
         int remainingCount = pr.getRecruitCount() - acceptedCount;
-        long likeCount = likeService.getLikeCount(TargetType.PROJECT, pr.getProjectId());
+        long likeCount = likeRepository.countByTargetTypeAndTargetIdCustom(TargetType.PROJECT, pr.getProjectId());
 
         return ProjectRecruitmentResponse.builder()
                 .projectId(pr.getProjectId())
@@ -79,6 +81,7 @@ public class ProjectRecruitmentService {
                 .fileUrl(pr.getFileUrl())
                 .status(pr.getStatus().name())
                 .viewCount(pr.getViewCount())
+                .createdAt(pr.getCreatedAt()) // Add this line
                 .likeCount(likeCount)
                 .isLiked(isLiked)
                 .recruitCount(pr.getRecruitCount())

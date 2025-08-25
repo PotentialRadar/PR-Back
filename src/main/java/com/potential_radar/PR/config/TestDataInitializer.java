@@ -49,7 +49,7 @@ public class TestDataInitializer implements CommandLineRunner {
     @Transactional
     public void run(String... args) throws Exception {
         // 이미 사용자 테스트 데이터가 있는지 확인
-        boolean hasUserData = userRepository.findByEmail("user001@example.com").isPresent();
+        boolean hasUserData = userRepository.findByEmail("user001@naver.com").isPresent();
         // TechStack 데이터가 있는지 확인 (새로 추가된 데이터)
         boolean hasTechStackData = techStackRepository.count() > 20; // 기본 데이터보다 많으면 초기화된 것으로 간주
         // 프로젝트 데이터가 있는지 확인
@@ -269,7 +269,7 @@ public class TestDataInitializer implements CommandLineRunner {
     private void initializeUsers() {
         List<TechPart> techParts = techPartRepository.findAll();
         Random random = new Random();
-        String hashedPassword = passwordEncoder.encode("password123"); // 공통 비밀번호
+        String hashedPassword = passwordEncoder.encode("1234"); // 공통 비밀번호
 
         String[] nicknames = {
             "코딩마스터001", "개발자김철수", "프론트엔드박영희", "백엔드이민수", "풀스택홍길동",

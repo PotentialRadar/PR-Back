@@ -9,6 +9,7 @@ import com.potential_radar.PR.search.service.DataSyncService;
 import com.potential_radar.PR.search.repository.UserSearchRepository;
 import com.potential_radar.PR.search.repository.ProjectSearchRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,6 +21,7 @@ import java.util.Map;
 @RequestMapping("/api/search")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
+@Slf4j
 public class SearchController {
 
     private final SearchService searchService;
@@ -33,18 +35,28 @@ public class SearchController {
             @RequestParam(required = false) String nickname, // nickname 파라미터 추가
             @RequestParam(required = false) List<String> techParts,
             @RequestParam(required = false) List<String> techStacks,
-            @RequestParam(required = false) List<ExperienceRange> experienceRanges,
+            @RequestParam(required = false) List<String> experienceRanges,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
+        log.info("Received search request - experienceRanges: {}", experienceRanges);
+        
         // nickname 파라미터가 있으면 keyword로 사용
         String searchKeyword = (nickname != null && !nickname.trim().isEmpty()) ? nickname : keyword;
+        
+        // String을 ExperienceRange로 변환
+        List<ExperienceRange> experienceEnums = null;
+        if (experienceRanges != null && !experienceRanges.isEmpty()) {
+            experienceEnums = experienceRanges.stream()
+                    .map(ExperienceRange::valueOf)
+                    .collect(java.util.stream.Collectors.toList());
+        }
 
         UserSearchReq request = UserSearchReq.builder()
                 .keyword(searchKeyword)
                 .techParts(techParts)
                 .techStacks(techStacks)
-                .experienceRanges(experienceRanges)
+                .experienceRanges(experienceEnums)
                 .page(page)
                 .size(size)
                 .build();
@@ -114,7 +126,7 @@ public class SearchController {
         return ResponseEntity.ok(techTags);
     }
 
-    // 필터별 결과 수 미리보기 엔드포인트
+    // 프로젝트 필터별 결과 수 미리보기 엔드포인트
     @GetMapping("/projects/count-preview")
     public ResponseEntity<Map<String, Object>> getProjectCountPreview(
             @RequestParam(required = false) String keyword,
@@ -139,6 +151,43 @@ public class SearchController {
         ));
     }
 
+    // 사용자(포트폴리오) 필터별 결과 수 미리보기 엔드포인트
+    @GetMapping("/users/count-preview")
+    public ResponseEntity<Map<String, Object>> getUserCountPreview(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String nickname,
+            @RequestParam(required = false) List<String> techParts,
+            @RequestParam(required = false) List<String> techStacks,
+            @RequestParam(required = false) List<String> experienceRanges) {
+
+        // nickname 파라미터가 있으면 keyword로 사용
+        String searchKeyword = (nickname != null && !nickname.trim().isEmpty()) ? nickname : keyword;
+        
+        // String을 ExperienceRange로 변환
+        List<ExperienceRange> experienceEnums = null;
+        if (experienceRanges != null && !experienceRanges.isEmpty()) {
+            experienceEnums = experienceRanges.stream()
+                    .map(ExperienceRange::valueOf)
+                    .collect(java.util.stream.Collectors.toList());
+        }
+
+        UserSearchReq request = UserSearchReq.builder()
+                .keyword(searchKeyword)
+                .techParts(techParts)
+                .techStacks(techStacks)
+                .experienceRanges(experienceEnums)
+                .page(0)
+                .size(1) // 결과 수만 필요하므로 최소 size
+                .build();
+
+        SearchResult<UserSearchRes> result = searchService.searchUsers(request);
+        
+        return ResponseEntity.ok(Map.of(
+                "totalCount", result.getTotalElements(),
+                "searchTime", result.getSearchTimeMs()
+        ));
+    }
+
     // 데이터 동기화 엔드포인트
     @PostMapping("/sync")
     public ResponseEntity<Map<String, String>> syncData() {
@@ -150,6 +199,7 @@ public class SearchController {
                     .body(Map.of("error", "Failed to sync data: " + e.getMessage()));
         }
     }
+
 
     // 인덱스 재생성 엔드포인트 (개발용)
     @PostMapping("/reindex")

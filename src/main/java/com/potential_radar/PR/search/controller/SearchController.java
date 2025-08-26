@@ -8,6 +8,8 @@ import com.potential_radar.PR.search.service.SearchService;
 import com.potential_radar.PR.search.service.DataSyncService;
 import com.potential_radar.PR.search.repository.UserSearchRepository;
 import com.potential_radar.PR.search.repository.ProjectSearchRepository;
+import com.potential_radar.PR.tech.repository.TechStackRepository;
+import com.potential_radar.PR.tech.domain.TechStack;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +28,7 @@ public class SearchController {
     private final DataSyncService dataSyncService;
     private final UserSearchRepository userSearchRepository;
     private final ProjectSearchRepository projectSearchRepository;
+    private final TechStackRepository techStackRepository;
 
     @GetMapping("/users")
     public ResponseEntity<SearchResult<UserSearchRes>> searchUsers(
@@ -97,6 +100,27 @@ public class SearchController {
     public ResponseEntity<Map<String, Object>> testProjectCount() {
         long count = searchService.countAllProjects();
         return ResponseEntity.ok(Map.of("count", count));
+    }
+
+    // 프로젝트 개수 미리보기 엔드포인트
+    @GetMapping("/projects/count-preview")
+    public ResponseEntity<Map<String, Object>> getProjectCountPreview(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) List<String> techParts,
+            @RequestParam(required = false) List<String> techStacks,
+            @RequestParam(required = false) List<String> statuses) {
+        
+        ProjectSearchReq request = ProjectSearchReq.builder()
+                .keyword(keyword)
+                .techParts(techParts)
+                .techStacks(techStacks)
+                .statuses(statuses)
+                .page(0)
+                .size(1)
+                .build();
+
+        SearchResult<ProjectSearchRes> result = searchService.searchProjects(request);
+        return ResponseEntity.ok(Map.of("totalCount", result.getTotalElements()));
     }
     
     @GetMapping("/test/projects/all")

@@ -6,6 +6,7 @@ import com.potential_radar.PR.search.document.UserSearchDocument;
 import com.potential_radar.PR.search.dto.*;
 import com.potential_radar.PR.search.service.SearchService;
 import com.potential_radar.PR.search.service.DataSyncService;
+import com.potential_radar.PR.search.service.PopularSearchService;
 import com.potential_radar.PR.search.repository.UserSearchRepository;
 import com.potential_radar.PR.search.repository.ProjectSearchRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ public class SearchController {
 
     private final SearchService searchService;
     private final DataSyncService dataSyncService;
+    private final PopularSearchService popularSearchService;
     private final UserSearchRepository userSearchRepository;
     private final ProjectSearchRepository projectSearchRepository;
 
@@ -186,6 +188,19 @@ public class SearchController {
                 "totalCount", result.getTotalElements(),
                 "searchTime", result.getSearchTimeMs()
         ));
+    }
+
+    // 포트폴리오 전용 인기 키워드 조회 엔드포인트
+    @GetMapping("/popular/user-keywords")
+    public ResponseEntity<Map<String, Object>> getPopularUserKeywords() {
+        try {
+            List<String> keywords = popularSearchService.getPopularUserKeywords();
+            return ResponseEntity.ok(Map.of("keywords", keywords));
+        } catch (Exception e) {
+            log.error("Failed to get popular user keywords: {}", e.getMessage());
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Failed to get popular user keywords"));
+        }
     }
 
     // 데이터 동기화 엔드포인트

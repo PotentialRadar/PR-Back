@@ -86,11 +86,22 @@ public class SearchService {
             String keywordLower = keyword.toLowerCase(); // 기술스택/기술파트용 소문자 키워드
             log.info("Applying keyword filter: '{}' (lowercase: '{}')", keyword, keywordLower);
 
-            // 키워드는 모든 필드에서 검색 (nickname, introduction, 기술스택, 기술파트)
-            Criteria keywordCriteria = new Criteria("nickname").contains(keyword)
-                    .or(new Criteria("introduction").contains(keyword))
-                    .or(new Criteria("techStacks").contains(keywordLower))
-                    .or(new Criteria("techPart").contains(keywordLower));
+            // 키워드는 모든 필드에서 검색 (nickname, jobTitle, 기술스택, 기술파트)
+            // 공백이 포함된 키워드는 match 쿼리로 처리
+            Criteria keywordCriteria;
+            if (keyword.contains(" ")) {
+                // 공백이 포함된 경우 match 쿼리 사용
+                keywordCriteria = new Criteria("nickname").matches(keyword)
+                        .or(new Criteria("jobTitle").matches(keyword))
+                        .or(new Criteria("techStacks").matches(keywordLower))
+                        .or(new Criteria("techPart").matches(keywordLower));
+            } else {
+                // 단일 단어는 contains 사용
+                keywordCriteria = new Criteria("nickname").contains(keyword)
+                        .or(new Criteria("jobTitle").contains(keyword))
+                        .or(new Criteria("techStacks").contains(keywordLower))
+                        .or(new Criteria("techPart").contains(keywordLower));
+            }
 
             finalCriteria = keywordCriteria;
             hasConditions = true;
@@ -168,7 +179,7 @@ public class SearchService {
 
         long searchTime = System.currentTimeMillis() - startTime;
 
-        return SearchResult.<UserSearchRes>builder()
+        SearchResult<UserSearchRes> result = SearchResult.<UserSearchRes>builder()
                 .content(responses)
                 .totalElements(totalElements)
                 .totalPages((int) Math.ceil((double) totalElements / request.getSize()))
@@ -178,6 +189,11 @@ public class SearchService {
                 .hasPrevious(request.getPage() > 0)
                 .searchTimeMs(searchTime)
                 .build();
+
+        // 사용자 검색 로그 저장
+        searchEventService.saveUserSearchLog(request, totalElements);
+        
+        return result;
     }
 
 //    public SearchResult<UserSearchRes> searchUsers(UserSearchReq request) {
@@ -316,11 +332,22 @@ public class SearchService {
             String keywordLower = keyword.toLowerCase(); // 기술스택/기술파트용 소문자 키워드
             log.info("Applying keyword filter: '{}' (lowercase: '{}')", keyword, keywordLower);
 
-            // 키워드는 모든 필드에서 검색 (nickname, introduction, 기술스택, 기술파트)
-            Criteria keywordCriteria = new Criteria("nickname").contains(keyword)
-                    .or(new Criteria("introduction").contains(keyword))
-                    .or(new Criteria("techStacks").contains(keywordLower))
-                    .or(new Criteria("techPart").contains(keywordLower));
+            // 키워드는 모든 필드에서 검색 (nickname, jobTitle, 기술스택, 기술파트)
+            // 공백이 포함된 키워드는 match 쿼리로 처리
+            Criteria keywordCriteria;
+            if (keyword.contains(" ")) {
+                // 공백이 포함된 경우 match 쿼리 사용
+                keywordCriteria = new Criteria("nickname").matches(keyword)
+                        .or(new Criteria("jobTitle").matches(keyword))
+                        .or(new Criteria("techStacks").matches(keywordLower))
+                        .or(new Criteria("techPart").matches(keywordLower));
+            } else {
+                // 단일 단어는 contains 사용
+                keywordCriteria = new Criteria("nickname").contains(keyword)
+                        .or(new Criteria("jobTitle").contains(keyword))
+                        .or(new Criteria("techStacks").contains(keywordLower))
+                        .or(new Criteria("techPart").contains(keywordLower));
+            }
 
             finalCriteria = keywordCriteria;
             hasConditions = true;
@@ -398,7 +425,7 @@ public class SearchService {
 
         long searchTime = System.currentTimeMillis() - startTime;
 
-        return SearchResult.<UserSearchRes>builder()
+        SearchResult<UserSearchRes> result = SearchResult.<UserSearchRes>builder()
                 .content(responses)
                 .totalElements(totalElements)
                 .totalPages((int) Math.ceil((double) totalElements / request.getSize()))
@@ -408,6 +435,11 @@ public class SearchService {
                 .hasPrevious(request.getPage() > 0)
                 .searchTimeMs(searchTime)
                 .build();
+
+        // 사용자 검색 로그 저장
+        searchEventService.saveUserSearchLog(request, totalElements);
+        
+        return result;
     }
 
     private UserSearchRes convertToUserResponse(SearchHit<UserSearchDocument> hit) {
@@ -419,6 +451,8 @@ public class SearchService {
                 .techStacks(doc.getTechStacks())
                 .introduction(doc.getIntroduction())
                 .profileImage(doc.getProfileImage())
+                .githubUrl(doc.getGithubUrl())
+                .jobTitle(doc.getJobTitle())
                 .experienceRange(doc.getExperienceRange())
                 .createdAt(doc.getCreatedAt())
                 .matchScore((double) hit.getScore())
@@ -433,6 +467,8 @@ public class SearchService {
                 .techStacks(doc.getTechStacks())
                 .introduction(doc.getIntroduction())
                 .profileImage(doc.getProfileImage())
+                .githubUrl(doc.getGithubUrl())
+                .jobTitle(doc.getJobTitle())
                 .experienceRange(doc.getExperienceRange())
                 .createdAt(doc.getCreatedAt())
                 .matchScore(1.0) // 기본 점수
@@ -483,13 +519,10 @@ public class SearchService {
             String keywordLower = keyword.toLowerCase(); // 기술스택/기술파트용 소문자 키워드
             log.info("Applying keyword filter: '{}' (lowercase: '{}')", keyword, keywordLower);
 
-            // 키워드는 모든 필드에서 검색 (제목, 설명, 기술스택, 기술파트)
+            // 키워드는 제목과 기술스택에서만 검색
             Criteria keywordCriteria = new Criteria("title").contains(keyword)
-                    .or(new Criteria("description").contains(keyword))
                     .or(new Criteria("title.text").contains(keyword))
-                    .or(new Criteria("description.text").contains(keyword))
-                    .or(new Criteria("techStacks").contains(keywordLower))
-                    .or(new Criteria("techParts").contains(keywordLower));
+                    .or(new Criteria("techStacks").contains(keywordLower));
 
             finalCriteria = keywordCriteria;
             hasConditions = true;

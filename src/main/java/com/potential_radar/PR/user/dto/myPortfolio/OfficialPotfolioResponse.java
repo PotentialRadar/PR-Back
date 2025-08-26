@@ -3,8 +3,14 @@ package com.potential_radar.PR.user.dto.myPortfolio;
 import com.potential_radar.PR.user.domain.ExperienceRange;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.domain.UserProfile;
+import com.potential_radar.PR.user.dto.education.UserEducationResponse;
+import com.potential_radar.PR.user.dto.experience.UserExperienceResponse;
+import com.potential_radar.PR.user.dto.project.UserProjectResponse;
+import com.potential_radar.PR.user.dto.review.UserReceivedReviewResponse;
+import com.potential_radar.PR.user.dto.techStack.UserTechStackResponse;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public record OfficialPotfolioResponse(
         Long userId,
@@ -23,9 +29,21 @@ public record OfficialPotfolioResponse(
         boolean isSearchOpen,
         BigDecimal reputationScore,
         int reviewCount,
-        ExperienceRange experienceRange
+        ExperienceRange experienceRange,
+        List<UserEducationResponse> educations,
+        List<UserExperienceResponse> experiences,
+        List<UserTechStackResponse> techStacks,
+        List<UserProjectResponse> projects,
+        List<UserReceivedReviewResponse> receivedReviews,
+        List<Long> selectedProjectIds
 ) {
-    public OfficialPotfolioResponse(UserProfile userProfile, User user) {
+    public OfficialPotfolioResponse(UserProfile userProfile, User user,
+                                   List<UserEducationResponse> educations,
+                                   List<UserExperienceResponse> experiences,
+                                   List<UserTechStackResponse> techStacks,
+                                   List<UserProjectResponse> projects,
+                                   List<UserReceivedReviewResponse> receivedReviews,
+                                   List<Long> selectedProjectIds) {
         this(
                 userProfile.getUser().getUserId(),
                 userProfile.getUser().getNickname(),
@@ -43,7 +61,13 @@ public record OfficialPotfolioResponse(
                 userProfile.isSearchOpen(),
                 userProfile.getReputationScore(),
                 userProfile.getReviewCount(),
-                userProfile.getExperienceRange()
+                userProfile.getExperienceRange(),
+                educations,
+                experiences,
+                techStacks,
+                projects,
+                receivedReviews,
+                selectedProjectIds
         );
     }
 }

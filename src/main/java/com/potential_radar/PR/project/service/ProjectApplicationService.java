@@ -50,15 +50,15 @@ public class ProjectApplicationService {
 
     // 프로젝트 지원
     @Transactional
-    public void applyProject(Long projectId, ProjectApplyRequest request) {
-        if (ProjectApplicationRepository.existsByProject_ProjectIdAndUser_UserId(projectId, request.getUserId())) {
+    public void applyProject(Long projectId, ProjectApplyRequest request, Long userId) {
+        if (ProjectApplicationRepository.existsByProject_ProjectIdAndUser_UserId(projectId, userId)) {
             throw new DuplicateApplicationException("이미 지원하였습니다.");
         }
 
         ProjectRecruitment project = projectRecruitmentRepository.findById(projectId)
                 .orElseThrow(() -> new NotFoundException("프로젝트를 찾을 수 없습니다."));
 
-        User user = userRepository.findById(request.getUserId())
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
 
         ProjectApplication member = ProjectApplication.builder()
@@ -70,14 +70,16 @@ public class ProjectApplicationService {
                 .build();
 
         ProjectApplicationRepository.save(member);
-        
+
         // 프로젝트 팀 리더에게 지원 알림 전송
-        sendApplicationNotificationAfterCommit(
-            project.getTeamLeader(),
-            user,
-            project,
-            request.getTechPart()
-        );
+        if (project.getTeamLeader() != null) {
+            sendApplicationNotificationAfterCommit(
+                project.getTeamLeader(),
+                user,
+                project,
+                request.getTechPart()
+            );
+        }
     }
 
     // 프로젝트 지원자 목록

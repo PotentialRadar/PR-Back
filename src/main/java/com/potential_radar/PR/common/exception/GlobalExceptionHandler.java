@@ -93,6 +93,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(response);
     }
 
+    @ExceptionHandler(NullPointerException.class)
+    public ResponseEntity<ErrorResponse> handleNullPointerException(NullPointerException ex) {
+        if (ex.getMessage() != null && ex.getMessage().contains("principal")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                    new ErrorResponse("인증이 필요합니다.")
+            );
+        }
+        ex.printStackTrace();
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                new ErrorResponse("서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.")
+        );
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleAll(Exception ex) {
         ex.printStackTrace();

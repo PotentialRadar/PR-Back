@@ -2,6 +2,7 @@ package com.potential_radar.PR.project.controller;
 
 import com.potential_radar.PR.common.S3.S3Uploader;
 import com.potential_radar.PR.common.exception.NotFoundException;
+import com.potential_radar.PR.project.dto.ProjectAttachmentDto;
 import com.potential_radar.PR.project.dto.ProjectMemberResponseDTO;
 import com.potential_radar.PR.project.dto.ProjectRecruitmentRequest;
 import com.potential_radar.PR.project.dto.ProjectRecruitmentResponse;
@@ -20,7 +21,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/projects")
@@ -29,6 +33,12 @@ public class ProjectRecruitmentController {
     private final ProjectRecruitmentService projectRecruitmentService;
     private final S3Uploader s3Uploader;
     private final UserRepository userRepository;
+
+    // 허용된 파일 확장자 및 MIME 타입 정의
+    private static final Set<String> ALLOWED_EXTENSIONS = Arrays.asList("jpg", "jpeg", "png", "gif", "pdf")
+            .stream().collect(Collectors.toSet());
+    private static final Set<String> ALLOWED_MIME_TYPES = Arrays.asList("image/jpeg", "image/png", "image/gif", "application/pdf")
+            .stream().collect(Collectors.toSet());
 
     /**
      * Authentication 객체에서 사용자 이메일을 추출하는 헬퍼 메서드
@@ -48,9 +58,15 @@ public class ProjectRecruitmentController {
 
     // 구인글 등록
     @PostMapping
-    public ResponseEntity<Long> createProject(@Valid @RequestBody ProjectRecruitmentRequest request, @RequestParam("userId") Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("해당 유저가 존재하지 않습니다."));
+    public ResponseEntity<Long> createProject(@Valid @RequestBody ProjectRecruitmentRequest request, Authentication authentication) {
+        String userEmail = getUserEmailFromAuthentication(authentication);
+        if (userEmail == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new UsernameNotFoundException("DB에서 사용자 정보를 찾을 수 없습니다: " + userEmail));
+
         Long id = projectRecruitmentService.createProject(request, user);
         return ResponseEntity.ok(id);
     }
@@ -125,14 +141,36 @@ public class ProjectRecruitmentController {
     }
     // S3 파일 업로드
     @PostMapping("/upload-file")
-    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<ProjectAttachmentDto> uploadFile(@RequestParam("file") MultipartFile file) {
         try {
-            // "project-files"는 S3 내 폴더(접두사) 없으면 자동 생성됨
+            // 1. 파일 유효성 검사
+            String originalFilename = file.getOriginalFilename();
+            String fileExtension = "";
+            if (originalFilename != null && originalFilename.contains(".")) {
+                fileExtension = originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase();
+            }
+
+            String contentType = file.getContentType();
+
+            if (!ALLOWED_EXTENSIONS.contains(fileExtension) || !ALLOWED_MIME_TYPES.contains(contentType)) {
+                // 적절한 에러 메시지를 포함한 응답 반환
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null); 
+            }
+
+            // 2. S3 업로드
             String fileUrl = s3Uploader.upload(file, "project-files");
-            return ResponseEntity.ok(fileUrl); // 실제 접근 가능한 S3 URL 반환
+            
+            // 3. ProjectAttachmentDto 객체 생성 및 반환
+            ProjectAttachmentDto attachmentDto = ProjectAttachmentDto.builder()
+                    .name(originalFilename) // 원본 파일명 사용
+                    .url(fileUrl)
+                    .size(file.getSize())
+                    .build();
+            
+            return ResponseEntity.ok(attachmentDto);
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.internalServerError().body("파일 업로드 실패: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(null); // 에러 발생 시 null 반환 또는 적절한 에러 DTO 반환
         }
     }
 }

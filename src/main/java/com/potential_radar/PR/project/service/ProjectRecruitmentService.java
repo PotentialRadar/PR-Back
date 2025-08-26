@@ -6,7 +6,6 @@ import com.potential_radar.PR.common.exception.NotFoundException;
 
 import com.potential_radar.PR.like.domain.TargetType;
 import com.potential_radar.PR.like.repository.LikeRepository;
-import com.potential_radar.PR.like.service.LikeService;
 import com.potential_radar.PR.project.domain.*;
 import com.potential_radar.PR.project.dto.*;
 import com.potential_radar.PR.project.repository.*;
@@ -17,34 +16,39 @@ import com.potential_radar.PR.tech.repository.TechStackRepository;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 @Service
 @RequiredArgsConstructor
 public class ProjectRecruitmentService {
+    private static final Logger logger = LoggerFactory.getLogger(ProjectRecruitmentService.class);
     private final ProjectRecruitmentRepository projectRecruitmentRepository;
     private final ProjectApplicationRepository projectApplicationRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final ProjectTechPartRepository projectTechPartRepository;
     private final ProjectTechStackRepository projectTechStackRepository;
     private final ProjectCommentRepository projectCommentRepository;
+    private final ProjectAttachmentRepository projectAttachmentRepository;
     private final TechStackRepository techStackRepository;
     private final TechPartRepository techPartRepository;
-    private final LikeService likeService;
     private final LikeRepository likeRepository;
     private final UserRepository userRepository;
 
     public ProjectRecruitmentResponse convertToResponseDto(ProjectRecruitment pr, String userEmail) {
+        logger.debug("Entering convertToResponseDto for Project ID: {}", pr.getProjectId());
         boolean isLiked = false;
         if (userEmail != null) {
             Optional<User> userOpt = userRepository.findByEmail(userEmail);
             if (userOpt.isPresent()) {
-                isLiked = likeRepository.existsByUserAndTargetTypeAndTargetId(userOpt.get(), TargetType.PROJECT, pr.getProjectId());
+                isLiked = likeRepository.findByUserAndTargetTypeAndTargetId(userOpt.get(), TargetType.PROJECT, pr.getProjectId()).isPresent();
             }
         }
 
@@ -62,11 +66,19 @@ public class ProjectRecruitmentService {
                         .build())
                 .collect(Collectors.toList());
 
+        List<ProjectAttachmentDto> attachmentDtos = pr.getAttachments().stream()
+                .map(attachment -> ProjectAttachmentDto.builder()
+                        .name(attachment.getName())
+                        .url(attachment.getUrl())
+                        .size(attachment.getSize())
+                        .build())
+                .collect(Collectors.toList());
+
         int appliedCount = projectApplicationRepository.countByProject_ProjectId(pr.getProjectId());
         int acceptedCount = projectApplicationRepository.countByProject_ProjectIdAndStatus(
                 pr.getProjectId(), ProjectApplication.ApplicationStatus.ACCEPTED);
         int remainingCount = pr.getRecruitCount() - acceptedCount;
-        long likeCount = likeService.getLikeCount(TargetType.PROJECT, pr.getProjectId());
+        long likeCount = likeRepository.countByTargetTypeAndTargetIdCustom(TargetType.PROJECT, pr.getProjectId());
 
         return ProjectRecruitmentResponse.builder()
                 .projectId(pr.getProjectId())
@@ -76,9 +88,9 @@ public class ProjectRecruitmentService {
                 .recruitDeadline(pr.getRecruitDeadline())
                 .startDate(pr.getStartDate())
                 .endDate(pr.getEndDate())
-                .fileUrl(pr.getFileUrl())
                 .status(pr.getStatus().name())
                 .viewCount(pr.getViewCount())
+                .createdAt(pr.getCreatedAt())
                 .likeCount(likeCount)
                 .isLiked(isLiked)
                 .recruitCount(pr.getRecruitCount())
@@ -87,6 +99,7 @@ public class ProjectRecruitmentService {
                 .remainingCount(remainingCount)
                 .techStacks(techStackDTOs)
                 .recruitmentParts(partDTOs)
+                .attachments(attachmentDtos)
                 .build();
     }
 
@@ -100,7 +113,6 @@ public class ProjectRecruitmentService {
                 .recruitDeadline(request.getRecruitDeadline())
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
-                .fileUrl(request.getFileUrl())
                 .recruitCount(request.getRecruitCount() != null ? request.getRecruitCount() : 0)
                 .status(ProjectStatus.RECRUITING)
                 .build();
@@ -154,6 +166,19 @@ public class ProjectRecruitmentService {
         }
         project.setTechParts(techParts);
 
+        // 첨부파일 연관 저장
+        if (request.getAttachments() != null) {
+            List<ProjectAttachment> attachments = request.getAttachments().stream()
+                    .map(dto -> ProjectAttachment.builder()
+                            .project(project)
+                            .name(dto.getName())
+                            .url(dto.getUrl())
+                            .size(dto.getSize())
+                            .build())
+                    .collect(Collectors.toList());
+            project.setAttachments(attachments);
+        }
+
         projectRecruitmentRepository.save(project);
 
         if (!projectMemberRepository.existsByProject_ProjectIdAndUser_UserId(project.getProjectId(), teamLeader.getUserId())) {
@@ -178,7 +203,20 @@ public class ProjectRecruitmentService {
 
     @Transactional(readOnly = true)
     public Page<ProjectRecruitmentResponse> getAllProjects(String userEmail, Pageable pageable) {
-        Page<ProjectRecruitment> projects = projectRecruitmentRepository.findAll(pageable);
+        Page<ProjectRecruitment> projects;
+
+        // Pageable에 likeCount 정렬 요청이 있는지 확인
+        boolean sortByLikeCount = pageable.getSort().stream()
+                                        .anyMatch(order -> order.getProperty().equals("likeCount"));
+
+        if (sortByLikeCount) {
+            // likeCount 정렬은 @Query에 하드코딩되어 있으므로, Pageable에서는 정렬 조건을 제거합니다.
+            Pageable pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+            projects = projectRecruitmentRepository.findAllOrderByLikeCountAndCreatedAt(pageRequest);
+        } else {
+            // 그 외의 정렬 요청은 기본 findAll 사용
+            projects = projectRecruitmentRepository.findAll(pageable);
+        }
         return projects.map(pr -> convertToResponseDto(pr, userEmail));
     }
 
@@ -221,12 +259,12 @@ public class ProjectRecruitmentService {
         project.setRecruitDeadline(request.getRecruitDeadline());
         project.setStartDate(request.getStartDate());
         project.setEndDate(request.getEndDate());
-        project.setFileUrl(request.getFileUrl());
         if (request.getStatus() != null) project.setStatus(ProjectStatus.valueOf(request.getStatus()));
         if (request.getRecruitCount() != null) project.setRecruitCount(request.getRecruitCount());
 
         projectTechStackRepository.deleteAllByProjectId(id);
         projectTechPartRepository.deleteAllByProjectId(id);
+        projectAttachmentRepository.deleteAllByProjectId(id);
 
         if (request.getTechStacks() != null && !request.getTechStacks().isEmpty()) {
             for (ProjectTechStackDTO tsDto : request.getTechStacks()) {
@@ -269,6 +307,19 @@ public class ProjectRecruitmentService {
                         .build();
 
                 projectTechPartRepository.save(part);
+            }
+        }
+
+        // 첨부파일 저장
+        if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {
+            for (ProjectAttachmentDto dto : request.getAttachments()) {
+                ProjectAttachment attachment = ProjectAttachment.builder()
+                        .project(project)
+                        .name(dto.getName())
+                        .url(dto.getUrl())
+                        .size(dto.getSize())
+                        .build();
+                projectAttachmentRepository.save(attachment);
             }
         }
     }

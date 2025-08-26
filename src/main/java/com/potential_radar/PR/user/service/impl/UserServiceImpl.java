@@ -47,7 +47,7 @@ public class UserServiceImpl implements UserService {
                 .build();
 
         // 2. UserProfile 생성 및 User와 연결
-        TechPart defaultTechPart = techPartRepository.findById(11L)  // Defualt : 11 ETC
+        TechPart defaultTechPart = techPartRepository.findByNameIgnoreCase("기타")
                 .orElseThrow(() -> new NotFoundException("기본 기술 분야를 찾을 수 없습니다"));
         user.initializeProfile(defaultTechPart); // User 엔티티의 헬퍼 메서드 사용
 
@@ -121,7 +121,8 @@ public class UserServiceImpl implements UserService {
             if (userRepository.existsByNickname(request.nickname())) {
                 throw new IllegalArgumentException("이미 사용 중인 닉네임입니다");
             }
-            userRepository.updateNickname(user.getUserId(), request.nickname());
+            // JPA 엔티티 객체도 함께 업데이트
+            user.setNickname(request.nickname());
         }
 
         // 프로필 정보 업데이트

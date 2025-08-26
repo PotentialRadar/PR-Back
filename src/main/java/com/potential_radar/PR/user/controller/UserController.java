@@ -61,6 +61,9 @@ public class UserController {
     // 개인정보 조회
     @GetMapping("/user/profile")
     public ResponseEntity<UpdatedUserProfileResponse> getUserProfile(Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         String email = principal.getName();
         UpdatedUserProfileResponse profile = userService.getUserProfile(email);
         return ResponseEntity.ok(profile);

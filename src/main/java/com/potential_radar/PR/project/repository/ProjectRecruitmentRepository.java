@@ -2,7 +2,9 @@ package com.potential_radar.PR.project.repository;
 
 import com.potential_radar.PR.project.domain.ProjectRecruitment;
 import com.potential_radar.PR.project.domain.ProjectStatus;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -16,24 +18,24 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ProjectRecruitmentRepository extends JpaRepository<ProjectRecruitment, Long> {
-    
+
     // 증분 동기화를 위한 메서드들
     List<ProjectRecruitment> findByUpdatedAtAfter(LocalDateTime since);
-    
+
     List<ProjectRecruitment> findByUpdatedAtBetween(LocalDateTime start, LocalDateTime end);
-    
+
     @Query("SELECT COUNT(p) FROM ProjectRecruitment p WHERE p.updatedAt > :since")
     long countByUpdatedAtAfter(@Param("since") LocalDateTime since);
-    
+
     @Query("SELECT p FROM ProjectRecruitment p WHERE p.updatedAt > :since ORDER BY p.updatedAt ASC")
     List<ProjectRecruitment> findByUpdatedAtAfterOrderByUpdatedAt(@Param("since") LocalDateTime since);
-    
+
     // 페이징 지원 증분 동기화
     List<ProjectRecruitment> findByUpdatedAtAfterOrderByUpdatedAt(LocalDateTime since, PageRequest pageRequest);
-    
+
     // 상태별 조회
     List<ProjectRecruitment> findByStatusAndUpdatedAtAfter(ProjectStatus status, LocalDateTime since);
-    
+
     // 모집중인 프로젝트만 조회
     List<ProjectRecruitment> findByStatus(ProjectStatus status);
 
@@ -50,4 +52,9 @@ public interface ProjectRecruitmentRepository extends JpaRepository<ProjectRecru
     Optional<ProjectRecruitment> findByIdWithTeamLeader(@Param("projectId") Long projectId);
 
     List<ProjectRecruitment> findByTeamLeader_UserId(Long teamLeaderId);
+
+    // 인기순 정렬 (좋아요 수 내림차순, 생성 시간 내림차순)
+    @Query("SELECT p FROM ProjectRecruitment p ORDER BY (SELECT count(l.id) FROM Like l WHERE l.targetId = p.projectId AND l.targetType = 'PROJECT') DESC, p.createdAt DESC")
+    Page<ProjectRecruitment> findAllOrderByLikeCountAndCreatedAt(Pageable pageable);
+
 }

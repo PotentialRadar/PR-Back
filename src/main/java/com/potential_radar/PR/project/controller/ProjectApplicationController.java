@@ -4,14 +4,19 @@ import com.potential_radar.PR.common.exception.AccessDeniedException;
 import com.potential_radar.PR.common.exception.NotFoundException;
 import com.potential_radar.PR.project.domain.ProjectRecruitment;
 import com.potential_radar.PR.project.dto.ProjectApplicationResponseDTO;
-import com.potential_radar.PR.project.dto.ProjectRecruitmentResponse;
-import com.potential_radar.PR.project.dto.ProjectApplyRequest;
 import com.potential_radar.PR.project.dto.ProjectApplicationStatusUpdateRequest;
+import com.potential_radar.PR.project.dto.ProjectApplyRequest;
 import com.potential_radar.PR.project.dto.ProjectRecruitmentResponse;
 import com.potential_radar.PR.project.repository.ProjectRecruitmentRepository;
 import com.potential_radar.PR.project.service.ProjectApplicationService;
+import com.potential_radar.PR.user.domain.User;
+import com.potential_radar.PR.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,13 +28,41 @@ public class ProjectApplicationController {
 
     private final ProjectApplicationService projectApplicationService;
     private final ProjectRecruitmentRepository projectRecruitmentRepository;
+    private final UserRepository userRepository; // UserRepository 주입
+
+    // Authentication 객체에서 사용자 이메일을 추출하는 헬퍼 메서드
+    private String getUserEmailFromAuthentication(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return null;
+        }
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof UserDetails) {
+            return ((UserDetails) principal).getUsername();
+        } else if (principal instanceof String) {
+            // 'anonymousUser'와 같은 경우를 제외
+            if ("anonymousUser".equals(principal)) {
+                return null;
+            }
+            return (String) principal;
+        }
+        return null;
+    }
 
     // [POST] 프로젝트 지원 (body로 받음)
     @PostMapping("/{projectId}/apply")
     public ResponseEntity<String> applyProject(
             @PathVariable Long projectId,
-            @RequestBody ProjectApplyRequest request) {  // Body로 받도록 변경!
-        projectApplicationService.applyProject(projectId, request);
+            @RequestBody ProjectApplyRequest request,
+            Authentication authentication) {
+
+        String userEmail = getUserEmailFromAuthentication(authentication);
+        if (userEmail == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인이 필요합니다.");
+        }
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다."));
+
+        projectApplicationService.applyProject(projectId, request, user.getUserId());
         return ResponseEntity.ok("프로젝트 지원 완료");
     }
 

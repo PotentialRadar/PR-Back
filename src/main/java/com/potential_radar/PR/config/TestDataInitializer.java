@@ -41,6 +41,7 @@ public class TestDataInitializer implements CommandLineRunner {
     private final ProjectTechPartRepository projectTechPartRepository;
     private final ProjectApplicationRepository projectApplicationRepository;
     private final ProjectMemberRepository projectMemberRepository;
+    private final ProjectCommentRepository projectCommentRepository; // 추가
     private final RecommendationHistoryRepository recommendationHistoryRepository;
     private final UserTechStackRepository userTechStackRepository;
     private final PasswordEncoder passwordEncoder;
@@ -97,6 +98,10 @@ public class TestDataInitializer implements CommandLineRunner {
             // 3단계: 프로젝트 지원 삭제 (project_application)
             projectApplicationRepository.deleteAll();
             log.info("Deleted project applications");
+
+            // 추가: 프로젝트 댓글 삭제
+            projectCommentRepository.deleteAll();
+            log.info("Deleted project comments");
             
             // 4단계: 프로젝트 관련 연결 테이블 삭제
             projectTechStackRepository.deleteAll();

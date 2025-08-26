@@ -2,10 +2,7 @@ package com.potential_radar.PR.like.domain;
 
 import com.potential_radar.PR.user.domain.User;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.NonNull;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -13,11 +10,13 @@ import java.time.LocalDateTime;
 
 @Entity
 @Getter
+@Builder
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "likes", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"user_id", "target_type", "target_id"})
+        @UniqueConstraint(columnNames = {"user_id", "target_type", "target_id"})
 })
 @EntityListeners(AuditingEntityListener.class)
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Like {
 
     @Id
@@ -35,13 +34,17 @@ public class Like {
     @Column(name = "target_id", nullable = false)
     private Long targetId;
 
+    // 테스트 데이터 생성용 메서드
+    @Setter
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    public Like(@NonNull User user, @NonNull TargetType targetType, @NonNull Long targetId) {
+    public Like(@NonNull User user, @NonNull
+    TargetType targetType, @NonNull Long targetId) {
         this.user = user;
         this.targetType = targetType;
         this.targetId = targetId;
     }
+
 }

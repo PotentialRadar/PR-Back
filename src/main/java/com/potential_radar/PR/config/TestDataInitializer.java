@@ -12,6 +12,9 @@ import com.potential_radar.PR.project.domain.*;
 import com.potential_radar.PR.project.repository.*;
 import com.potential_radar.PR.recommendation.repository.RecommendationHistoryRepository;
 import com.potential_radar.PR.invitation.repository.TeamInvitationRepository;
+import com.potential_radar.PR.like.domain.Like;
+import com.potential_radar.PR.like.domain.TargetType;
+import com.potential_radar.PR.like.repository.LikeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -46,6 +49,7 @@ public class TestDataInitializer implements CommandLineRunner {
     private final RecommendationHistoryRepository recommendationHistoryRepository;
     private final UserTechStackRepository userTechStackRepository;
     private final TeamInvitationRepository teamInvitationRepository;
+    private final LikeRepository likeRepository;
     private final PasswordEncoder passwordEncoder;
     private final JdbcTemplate jdbcTemplate;
 
@@ -119,6 +123,14 @@ public class TestDataInitializer implements CommandLineRunner {
             log.info("Deleted projects");
         }
         initializeProjects();
+        
+        // 6. 스마트한 좋아요 데이터 생성 (프로젝트 데이터 생성 후)
+        boolean hasLikeData = likeRepository.count() > 0;
+        if (!hasLikeData) {
+            initializeLikeData();
+        } else {
+            log.info("Like data already exists, skipping like initialization");
+        }
         
         log.info("Test data initialization completed successfully!");
     }
@@ -746,6 +758,228 @@ public class TestDataInitializer implements CommandLineRunner {
             log.warn("⚠️ recommendation_history 테이블 구조 업데이트 실패: {}", e.getMessage());
             log.debug("상세 에러:", e);
             // 테이블 구조 업데이트 실패가 전체 초기화를 방해하지 않도록 예외를 던지지 않음
+        }
+    }
+    
+    /**
+     * 스마트한 좋아요 데이터 생성
+     * 사용자의 기술스택과 프로젝트의 기술스택 유사도를 기반으로 현실적인 좋아요 패턴 생성
+     */
+    private void initializeLikeData() {
+        log.info("Initializing smart like data based on tech stack similarity...");
+        
+        List<User> users = userRepository.findAll();
+        List<ProjectRecruitment> projects = projectRecruitmentRepository.findAll();
+        Random random = new Random();
+        
+        if (users.isEmpty() || projects.isEmpty()) {
+            log.warn("Required data not found. Users: {}, Projects: {}", 
+                users.size(), projects.size());
+            return;
+        }
+        
+        int totalLikes = 0;
+        
+        for (User user : users) {
+            // 각 사용자가 좋아요할 프로젝트 수 (1-8개, 평균 4개)
+            int likesPerUser = random.nextInt(8) + 1;
+            List<ProjectRecruitment> likedProjects = new java.util.ArrayList<>();
+            
+            // 사용자의 기술스택 조회
+            List<UserTechStack> userTechStacks = userTechStackRepository.findByUser(user);
+            List<String> userTechNames = userTechStacks.stream()
+                .map(uts -> uts.getStack().getName().toLowerCase())
+                .toList();
+            
+            if (userTechNames.isEmpty()) {
+                continue; // 기술스택이 없는 사용자는 스킵
+            }
+            
+            // 각 프로젝트에 대해 좋아요 확률 계산
+            List<ProjectSimilarity> projectSimilarities = new java.util.ArrayList<>();
+            
+            for (ProjectRecruitment project : projects) {
+                // 자신의 프로젝트는 좋아요하지 않음
+                if (project.getTeamLeader().getUserId().equals(user.getUserId())) {
+                    continue;
+                }
+                
+                // 프로젝트의 기술스택 조회
+                List<ProjectTechStack> projectTechStacks = projectTechStackRepository.findByProject(project);
+                List<String> projectTechNames = projectTechStacks.stream()
+                    .map(pts -> pts.getTechStack().getName().toLowerCase())
+                    .toList();
+                
+                if (projectTechNames.isEmpty()) {
+                    continue;
+                }
+                
+                // Jaccard 유사도 계산
+                double similarity = calculateJaccardSimilarity(userTechNames, projectTechNames);
+                
+                // 기본 좋아요 확률 계산
+                double baseProbability = calculateLikeProbability(similarity);
+                
+                // TechPart 매칭 보너스 (사용자와 프로젝트의 기술 파트가 겹치는 경우)
+                List<ProjectTechPart> projectTechParts = projectTechPartRepository.findByProject(project);
+                
+                // 사용자의 프로필에서 기술파트 조회
+                com.potential_radar.PR.user.domain.UserProfile userProfile =
+                    userProfileRepository.findByUser(user).orElse(null);
+                
+                boolean techPartMatches = false;
+                if (userProfile != null && userProfile.getTechPart() != null) {
+                    techPartMatches = projectTechParts.stream()
+                        .anyMatch(ptp -> ptp.getTechPart().getTechPartId()
+                            .equals(userProfile.getTechPart().getTechPartId()));
+                }
+                
+                if (techPartMatches) {
+                    baseProbability *= 1.5; // 50% 보너스
+                }
+                
+                // 프로젝트 생성일 기반 보너스 (최근 프로젝트일수록 좋아요 확률 증가)
+                long daysAgo = java.time.Duration.between(project.getCreatedAt(), LocalDateTime.now()).toDays();
+                if (daysAgo < 30) {
+                    baseProbability *= 1.3; // 30일 내 프로젝트 30% 보너스
+                } else if (daysAgo < 90) {
+                    baseProbability *= 1.1; // 90일 내 프로젝트 10% 보너스
+                }
+                
+                // 확률 최대값 제한 (80%)
+                baseProbability = Math.min(baseProbability, 0.8);
+                
+                projectSimilarities.add(new ProjectSimilarity(project, similarity, baseProbability));
+            }
+            
+            // 유사도와 확률 기반으로 정렬 (높은 확률 순)
+            projectSimilarities.sort((a, b) -> Double.compare(b.probability, a.probability));
+            
+            // 확률 기반으로 좋아요할 프로젝트 선택
+            for (ProjectSimilarity ps : projectSimilarities) {
+                if (likedProjects.size() >= likesPerUser) {
+                    break;
+                }
+                
+                // 확률 기반 선택
+                if (random.nextDouble() < ps.probability) {
+                    likedProjects.add(ps.project);
+                    
+                    try {
+                        // 좋아요 생성
+                        Like like = Like.builder()
+                            .user(user)
+                            .targetId(ps.project.getProjectId())
+                            .targetType(TargetType.PROJECT)
+                            .build();
+                        
+                        // 좋아요 생성 시점을 프로젝트 생성 이후 ~ 현재 사이로 설정
+                        LocalDateTime likeCreatedAt = generateRandomDateBetween(
+                            ps.project.getCreatedAt(), 
+                            LocalDateTime.now()
+                        );
+                        like.setCreatedAt(likeCreatedAt);
+                        
+                        likeRepository.save(like);
+                        totalLikes++;
+                        
+                    } catch (Exception e) {
+                        log.warn("⚠️ 좋아요 생성 실패 (사용자 {} → 프로젝트 {}): {}", 
+                                user.getUserId(), ps.project.getProjectId(), e.getMessage());
+                        // 개별 좋아요 실패는 전체 프로세스를 중단하지 않음
+                    }
+                }
+            }
+            
+            // 로깅 (20명마다)
+            if ((users.indexOf(user) + 1) % 20 == 0) {
+                log.info("Processed {} users, generated {} likes so far...", 
+                    users.indexOf(user) + 1, totalLikes);
+            }
+        }
+        
+        log.info("✅ Successfully generated {} smart likes for {} users based on tech stack similarity", 
+            totalLikes, users.size());
+        
+        // 통계 로깅
+        logLikeStatistics(totalLikes, users.size());
+    }
+    
+    /**
+     * Jaccard 유사도 계산
+     */
+    private double calculateJaccardSimilarity(List<String> userTechs, List<String> projectTechs) {
+        if (userTechs.isEmpty() || projectTechs.isEmpty()) {
+            return 0.0;
+        }
+        
+        java.util.Set<String> userSet = new java.util.HashSet<>(userTechs);
+        java.util.Set<String> projectSet = new java.util.HashSet<>(projectTechs);
+        
+        java.util.Set<String> intersection = new java.util.HashSet<>(userSet);
+        intersection.retainAll(projectSet);
+        
+        java.util.Set<String> union = new java.util.HashSet<>(userSet);
+        union.addAll(projectSet);
+        
+        return union.isEmpty() ? 0.0 : (double) intersection.size() / union.size();
+    }
+    
+    /**
+     * 유사도 기반 좋아요 확률 계산
+     */
+    private double calculateLikeProbability(double jaccardSimilarity) {
+        if (jaccardSimilarity >= 0.5) {
+            return 0.7; // 50% 이상 유사 → 70% 확률
+        } else if (jaccardSimilarity >= 0.3) {
+            return 0.5; // 30-50% 유사 → 50% 확률  
+        } else if (jaccardSimilarity >= 0.1) {
+            return 0.25; // 10-30% 유사 → 25% 확률
+        } else if (jaccardSimilarity > 0) {
+            return 0.1; // 조금이라도 유사 → 10% 확률
+        } else {
+            return 0.02; // 전혀 유사하지 않음 → 2% 확률 (우연한 관심)
+        }
+    }
+    
+    /**
+     * 두 시점 사이의 랜덤 시간 생성
+     */
+    private LocalDateTime generateRandomDateBetween(LocalDateTime start, LocalDateTime end) {
+        long startSeconds = start.toEpochSecond(java.time.ZoneOffset.UTC);
+        long endSeconds = end.toEpochSecond(java.time.ZoneOffset.UTC);
+        long randomSeconds = startSeconds + (long) (Math.random() * (endSeconds - startSeconds));
+        
+        return LocalDateTime.ofEpochSecond(randomSeconds, 0, java.time.ZoneOffset.UTC);
+    }
+    
+    /**
+     * 좋아요 통계 로깅
+     */
+    private void logLikeStatistics(int totalLikes, int totalUsers) {
+        double avgLikesPerUser = (double) totalLikes / totalUsers;
+        long totalProjects = projectRecruitmentRepository.count();
+        double likeRatio = (double) totalLikes / (totalUsers * totalProjects) * 100;
+        
+        log.info("📊 Like Statistics:");
+        log.info("  - Total Likes: {}", totalLikes);
+        log.info("  - Average Likes per User: {:.1f}", avgLikesPerUser);
+        log.info("  - Overall Like Ratio: {:.2f}% ({}개 중 {}개)", 
+            likeRatio, totalUsers * totalProjects, totalLikes);
+    }
+    
+    /**
+     * 프로젝트 유사도 및 확률을 저장하는 내부 클래스
+     */
+    private static class ProjectSimilarity {
+        final ProjectRecruitment project;
+        final double similarity;
+        final double probability;
+        
+        ProjectSimilarity(ProjectRecruitment project, double similarity, double probability) {
+            this.project = project;
+            this.similarity = similarity;
+            this.probability = probability;
         }
     }
 }

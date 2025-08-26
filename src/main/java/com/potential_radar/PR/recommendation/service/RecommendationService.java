@@ -4,13 +4,18 @@ import com.potential_radar.PR.like.domain.Like;
 import com.potential_radar.PR.like.domain.TargetType;
 import com.potential_radar.PR.like.repository.LikeRepository;
 import com.potential_radar.PR.project.domain.ProjectRecruitment;
+import com.potential_radar.PR.project.domain.ProjectTechStack;
 import com.potential_radar.PR.project.repository.ProjectApplicationRepository;
 import com.potential_radar.PR.project.repository.ProjectRecruitmentRepository;
+import com.potential_radar.PR.project.repository.ProjectTechStackRepository;
+import com.potential_radar.PR.recommendation.domain.FeedbackAction;
+import com.potential_radar.PR.recommendation.domain.RecommendationFeedback;
 import com.potential_radar.PR.recommendation.domain.RecommendationHistory;
 import com.potential_radar.PR.recommendation.domain.RecommendationType;
 import com.potential_radar.PR.recommendation.dto.LikedProject;
 import com.potential_radar.PR.recommendation.dto.RecommendRequest;
 import com.potential_radar.PR.recommendation.dto.RecommendedProjectResponse;
+import com.potential_radar.PR.recommendation.repository.RecommendationFeedbackRepository;
 import com.potential_radar.PR.recommendation.repository.RecommendationHistoryRepository;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.domain.UserTechStack;
@@ -28,19 +33,21 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
 public class RecommendationService {
 
     private final WebClient webClient;
-    private final String pythonApiHost;
     private final RecommendationHistoryRepository recommendationHistoryRepository;
+    private final RecommendationFeedbackRepository feedbackRepository;
     private final UserRepository userRepository;
     private final ProjectRecruitmentRepository projectRecruitmentRepository;
     private final ProjectApplicationRepository projectApplicationRepository;
     private final LikeRepository likeRepository;
     private final UserTechStackRepository userTechStackRepository;
+    private final ProjectTechStackRepository projectTechStackRepository;
 
     // AI 모델 버전을 명시적으로 관리합니다.
     private static final String CURRENT_MODEL_VERSION = "1.0-hybrid";
@@ -48,18 +55,20 @@ public class RecommendationService {
     public RecommendationService(WebClient.Builder webClientBuilder,
                                  @Value("${python.api.host:http://localhost:8000}") String pythonApiHost,
                                  RecommendationHistoryRepository recommendationHistoryRepository,
+                                 RecommendationFeedbackRepository feedbackRepository,
                                  UserRepository userRepository,
                                  ProjectRecruitmentRepository projectRecruitmentRepository,
                                  ProjectApplicationRepository projectApplicationRepository,
                                  LikeRepository likeRepository,
-                                 UserTechStackRepository userTechStackRepository) {
-        this.pythonApiHost = pythonApiHost;
+                                 UserTechStackRepository userTechStackRepository, ProjectTechStackRepository projectTechStackRepository) {
         this.recommendationHistoryRepository = recommendationHistoryRepository;
+        this.feedbackRepository = feedbackRepository;
         this.userRepository = userRepository;
         this.projectRecruitmentRepository = projectRecruitmentRepository;
         this.projectApplicationRepository = projectApplicationRepository;
         this.likeRepository = likeRepository;
         this.userTechStackRepository = userTechStackRepository;
+        this.projectTechStackRepository = projectTechStackRepository;
         this.webClient = webClientBuilder.baseUrl(pythonApiHost).build();
     }
 
@@ -192,8 +201,14 @@ public class RecommendationService {
             }
 
             if (!histories.isEmpty()) {
-                recommendationHistoryRepository.saveAll(histories);
-                log.info("✅ {}개의 프로젝트 추천 이력을 저장했습니다. (사용자 ID: {})", histories.size(), userId);
+                List<RecommendationHistory> savedHistories = recommendationHistoryRepository.saveAll(histories);
+                
+                // 저장된 이력 ID를 응답 DTO에 설정
+                for (int i = 0; i < savedHistories.size() && i < responses.size(); i++) {
+                    responses.get(i).setRecommendationHistoryId(savedHistories.get(i).getId());
+                }
+                
+                log.info("✅ {}개의 프로젝트 추천 이력을 저장했습니다. (사용자 ID: {})", savedHistories.size(), userId);
             } else {
                 log.warn("⚠️ 저장할 프로젝트 추천 이력이 없습니다. (사용자 ID: {})", userId);
             }
@@ -238,7 +253,7 @@ public class RecommendationService {
             log.info("✅ 사용자 {} 확인됨: {}", userId, user.getEmail());
             
             // 프로젝트 좋아요 데이터 조회
-            List<Like> projectLikes = likeRepository.findAllByUserAndTargetType(user, TargetType.PROJECT);
+            List<Like> projectLikes = likeRepository.findByUserAndTargetType(user, TargetType.PROJECT);
             
             log.info("🔍 사용자 {}의 프로젝트 좋아요 {}개 발견", userId, projectLikes.size());
             
@@ -343,6 +358,125 @@ public class RecommendationService {
             log.error("❌ 사용자 기술스택 데이터 수집 실패 (userId: {}): {}", userId, e.getMessage(), e);
             // 기술스택 데이터 수집 실패는 전체 추천을 중단시키지 않음
             return List.of();
+        }
+    }
+    
+    /**
+     * 추천에 대한 간단한 피드백 저장
+     */
+    @Transactional
+    public void saveFeedback(Long userId, Long recommendationHistoryId, FeedbackAction action) {
+        try {
+            // 사용자 확인
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다: " + userId));
+
+            // 추천 이력 확인
+            RecommendationHistory recommendationHistory = recommendationHistoryRepository
+                    .findById(recommendationHistoryId)
+                    .orElseThrow(() -> new EntityNotFoundException("추천 이력을 찾을 수 없습니다: " + recommendationHistoryId));
+
+            // 권한 확인 - 추천받은 사용자만 피드백 가능
+            if (!recommendationHistory.getUser().getUserId().equals(userId)) {
+                throw new IllegalArgumentException("본인의 추천에 대해서만 피드백할 수 있습니다.");
+            }
+
+            // 기존 피드백 확인 및 업데이트/생성
+            RecommendationFeedback existingFeedback = feedbackRepository
+                    .findByUserUserIdAndRecommendationHistoryId(userId, recommendationHistoryId)
+                    .orElse(null);
+
+            if (existingFeedback != null) {
+                // 기존 피드백 업데이트 (soft update)
+                log.info("🔄 기존 피드백 업데이트: 사용자 {} -> 추천 {} ({})", 
+                        userId, recommendationHistoryId, action);
+                // 기존 피드백을 삭제하고 새로 생성
+                feedbackRepository.delete(existingFeedback);
+            }
+
+            // 새 피드백 생성 및 저장
+            RecommendationFeedback feedback = RecommendationFeedback.builder()
+                    .user(user)
+                    .recommendationHistory(recommendationHistory)
+                    .feedbackAction(action)
+                    .build();
+
+            feedbackRepository.save(feedback);
+
+            log.info("✅ 피드백 저장 완료: 사용자 {} -> 추천 {} ({})", 
+                    userId, recommendationHistoryId, action.getDescription());
+
+        } catch (Exception e) {
+            log.error("❌ 피드백 저장 실패 (사용자 {}, 추천 {}): {}", 
+                    userId, recommendationHistoryId, e.getMessage(), e);
+            throw e;
+        }
+    }
+    
+    /**
+     * 사용자 피드백 통계 조회 (AI 서버용)
+     */
+    public Map<String, Object> getUserFeedbackStats(Long userId) {
+        try {
+            // 사용자 확인
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다: " + userId));
+
+            // 사용자의 모든 피드백 조회
+            List<RecommendationFeedback> feedbacks = feedbackRepository
+                    .findByUserUserIdOrderByCreatedAtDesc(userId);
+
+            // 통계 계산
+            long totalFeedbacks = feedbacks.size();
+            long likeCount = feedbacks.stream()
+                    .filter(f -> f.getFeedbackAction() == FeedbackAction.LIKE)
+                    .count();
+            long dislikeCount = feedbacks.stream()
+                    .filter(f -> f.getFeedbackAction() == FeedbackAction.DISLIKE)
+                    .count();
+
+            double likeRatio = totalFeedbacks > 0 ? (double) likeCount / totalFeedbacks : 0.5;
+            boolean hasEnoughData = totalFeedbacks >= 5; // 최소 5개 피드백이 있어야 신뢰 가능
+
+            // 사용자의 좋아요한 프로젝트들의 기술스택 패턴 분석
+            List<String> preferredTechStacks = feedbacks.stream()
+                    .filter(f -> f.getFeedbackAction() == FeedbackAction.LIKE)
+                    .map(f -> f.getRecommendationHistory().getRecommendedProject())
+                    .filter(project -> project != null)
+                    .flatMap(project -> {
+                        try {
+                            // 프로젝트의 기술스택 조회
+                            List<ProjectTechStack> projectTechStacks = 
+                                projectTechStackRepository.findByProject(project);
+                            return projectTechStacks.stream()
+                                .map(pts -> pts.getTechStack().getName().toLowerCase());
+                        } catch (Exception e) {
+                            log.warn("⚠️ 프로젝트 {} 기술스택 조회 실패: {}", 
+                                project.getProjectId(), e.getMessage());
+                            return java.util.stream.Stream.<String>empty();
+                        }
+                    })
+                    .distinct()
+                    .toList();
+
+            Map<String, Object> stats = new java.util.HashMap<>();
+            stats.put("userId", userId);
+            stats.put("totalFeedbacks", totalFeedbacks);
+            stats.put("likeCount", likeCount);
+            stats.put("dislikeCount", dislikeCount);
+            stats.put("likeRatio", Math.round(likeRatio * 100.0) / 100.0); // 소수점 2자리
+            stats.put("hasEnoughData", hasEnoughData);
+            stats.put("preferredTechStacks", preferredTechStacks);
+
+            log.info("✅ 사용자 {} 피드백 통계: 총 {}개, 좋아요 {}개({}%), 선호 기술: {}", 
+                    userId, totalFeedbacks, likeCount, Math.round(likeRatio * 100), 
+                    preferredTechStacks.size() > 3 ? preferredTechStacks.subList(0, 3) + "..." : preferredTechStacks);
+
+            return stats;
+
+        } catch (Exception e) {
+            log.error("❌ 사용자 피드백 통계 조회 실패 (사용자 ID: {}): {}", userId, e.getMessage(), e);
+            throw e;
         }
     }
 }

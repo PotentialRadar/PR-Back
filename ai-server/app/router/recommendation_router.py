@@ -9,6 +9,7 @@ from app.utils.feature_engineering import compute_features, enhanced_final_score
 from app.utils.preprocess import normalize_tech_stacks, to_name_list
 from app.utils.explanation_generator import RecommendationExplainer
 from app.utils.like_analyzer import LikePatternAnalyzer
+from app.services.feedback_service import feedback_service
 from app.config import settings
 from app.database import get_db
 from app.models import Project, ProjectTechStack
@@ -84,6 +85,12 @@ def get_recommended_projects(
     user_names = user_names_expanded
     
     logger.info(f"🔍 사용자 기술스택: {user_names}")
+    
+    # 🆕 피드백 영향 분석 로그
+    try:
+        feedback_service.log_feedback_impact(request.userId)
+    except Exception as e:
+        logger.warning(f"⚠️ 피드백 영향 분석 실패: {e}")
     
     # 디버깅: DB에서 로드된 기술스택 확인
     from app.utils.preprocess import get_allowed_tech
@@ -192,6 +199,20 @@ def get_recommended_projects(
         else:
             score = tech_score
             logger.debug(f"기술스택 점수만 사용 - 프로젝트 {p.projectId}: {score:.3f}")
+        
+        # 🆕 피드백 기반 점수 조정
+        try:
+            adjusted_score = feedback_service.adjust_recommendation_score(
+                base_score=score,
+                user_id=request.userId,
+                project_tech_stacks=p.projectTechStacks
+            )
+            if adjusted_score != score:
+                logger.info(f"🎯 피드백 조정 - 프로젝트 {p.projectId}: {score:.3f} → {adjusted_score:.3f}")
+            score = adjusted_score
+        except Exception as e:
+            logger.warning(f"⚠️ 피드백 조정 실패 - 프로젝트 {p.projectId}: {e}")
+            # 피드백 조정 실패해도 기본 점수는 유지
 
         logger.debug(f"🔍 점수 계산 - 프로젝트 {p.projectId} ({p.title}): overlap={overlap:.2f}, tech_score={tech_score:.4f}, final_score={score:.4f}")
         logger.debug(f"  사용자 기술: {user_names}")

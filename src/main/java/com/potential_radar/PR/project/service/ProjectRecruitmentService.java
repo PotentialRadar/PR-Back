@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 @Service
@@ -81,7 +82,7 @@ public class ProjectRecruitmentService {
                 .fileUrl(pr.getFileUrl())
                 .status(pr.getStatus().name())
                 .viewCount(pr.getViewCount())
-                .createdAt(pr.getCreatedAt()) // Add this line
+                .createdAt(pr.getCreatedAt())
                 .likeCount(likeCount)
                 .isLiked(isLiked)
                 .recruitCount(pr.getRecruitCount())
@@ -181,7 +182,20 @@ public class ProjectRecruitmentService {
 
     @Transactional(readOnly = true)
     public Page<ProjectRecruitmentResponse> getAllProjects(String userEmail, Pageable pageable) {
-        Page<ProjectRecruitment> projects = projectRecruitmentRepository.findAll(pageable);
+        Page<ProjectRecruitment> projects;
+
+        // Pageable에 likeCount 정렬 요청이 있는지 확인
+        boolean sortByLikeCount = pageable.getSort().stream()
+                                        .anyMatch(order -> order.getProperty().equals("likeCount"));
+
+        if (sortByLikeCount) {
+            // likeCount 정렬은 @Query에 하드코딩되어 있으므로, Pageable에서는 정렬 조건을 제거합니다.
+            Pageable pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+            projects = projectRecruitmentRepository.findAllOrderByLikeCountAndCreatedAt(pageRequest);
+        } else {
+            // 그 외의 정렬 요청은 기본 findAll 사용
+            projects = projectRecruitmentRepository.findAll(pageable);
+        }
         return projects.map(pr -> convertToResponseDto(pr, userEmail));
     }
 

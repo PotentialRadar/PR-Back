@@ -1,5 +1,6 @@
 package com.potential_radar.PR.search.service;
 
+import com.potential_radar.PR.tech.service.TechPartService;
 import com.potential_radar.PR.user.domain.ExperienceRange;
 import com.potential_radar.PR.search.document.UserSearchDocument;
 import com.potential_radar.PR.search.document.ProjectSearchDocument;
@@ -8,7 +9,6 @@ import com.potential_radar.PR.search.repository.UserSearchRepository;
 import com.potential_radar.PR.search.repository.ProjectSearchRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
@@ -16,21 +16,15 @@ import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.data.elasticsearch.core.query.Criteria;
 import org.springframework.data.elasticsearch.core.query.CriteriaQuery;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 import org.springframework.data.elasticsearch.core.query.Query;
 import org.springframework.data.domain.Sort;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.HashSet;
 import java.util.stream.Collectors;
 
 
@@ -45,6 +39,7 @@ public class SearchService {
     private final PopularSearchService popularSearchService;
     private final SearchEventService searchEventService;
     private final SearchCacheService searchCacheService;
+    private final TechPartService techPartService;
     
     // 테스트용 메서드
     public long countAllUsers() {
@@ -300,6 +295,7 @@ public class SearchService {
         boolean isPopularSearch = isPopularSearch(request);
         if (isPopularSearch) {
             log.info("Popular search detected, checking Redis cache");
+
             SearchResult<ProjectSearchRes> cachedResult = searchCacheService.getCachedSearchResult(request);
             if (cachedResult != null) {
                 long cacheHitTime = System.currentTimeMillis() - startTime;
@@ -323,56 +319,60 @@ public class SearchService {
         }
 
         // Criteria 구성 (유저 검색과 동일한 방식)
-        Criteria finalCriteria = new Criteria();
+        Criteria finalCriteria = null;
         boolean hasConditions = false;
 
-        // 키워드 검색
+        // 키워드 검색 - 기술스택/기술파트는 소문자로 변환하여 검색
         if (request.getKeyword() != null && !request.getKeyword().trim().isEmpty()) {
             String keyword = request.getKeyword().trim();
-            log.info("Applying keyword filter: '{}'", keyword);
+            String keywordLower = keyword.toLowerCase(); // 기술스택/기술파트용 소문자 키워드
+            log.info("Applying keyword filter: '{}' (lowercase: '{}')", keyword, keywordLower);
             
+            // 키워드는 모든 필드에서 검색 (제목, 설명, 기술스택, 기술파트)
             Criteria keywordCriteria = new Criteria("title").contains(keyword)
-                    .or(new Criteria("description").contains(keyword));
+                    .or(new Criteria("description").contains(keyword))
+                    .or(new Criteria("title.text").contains(keyword))
+                    .or(new Criteria("description.text").contains(keyword))
+                    .or(new Criteria("techStacks").contains(keywordLower))
+                    .or(new Criteria("techParts").contains(keywordLower));
             
             finalCriteria = keywordCriteria;
             hasConditions = true;
         }
 
-        // 기술 파트 필터
+        // 모든 필터를 OR 조건으로 통합
+        List<Criteria> filterCriteriaList = new ArrayList<>();
+        
+        // 기술 파트 필터 추가
         if (request.getTechParts() != null && !request.getTechParts().isEmpty()) {
-            log.info("Applying tech parts filter: {}", request.getTechParts());
-            Criteria techPartsCriteria = new Criteria("techParts").in(request.getTechParts());
-            
-            if (hasConditions) {
-                finalCriteria = finalCriteria.and(techPartsCriteria);
-            } else {
-                finalCriteria = techPartsCriteria;
-                hasConditions = true;
-            }
+            log.info("Adding tech parts filter: {}", request.getTechParts());
+            filterCriteriaList.add(new Criteria("techParts").in(request.getTechParts()));
         }
 
-        // 기술 스택 필터
+        // 기술 스택 필터 추가
         if (request.getTechStacks() != null && !request.getTechStacks().isEmpty()) {
-            log.info("Applying tech stacks filter: {}", request.getTechStacks());
-            Criteria techStacksCriteria = new Criteria("techStacks").in(request.getTechStacks());
-            
-            if (hasConditions) {
-                finalCriteria = finalCriteria.and(techStacksCriteria);
-            } else {
-                finalCriteria = techStacksCriteria;
-                hasConditions = true;
-            }
+            log.info("Adding tech stacks filter: {}", request.getTechStacks());
+            filterCriteriaList.add(new Criteria("techStacks").in(request.getTechStacks()));
         }
 
-        // 상태 필터
+        // 상태 필터 추가
         if (request.getStatuses() != null && !request.getStatuses().isEmpty()) {
-            log.info("Applying status filter: {}", request.getStatuses());
-            Criteria statusCriteria = new Criteria("status").in(request.getStatuses());
+            log.info("Adding status filter: {}", request.getStatuses());
+            filterCriteriaList.add(new Criteria("status").in(request.getStatuses()));
+        }
+        
+        // 모든 필터를 OR 조건으로 결합
+        if (!filterCriteriaList.isEmpty()) {
+            Criteria allFiltersCriteria = filterCriteriaList.get(0);
+            for (int i = 1; i < filterCriteriaList.size(); i++) {
+                allFiltersCriteria = allFiltersCriteria.or(filterCriteriaList.get(i));
+            }
             
             if (hasConditions) {
-                finalCriteria = finalCriteria.and(statusCriteria);
+                // 키워드 검색이 있으면 AND로 결합
+                finalCriteria = finalCriteria.and(allFiltersCriteria);
             } else {
-                finalCriteria = statusCriteria;
+                finalCriteria = allFiltersCriteria;
                 hasConditions = true;
             }
         }
@@ -458,36 +458,42 @@ public class SearchService {
     public TechTagsRes getTechTags() {
         log.info("Getting tech tags for frontend");
         
-        // 기술 파트 목록 (고정)
-        List<String> techParts = List.of("Backend", "Frontend", "Mobile", "DevOps", "AI/ML", "Full Stack");
+        // 기술 파트 목록 (캐시된 데이터 사용)
+        List<String> techParts = techPartService.getAllTechPartNames();
         
         // 인기 기술 스택 조회 (Elasticsearch aggregation 사용)
         List<TechTagsRes.PopularTechStack> popularTechStacks = getPopularTechStacks();
         
+        // 기술 스택 이름만 추출
+        List<String> techStacks = popularTechStacks.stream()
+                .map(TechTagsRes.PopularTechStack::getName)
+                .collect(Collectors.toList());
+        
         return TechTagsRes.builder()
                 .techParts(techParts)
+                .techStacks(techStacks) // 기술 스택 이름 리스트 추가
                 .popularTechStacks(popularTechStacks)
                 .build();
     }
     
     private List<TechTagsRes.PopularTechStack> getPopularTechStacks() {
         try {
-            // 모든 사용자의 기술 스택을 조회해서 빈도 계산
-            Iterable<UserSearchDocument> allUsers = userSearchRepository.findAll();
+            // 모든 프로젝트의 기술 스택을 조회해서 빈도 계산
+            Iterable<ProjectSearchDocument> allProjects = projectSearchRepository.findAll();
             Map<String, Long> techStackCounts = new HashMap<>();
             
-            for (UserSearchDocument user : allUsers) {
-                if (user.getTechStacks() != null) {
-                    for (String techStack : user.getTechStacks()) {
+            for (ProjectSearchDocument project : allProjects) {
+                if (project.getTechStacks() != null) {
+                    for (String techStack : project.getTechStacks()) {
                         techStackCounts.merge(techStack, 1L, Long::sum);
                     }
                 }
             }
             
-            // 상위 10개 기술 스택 반환
+            // 상위 20개 기술 스택 반환 (20개로 증가)
             return techStackCounts.entrySet().stream()
                     .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
-                    .limit(10)
+                    .limit(20)
                     .map(entry -> TechTagsRes.PopularTechStack.builder()
                             .name(entry.getKey())
                             .count(entry.getValue())

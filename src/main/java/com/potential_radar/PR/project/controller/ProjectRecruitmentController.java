@@ -48,9 +48,15 @@ public class ProjectRecruitmentController {
 
     // 구인글 등록
     @PostMapping
-    public ResponseEntity<Long> createProject(@Valid @RequestBody ProjectRecruitmentRequest request, @RequestParam("userId") Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("해당 유저가 존재하지 않습니다."));
+    public ResponseEntity<Long> createProject(@Valid @RequestBody ProjectRecruitmentRequest request, Authentication authentication) {
+        String userEmail = getUserEmailFromAuthentication(authentication);
+        if (userEmail == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new UsernameNotFoundException("DB에서 사용자 정보를 찾을 수 없습니다: " + userEmail));
+
         Long id = projectRecruitmentService.createProject(request, user);
         return ResponseEntity.ok(id);
     }

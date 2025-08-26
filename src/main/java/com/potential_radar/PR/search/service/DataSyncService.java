@@ -14,7 +14,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,7 +44,8 @@ public class DataSyncService {
         userSearchRepository.saveAll(userDocs);
         log.info("Synchronized {} users to Elasticsearch", userDocs.size());
     }
-    
+
+    @Transactional
     public void syncAllData() {
         syncAllUsersToElasticsearch();
         syncAllProjectsToElasticsearch();

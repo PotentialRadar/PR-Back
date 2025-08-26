@@ -41,6 +41,9 @@ public class UserSearchDocument {
     private String profileImage;
 
     @Field(type = FieldType.Keyword, index = false)
+    private String jobTitle;
+
+    @Field(type = FieldType.Keyword, index = false)
     private String githubUrl;
 
     @Field(type = FieldType.Keyword)

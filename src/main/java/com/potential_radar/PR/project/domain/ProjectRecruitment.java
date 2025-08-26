@@ -36,13 +36,20 @@ public class ProjectRecruitment {
 
     private Integer viewCount = 0;
 
-    @Column(name = "file_url")
-    private String fileUrl;
-
     @Column(updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
     private LocalDateTime updatedAt = LocalDateTime.now();
+
+    // 연관관계
+    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ProjectTechStack> techStacks = new ArrayList<>();
+
+    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ProjectTechPart> techParts = new ArrayList<>();
+
+    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ProjectAttachment> attachments = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {
@@ -54,13 +61,6 @@ public class ProjectRecruitment {
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
-
-    // 연관관계
-    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ProjectTechStack> techStacks = new ArrayList<>();
-
-    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ProjectTechPart> techParts = new ArrayList<>();
 
     @Column(nullable = false)
     private Integer recruitCount;

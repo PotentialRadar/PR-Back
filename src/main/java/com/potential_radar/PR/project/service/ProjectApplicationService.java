@@ -144,6 +144,9 @@ public class ProjectApplicationService {
                     // 동시에 두 번 승인 눌려도 unique 제약에 의해 한 번만 들어가도록 무시
                 }
             }
+            
+            // 승인 알림 전송
+            sendApprovalNotificationAfterCommit(applicant.getUser(), project);
 
         } else if ("REJECTED".equalsIgnoreCase(status)) {
             applicant.setStatus(ProjectApplication.ApplicationStatus.REJECTED);
@@ -174,6 +177,30 @@ public class ProjectApplicationService {
                 } catch (Exception e) {
                     // 알림 전송 실패해도 지원 신청에는 영향 없도록 로그만 남김
                     System.err.println("지원 알림 전송 실패: " + e.getMessage());
+                }
+            }
+        });
+    }
+    
+    // 트랜잭션 커밋 후 승인 알림 전송하는 메서드
+    private void sendApprovalNotificationAfterCommit(User applicant, ProjectRecruitment project) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    String notificationContent = String.format("'%s' 프로젝트에 승인되었습니다!", project.getTitle());
+                    String url = String.format("/projects/%d", project.getProjectId());
+                    
+                    notificationService.send(
+                        applicant, 
+                        NotificationType.APPLICATION_APPROVED, 
+                        notificationContent, 
+                        url, 
+                        null, 
+                        LocalDateTime.now()
+                    );
+                } catch (Exception e) {
+                    System.err.println("승인 알림 전송 실패: " + e.getMessage());
                 }
             }
         });

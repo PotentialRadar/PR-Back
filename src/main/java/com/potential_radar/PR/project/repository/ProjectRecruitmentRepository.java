@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.data.jpa.repository.Query;
@@ -56,5 +57,11 @@ public interface ProjectRecruitmentRepository extends JpaRepository<ProjectRecru
     // 인기순 정렬 (좋아요 수 내림차순, 생성 시간 내림차순)
     @Query("SELECT p FROM ProjectRecruitment p ORDER BY (SELECT count(l.id) FROM Like l WHERE l.targetId = p.projectId AND l.targetType = 'PROJECT') DESC, p.createdAt DESC")
     Page<ProjectRecruitment> findAllOrderByLikeCountAndCreatedAt(Pageable pageable);
+
+    // 지원마감일과 상태로 프로젝트 조회
+    List<ProjectRecruitment> findByRecruitDeadlineAndStatus(LocalDate recruitDeadline, ProjectStatus status);
+
+    // 종료일과 상태로 프로젝트 조회
+    List<ProjectRecruitment> findByEndDateAndStatus(LocalDate endDate, ProjectStatus status);
 
 }

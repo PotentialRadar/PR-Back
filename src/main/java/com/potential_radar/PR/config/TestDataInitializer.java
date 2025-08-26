@@ -55,9 +55,6 @@ public class TestDataInitializer implements CommandLineRunner {
         // 프로젝트 데이터가 있는지 확인
         boolean hasProjectData = projectRecruitmentRepository.count() > 0;
 
-        log.info("Initializing test data...");
- 
-    public void run(String... args) {
         log.info("=== Initializing seed data (idempotent for ddl-auto:update) ===");
 
         initializeTechParts();
@@ -276,7 +273,7 @@ public class TestDataInitializer implements CommandLineRunner {
 
         for (int i = 0; i < 100; i++) {
             int userNum = i + 1;
-            String email = String.format("user%03d@example.com", userNum);
+            String email = String.format("user%03d@naver.com", userNum);
             Provider provider = (i % 5 < 3) ? Provider.EMAIL : (i % 5 == 3 ? Provider.GOOGLE : Provider.KAKAO);
 
             // upsert by email

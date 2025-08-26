@@ -138,6 +138,7 @@ public class SearchController {
         return ResponseEntity.ok(techTags);
     }
 
+    /* TODO :  @지은 :  같은 api 사용 문제
     // 필터별 결과 수 미리보기 엔드포인트
     @GetMapping("/projects/count-preview")
     public ResponseEntity<Map<String, Object>> getProjectCountPreview(
@@ -162,6 +163,8 @@ public class SearchController {
                 "searchTime", result.getSearchTimeMs()
         ));
     }
+    */
+
 
     // 데이터 동기화 엔드포인트
     @PostMapping("/sync")

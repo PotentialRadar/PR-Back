@@ -34,14 +34,16 @@ public record OfficialPotfolioResponse(
         List<UserExperienceResponse> experiences,
         List<UserTechStackResponse> techStacks,
         List<UserProjectResponse> projects,
-        List<UserReceivedReviewResponse> receivedReviews
+        List<UserReceivedReviewResponse> receivedReviews,
+        List<Long> selectedProjectIds
 ) {
     public OfficialPotfolioResponse(UserProfile userProfile, User user,
                                    List<UserEducationResponse> educations,
                                    List<UserExperienceResponse> experiences,
                                    List<UserTechStackResponse> techStacks,
                                    List<UserProjectResponse> projects,
-                                   List<UserReceivedReviewResponse> receivedReviews) {
+                                   List<UserReceivedReviewResponse> receivedReviews,
+                                   List<Long> selectedProjectIds) {
         this(
                 userProfile.getUser().getUserId(),
                 userProfile.getUser().getNickname(),
@@ -64,7 +66,8 @@ public record OfficialPotfolioResponse(
                 experiences,
                 techStacks,
                 projects,
-                receivedReviews
+                receivedReviews,
+                selectedProjectIds
         );
     }
 }

@@ -5,10 +5,7 @@ import com.potential_radar.PR.tech.domain.TechStack;
 import com.potential_radar.PR.tech.repository.TechPartRepository;
 import com.potential_radar.PR.tech.repository.TechStackRepository;
 import com.potential_radar.PR.user.domain.*;
-import com.potential_radar.PR.user.repository.UserRepository;
-import com.potential_radar.PR.user.repository.UserProfileRepository;
-import com.potential_radar.PR.user.repository.UserTechStackRepository;
-import com.potential_radar.PR.user.repository.PortfolioProjectRepository;
+import com.potential_radar.PR.user.repository.*;
 import com.potential_radar.PR.project.domain.*;
 import com.potential_radar.PR.project.repository.*;
 import com.potential_radar.PR.recommendation.repository.RecommendationHistoryRepository;
@@ -22,17 +19,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 @Component
 @RequiredArgsConstructor
 @Slf4j
-@Profile("!test") // 테스트 환경에서는 실행하지 않음
+@Profile("!test")
 public class TestDataInitializer implements CommandLineRunner {
 
+    // Repositories & Encoder
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
     private final TechPartRepository techPartRepository;
@@ -44,86 +39,67 @@ public class TestDataInitializer implements CommandLineRunner {
     private final ProjectMemberRepository projectMemberRepository;
     private final RecommendationHistoryRepository recommendationHistoryRepository;
     private final UserTechStackRepository userTechStackRepository;
+    private final UserExperienceRepository userExperienceRepository;
+    private final UserEducationRepository userEducationRepository;
     private final PortfolioProjectRepository portfolioProjectRepository;
     private final TeamMemberReviewRepository teamMemberReviewRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional
-    public void run(String... args) throws Exception {
-        // 이미 사용자 테스트 데이터가 있는지 확인
-        boolean hasUserData = userRepository.findByEmail("user001@example.com").isPresent();
-        // TechStack 데이터가 있는지 확인 (새로 추가된 데이터)
-        boolean hasTechStackData = techStackRepository.count() > 20; // 기본 데이터보다 많으면 초기화된 것으로 간주
-        // 프로젝트 데이터가 있는지 확인
-        boolean hasProjectData = projectRecruitmentRepository.count() > 0;
+    public void run(String... args) {
+        log.info("=== Initializing seed data (idempotent for ddl-auto:update) ===");
 
-        log.info("Initializing test data...");
+        // 1) Tech Parts
+        initializeTechParts();
 
-        // 1. TechPart Entity에서 @PostConstructor로 초기화 시킴
+        // 2) Tech Stacks
+        initializeTechStacks();
 
-        // 2. TechStack 데이터 생성 (항상 실행하여 새 데이터 추가)
-        if (!hasTechStackData) {
-            initializeTechStacks();
-        } else {
-            log.info("TechStack data already exists, skipping TechStack initialization");
-        }
+        // 3) Users + Profiles (100)
+        initializeUsers();
 
-        // 3. 100명의 사용자 데이터 생성
-        if (!hasUserData) {
-            initializeUsers();
-        } else {
-            log.info("User data already exists, skipping user initialization");
-        }
-
-        // 5. 사용자 기술스택 데이터 생성 (AI 추천을 위해)
-        boolean hasUserTechStackData = userTechStackRepository.count() > 0;
-        if (!hasUserTechStackData) {
+        // 4) User Tech Stacks (once)
+        if (userTechStackRepository.count() == 0) {
             initializeUserTechStacks();
         } else {
-            log.info("User tech stack data already exists, skipping initialization");
+            log.info("Skip user tech stacks (already present)");
         }
 
-        // 4. 프로젝트 데이터 생성 (기술스택 매칭 개선을 위해 항상 재생성)
-        // 기존 프로젝트 데이터 삭제 (외래키 제약조건 고려하여 순서대로)
-        if (hasProjectData) {
-            log.info("Clearing existing project data for tech stack improvement...");
-            // 1단계: 추천 이력 먼저 삭제 (외래키 참조 제거)
-            recommendationHistoryRepository.deleteAll();
-            log.info("Deleted recommendation histories");
-
-            // 2단계: 팀 멤버 리뷰 삭제 (team_member_review)
-            teamMemberReviewRepository.deleteAll();
-            log.info("Deleted team member reviews");
-
-            // 3단계: 포트폴리오 프로젝트 삭제 (portfolio_project)
-            portfolioProjectRepository.deleteAll();
-            log.info("Deleted portfolio projects");
-
-            // 4단계: 프로젝트 멤버 삭제 (project_member)
-            projectMemberRepository.deleteAll();
-            log.info("Deleted project members");
-
-            // 5단계: 프로젝트 지원 삭제 (project_application)
-            projectApplicationRepository.deleteAll();
-            log.info("Deleted project applications");
-
-            // 6단계: 프로젝트 관련 연결 테이블 삭제
-            projectTechStackRepository.deleteAll();
-            projectTechPartRepository.deleteAll();
-            log.info("Deleted project relations");
-
-            // 7단계: 프로젝트 삭제
-            projectRecruitmentRepository.deleteAll();
-            log.info("Deleted projects");
+        // 5) User Experiences (once)
+        if (userExperienceRepository.count() == 0) {
+            initializeUserExperiences();
+        } else {
+            log.info("Skip user experiences (already present)");
         }
-        initializeProjects();
 
-        // 6. 팀 멤버 리뷰 데이터 생성 (프로젝트 완료 후)
-        initializeTeamMemberReviews();
+        // 6) User Educations (once)
+        if (userEducationRepository.count() == 0) {
+            initializeUserEducations();
+        } else {
+            log.info("Skip user educations (already present)");
+        }
 
-        log.info("Test data initialization completed successfully!");
+        // 7) Projects (once)
+        if (projectRecruitmentRepository.count() == 0) {
+            initializeProjects();
+        } else {
+            log.info("Skip projects (already present)");
+        }
+
+        // 8) Team Member Reviews (once)
+        if (teamMemberReviewRepository.count() == 0) {
+            initializeTeamMemberReviews();
+        } else {
+            log.info("Skip team member reviews (already present)");
+        }
+
+        log.info("=== Seed data initialization completed ===");
     }
+
+    // --------------------------
+    // Seed helpers
+    // --------------------------
 
     private void initializeTechParts() {
         List<String> techPartNames = Arrays.asList(
@@ -132,243 +108,216 @@ public class TestDataInitializer implements CommandLineRunner {
                 "UI/UX디자인", "PM/기획"
         );
 
+        int created = 0;
         for (String name : techPartNames) {
             if (techPartRepository.findByNameIgnoreCase(name).isEmpty()) {
-                TechPart techPart = TechPart.builder()
-                        .name(name)
-                        .build();
-                techPartRepository.save(techPart);
+                techPartRepository.save(TechPart.builder().name(name).build());
+                created++;
             }
         }
+        log.info("TechPart upsert done. created={}", created);
     }
 
     private void initializeTechStacks() {
         List<String> techStackNames = Arrays.asList(
-                // Frontend 기술
-                "React", "Vue.js", "Angular", "Next.js", "Nuxt.js", "Svelte", "SvelteKit",
-                "JavaScript", "TypeScript", "HTML5", "CSS3", "SCSS", "Sass", "Less",
-                "Styled Components", "Emotion", "Tailwind CSS", "Bootstrap", "Material-UI",
-                "Ant Design", "Chakra UI", "Webpack", "Vite", "Parcel", "Rollup",
-                "ESLint", "Prettier", "Jest", "Cypress", "Playwright", "React Testing Library", "Storybook",
-
-                // Backend 기술
-                "Spring Boot", "Spring Framework", "Spring Security", "Spring Data JPA", "Spring Cloud",
-                "Node.js", "Express.js", "Nest.js", "Fastify", "Django", "Flask", "FastAPI",
-                "ASP.NET Core", "ASP.NET", "Laravel", "Symfony", "CodeIgniter", "Ruby on Rails",
-                "Sinatra", "Phoenix", "Gin", "Echo", "Fiber", "Actix Web", "Rocket",
-                "Ktor", "Quarkus", "Micronaut", "Helidon",
-
-                // 프로그래밍 언어
-                "Java", "Python", "C#", "C++", "C", "Go", "Rust", "Kotlin", "Scala", "Clojure",
-                "Ruby", "PHP", "Swift", "Objective-C", "Dart", "R", "MATLAB", "Perl",
-                "Haskell", "Elixir", "Erlang", "F#", "VB.NET", "COBOL", "Fortran",
-                "Assembly", "Bash", "PowerShell",
-
-                // 데이터베이스
-                "PostgreSQL", "MySQL", "MariaDB", "SQLite", "Oracle Database", "SQL Server",
-                "MongoDB", "Redis", "Elasticsearch", "Cassandra", "DynamoDB", "CouchDB",
-                "Neo4j", "InfluxDB", "TimescaleDB", "Firebase Firestore", "Supabase",
-                "PlanetScale", "Neon", "CockroachDB", "Amazon RDS", "Amazon Aurora",
-                "Google Cloud SQL", "Azure SQL Database",
-
+                // Frontend
+                "React","Vue.js","Angular","Next.js","Nuxt.js","Svelte","SvelteKit",
+                "JavaScript","TypeScript","HTML5","CSS3","SCSS","Sass","Less",
+                "Styled Components","Emotion","Tailwind CSS","Bootstrap","Material-UI",
+                "Ant Design","Chakra UI","Webpack","Vite","Parcel","Rollup",
+                "ESLint","Prettier","Jest","Cypress","Playwright","React Testing Library","Storybook",
+                // Backend
+                "Spring Boot","Spring Framework","Spring Security","Spring Data JPA","Spring Cloud",
+                "Node.js","Express.js","Nest.js","Fastify","Django","Flask","FastAPI",
+                "ASP.NET Core","ASP.NET","Laravel","Symfony","CodeIgniter","Ruby on Rails",
+                "Sinatra","Phoenix","Gin","Echo","Fiber","Actix Web","Rocket",
+                "Ktor","Quarkus","Micronaut","Helidon",
+                // Languages
+                "Java","Python","C#","C++","C","Go","Rust","Kotlin","Scala","Clojure",
+                "Ruby","PHP","Swift","Objective-C","Dart","R","MATLAB","Perl",
+                "Haskell","Elixir","Erlang","F#","VB.NET","COBOL","Fortran",
+                "Assembly","Bash","PowerShell",
+                // Databases
+                "PostgreSQL","MySQL","MariaDB","SQLite","Oracle Database","SQL Server",
+                "MongoDB","Redis","Elasticsearch","Cassandra","DynamoDB","CouchDB",
+                "Neo4j","InfluxDB","TimescaleDB","Firebase Firestore","Supabase",
+                "PlanetScale","Neon","CockroachDB","Amazon RDS","Amazon Aurora",
+                "Google Cloud SQL","Azure SQL Database",
                 // Cloud & DevOps
-                "AWS", "AWS EC2", "AWS S3", "AWS RDS", "AWS Lambda", "AWS ECS", "AWS EKS",
-                "AWS CloudFormation", "AWS CDK", "AWS API Gateway", "AWS CloudFront",
-                "AWS Route 53", "AWS VPC", "AWS IAM", "AWS SQS", "AWS SNS", "AWS EventBridge",
-                "Amazon ElastiCache", "Amazon OpenSearch", "Google Cloud Platform",
-                "Google Cloud Run", "Google Cloud Functions", "Google Kubernetes Engine",
-                "Google Cloud Storage", "Google BigQuery", "Firebase", "Azure",
-                "Azure App Service", "Azure Functions", "Azure Kubernetes Service",
-                "Azure Cosmos DB", "Azure Storage", "Docker", "Kubernetes", "Helm",
-                "Terraform", "Ansible", "Chef", "Puppet", "Vagrant", "Jenkins",
-                "GitLab CI/CD", "GitHub Actions", "Azure DevOps", "CircleCI", "Travis CI",
-                "Bitbucket Pipelines", "ArgoCD", "Flux", "Prometheus", "Grafana",
-                "ELK Stack", "Fluentd", "Logstash", "Kibana", "Jaeger", "Zipkin",
-                "New Relic", "Datadog", "Sentry", "Consul", "Vault", "Nomad",
-                "Istio", "Envoy", "NGINX", "Apache HTTP Server", "Traefik", "HAProxy", "Cloudflare",
-
-                // Mobile Development
-                "React Native", "Flutter", "Ionic", "Xamarin", "Cordova", "SwiftUI",
-                "UIKit", "Android SDK", "Kotlin Multiplatform", "Unity", "Unreal Engine",
-
-                // AI/ML & Data Science
-                "TensorFlow", "PyTorch", "Keras", "Scikit-learn", "Pandas", "NumPy",
-                "Matplotlib", "Seaborn", "Plotly", "Jupyter", "Anaconda", "Apache Spark",
-                "Apache Kafka", "Apache Airflow", "MLflow", "Kubeflow", "ONNX", "OpenCV",
-                "Hugging Face", "LangChain", "OpenAI API", "Anthropic Claude", "Cohere",
-
-                // Testing & Quality
-                "JUnit", "TestNG", "Mockito", "Selenium", "Cucumber", "Postman", "Insomnia",
-                "k6", "Artillery", "Apache JMeter", "SonarQube", "Checkstyle", "SpotBugs", "PMD",
-
-                // Version Control & Collaboration
-                "Git", "GitHub", "GitLab", "Bitbucket", "Azure Repos", "SVN", "Mercurial",
-                "Jira", "Confluence", "Slack", "Microsoft Teams", "Discord", "Notion",
-                "Trello", "Asana", "Linear", "Monday.com",
-
-                // Design & UI/UX
-                "Figma", "Adobe XD", "Sketch", "InVision", "Zeplin", "Adobe Photoshop",
-                "Adobe Illustrator", "Canva", "Framer", "Principle",
-
-                // Development Tools & IDEs
-                "Visual Studio Code", "IntelliJ IDEA", "Eclipse", "NetBeans", "Xcode",
-                "Android Studio", "PyCharm", "WebStorm", "PhpStorm", "RubyMine",
-                "GoLand", "CLion", "DataGrip", "Rider", "Visual Studio", "Vim",
-                "Emacs", "Sublime Text", "Atom", "Brackets",
-
-                // Web Technologies
-                "GraphQL", "REST API", "gRPC", "WebSocket", "Socket.io", "OAuth 2.0",
-                "JWT", "OpenAPI", "Swagger", "Progressive Web App", "Service Worker",
-                "WebAssembly", "WebRTC",
-
-                // Game Development
-                "Unity 3D", "Unreal Engine 4", "Unreal Engine 5", "Godot", "GameMaker Studio",
-                "Construct 3", "Phaser", "Three.js", "Babylon.js", "OpenGL", "DirectX", "Vulkan",
-
-                // Blockchain & Web3
-                "Ethereum", "Solidity", "Web3.js", "Ethers.js", "Hardhat", "Truffle",
-                "Polygon", "Binance Smart Chain", "Solana", "Cardano", "Polkadot",
-                "Hyperledger", "IPFS",
-
-                // IoT & Embedded
-                "Arduino", "Raspberry Pi", "ESP32", "ESP8266", "STM32", "FreeRTOS",
-                "Zephyr", "Mbed", "PlatformIO", "MQTT", "CoAP", "LoRaWAN",
-
+                "AWS","AWS EC2","AWS S3","AWS RDS","AWS Lambda","AWS ECS","AWS EKS",
+                "AWS CloudFormation","AWS CDK","AWS API Gateway","AWS CloudFront",
+                "AWS Route 53","AWS VPC","AWS IAM","AWS SQS","AWS SNS","AWS EventBridge",
+                "Amazon ElastiCache","Amazon OpenSearch","Google Cloud Platform",
+                "Google Cloud Run","Google Cloud Functions","Google Kubernetes Engine",
+                "Google Cloud Storage","Google BigQuery","Firebase","Azure",
+                "Azure App Service","Azure Functions","Azure Kubernetes Service",
+                "Azure Cosmos DB","Azure Storage","Docker","Kubernetes","Helm",
+                "Terraform","Ansible","Chef","Puppet","Vagrant","Jenkins",
+                "GitLab CI/CD","GitHub Actions","Azure DevOps","CircleCI","Travis CI",
+                "Bitbucket Pipelines","ArgoCD","Flux","Prometheus","Grafana",
+                "ELK Stack","Fluentd","Logstash","Kibana","Jaeger","Zipkin",
+                "New Relic","Datadog","Sentry","Consul","Vault","Nomad",
+                "Istio","Envoy","NGINX","Apache HTTP Server","Traefik","HAProxy","Cloudflare",
+                // Mobile
+                "React Native","Flutter","Ionic","Xamarin","Cordova","SwiftUI",
+                "UIKit","Android SDK","Kotlin Multiplatform","Unity","Unreal Engine",
+                // AI/ML & Data
+                "TensorFlow","PyTorch","Keras","Scikit-learn","Pandas","NumPy",
+                "Matplotlib","Seaborn","Plotly","Jupyter","Anaconda","Apache Spark",
+                "Apache Kafka","Apache Airflow","MLflow","Kubeflow","ONNX","OpenCV",
+                "Hugging Face","LangChain","OpenAI API","Anthropic Claude","Cohere",
+                // Testing
+                "JUnit","TestNG","Mockito","Selenium","Cucumber","Postman","Insomnia",
+                "k6","Artillery","Apache JMeter","SonarQube","Checkstyle","SpotBugs","PMD",
+                // Collab
+                "Git","GitHub","GitLab","Bitbucket","Azure Repos","SVN","Mercurial",
+                "Jira","Confluence","Slack","Microsoft Teams","Discord","Notion",
+                "Trello","Asana","Linear","Monday.com",
+                // Design
+                "Figma","Adobe XD","Sketch","InVision","Zeplin","Adobe Photoshop",
+                "Adobe Illustrator","Canva","Framer","Principle",
+                // IDEs
+                "Visual Studio Code","IntelliJ IDEA","Eclipse","NetBeans","Xcode",
+                "Android Studio","PyCharm","WebStorm","PhpStorm","RubyMine",
+                "GoLand","CLion","DataGrip","Rider","Visual Studio","Vim",
+                "Emacs","Sublime Text","Atom","Brackets",
+                // Web tech
+                "GraphQL","REST API","gRPC","WebSocket","Socket.io","OAuth 2.0",
+                "JWT","OpenAPI","Swagger","Progressive Web App","Service Worker",
+                "WebAssembly","WebRTC",
+                // Game
+                "Unity 3D","Unreal Engine 4","Unreal Engine 5","Godot","GameMaker Studio",
+                "Construct 3","Phaser","Three.js","Babylon.js","OpenGL","DirectX","Vulkan",
+                // Web3
+                "Ethereum","Solidity","Web3.js","Ethers.js","Hardhat","Truffle",
+                "Polygon","Binance Smart Chain","Solana","Cardano","Polkadot",
+                "Hyperledger","IPFS",
+                // IoT
+                "Arduino","Raspberry Pi","ESP32","ESP8266","STM32","FreeRTOS",
+                "Zephyr","Mbed","PlatformIO","MQTT","CoAP","LoRaWAN",
                 // Security
-                "OWASP", "Burp Suite", "Metasploit", "Nmap", "Wireshark", "Kali Linux",
-                "Penetration Testing", "Ethical Hacking", "SSL/TLS", "PKI", "OAuth",
-                "SAML", "LDAP", "Active Directory",
-
-                // Virtualization & Containers
-                "VMware", "VirtualBox", "QEMU", "Proxmox", "Hyper-V", "Docker Compose",
-                "Docker Swarm", "Podman", "LXC", "OpenShift", "Rancher",
-
-                // Monitoring & Observability
-                "Nagios", "Zabbix", "Cacti", "PRTG", "SolarWinds", "Splunk",
-                "Elastic APM", "Application Insights", "CloudWatch", "Stackdriver",
-
+                "OWASP","Burp Suite","Metasploit","Nmap","Wireshark","Kali Linux",
+                "Penetration Testing","Ethical Hacking","SSL/TLS","PKI","OAuth",
+                "SAML","LDAP","Active Directory",
+                // Virtualization
+                "VMware","VirtualBox","QEMU","Proxmox","Hyper-V","Docker Compose",
+                "Docker Swarm","Podman","LXC","OpenShift","Rancher",
+                // Monitoring
+                "Nagios","Zabbix","Cacti","PRTG","SolarWinds","Splunk",
+                "Elastic APM","Application Insights","CloudWatch","Stackdriver",
                 // Networking
-                "TCP/IP", "HTTP/HTTPS", "DNS", "BGP", "OSPF", "VLAN", "VPN", "SDN",
-                "OpenFlow", "Cisco", "Juniper", "Palo Alto", "Fortinet",
-
-                // Business Intelligence
-                "Tableau", "Power BI", "QlikView", "Looker", "Metabase", "Apache Superset",
-                "D3.js", "Chart.js", "Highcharts", "Google Analytics", "Adobe Analytics",
-
-                // CMS & E-commerce
-                "WordPress", "Drupal", "Joomla", "Magento", "Shopify", "WooCommerce",
-                "PrestaShop", "OpenCart", "BigCommerce", "Strapi", "Contentful",
-                "Sanity", "Ghost", "Headless CMS",
-
-                // Message Queues & Event Streaming
-                "RabbitMQ", "Apache ActiveMQ", "Amazon SQS", "Google Pub/Sub",
-                "Azure Service Bus", "NATS", "ZeroMQ", "Pulsar"
+                "TCP/IP","HTTP/HTTPS","DNS","BGP","OSPF","VLAN","VPN","SDN",
+                "OpenFlow","Cisco","Juniper","Palo Alto","Fortinet",
+                // BI
+                "Tableau","Power BI","QlikView","Looker","Metabase","Apache Superset",
+                "D3.js","Chart.js","Highcharts","Google Analytics","Adobe Analytics",
+                // CMS
+                "WordPress","Drupal","Joomla","Magento","Shopify","WooCommerce",
+                "PrestaShop","OpenCart","BigCommerce","Strapi","Contentful",
+                "Sanity","Ghost","Headless CMS",
+                // MQ
+                "RabbitMQ","Apache ActiveMQ","Amazon SQS","Google Pub/Sub",
+                "Azure Service Bus","NATS","ZeroMQ","Pulsar"
         );
 
-        log.info("Initializing TechStack data...");
-        int count = 0;
+        int created = 0;
         for (String name : techStackNames) {
             if (techStackRepository.findByNameIgnoreCase(name).isEmpty()) {
-                TechStack techStack = TechStack.builder()
-                        .name(name)
-                        .build();
-                techStackRepository.save(techStack);
-                count++;
+                techStackRepository.save(TechStack.builder().name(name).build());
+                created++;
             }
         }
-        log.info("Created {} new TechStack entries", count);
+        log.info("TechStack upsert done. created={}", created);
     }
 
     private void initializeUsers() {
         List<TechPart> techParts = techPartRepository.findAll();
+        if (techParts.isEmpty()) {
+            log.error("TechPart is empty. initializeTechParts()가 먼저 호출되어야 합니다.");
+            return;
+        }
+
         Random random = new Random();
-        String hashedPassword = passwordEncoder.encode("password123"); // 공통 비밀번호
+        String hashedPassword = passwordEncoder.encode("password123");
 
         String[] nicknames = {
-                "코딩마스터001", "개발자김철수", "프론트엔드박영희", "백엔드이민수", "풀스택홍길동",
-                "ReactDeveloper", "SpringMaster", "NodeJSExpert", "VueDeveloper", "PythonGuru",
-                "JavaScriptNinja", "SQLMaster", "CSSWizard", "HTMLCoder", "TypeScriptDev",
-                "AndroidDev", "iOSExpert", "FlutterCoder", "ReactNativeDev", "SwiftProgrammer",
-                "KotlinDev", "DevOpsEngineer", "DockerMaster", "KubernetesExpert", "AWSSpecialist",
-                "DataScientist", "MLEngineer", "AIResearcher", "BigDataAnalyst", "TensorFlowDev",
-                "GameDeveloper", "UnityExpert", "UnrealCoder", "GameDesigner", "GraphicsProgrammer",
-                "SecurityExpert", "PenetrationTester", "CybersecurityAnalyst", "SecurityArchitect", "CryptographyExpert",
-                "QAEngineer", "TestAutomation", "PerformanceTester", "ManualTester", "QualityAssurance",
-                "UIDesigner", "UXResearcher", "ProductDesigner", "InteractionDesigner", "VisualDesigner",
-                "ProductManager", "ProjectManager", "TechLead", "ScrumMaster", "BusinessAnalyst",
-                "SystemArchitect", "DatabaseAdmin", "NetworkEngineer", "CloudArchitect", "InfraEngineer",
-                "JavaDeveloper", "CSharpDev", "GoDeveloper", "RustProgrammer", "PhpDeveloper",
-                "RubyDeveloper", "ScalaDeveloper", "ElixirCoder", "HaskellDev", "ClojureCoder",
-                "BlockchainDev", "SmartContractDev", "Web3Developer", "DAppDeveloper", "NFTCreator",
-                "IoTDeveloper", "EmbeddedEngineer", "FirmwareDev", "HardwareEngineer", "RoboticsEngineer",
-                "ARDeveloper", "VRDeveloper", "XREngineer", "MetaverseDev", "3DGraphicsDev",
-                "QuantumComputing", "CloudNativeDev", "MicroservicesArch", "ServerlessExpert", "EdgeComputingDev",
-                "TechEvangelist", "DeveloperAdvocate", "TechnicalWriter", "CodeReviewer", "OpenSourceMaintainer",
-                "CommunityManager", "TechRecruiter", "StartupFounder", "TechConsultant", "DigitalNomad"
+                "코딩마스터001","개발자김철수","프론트엔드박영희","백엔드이민수","풀스택홍길동",
+                "ReactDeveloper","SpringMaster","NodeJSExpert","VueDeveloper","PythonGuru",
+                "JavaScriptNinja","SQLMaster","CSSWizard","HTMLCoder","TypeScriptDev",
+                "AndroidDev","iOSExpert","FlutterCoder","ReactNativeDev","SwiftProgrammer",
+                "KotlinDev","DevOpsEngineer","DockerMaster","KubernetesExpert","AWSSpecialist",
+                "DataScientist","MLEngineer","AIResearcher","BigDataAnalyst","TensorFlowDev",
+                "GameDeveloper","UnityExpert","UnrealCoder","GameDesigner","GraphicsProgrammer",
+                "SecurityExpert","PenetrationTester","CybersecurityAnalyst","SecurityArchitect","CryptographyExpert",
+                "QAEngineer","TestAutomation","PerformanceTester","ManualTester","QualityAssurance",
+                "UIDesigner","UXResearcher","ProductDesigner","InteractionDesigner","VisualDesigner",
+                "ProductManager","ProjectManager","TechLead","ScrumMaster","BusinessAnalyst",
+                "SystemArchitect","DatabaseAdmin","NetworkEngineer","CloudArchitect","InfraEngineer",
+                "JavaDeveloper","CSharpDev","GoDeveloper","RustProgrammer","PhpDeveloper",
+                "RubyDeveloper","ScalaDeveloper","ElixirCoder","HaskellDev","ClojureCoder",
+                "BlockchainDev","SmartContractDev","Web3Developer","DAppDeveloper","NFTCreator",
+                "IoTDeveloper","EmbeddedEngineer","FirmwareDev","HardwareEngineer","RoboticsEngineer",
+                "ARDeveloper","VRDeveloper","XREngineer","MetaverseDev","3DGraphicsDev",
+                "QuantumComputing","CloudNativeDev","MicroservicesArch","ServerlessExpert","EdgeComputingDev",
+                "TechEvangelist","DeveloperAdvocate","TechnicalWriter","CodeReviewer","OpenSourceMaintainer",
+                "CommunityManager","TechRecruiter","StartupFounder","TechConsultant","DigitalNomad"
         };
 
-        Provider[] providers = {Provider.EMAIL, Provider.GOOGLE, Provider.KAKAO};
         ExperienceRange[] experienceRanges = ExperienceRange.values();
 
         for (int i = 0; i < 100; i++) {
             int userNum = i + 1;
+            String email = String.format("user%03d@example.com", userNum);
+            Provider provider = (i % 5 < 3) ? Provider.EMAIL : (i % 5 == 3 ? Provider.GOOGLE : Provider.KAKAO);
 
-            // Provider 결정 (EMAIL 60%, GOOGLE 20%, KAKAO 20%)
-            Provider provider;
-            if (i % 5 < 3) {
-                provider = Provider.EMAIL;
-            } else if (i % 5 == 3) {
-                provider = Provider.GOOGLE;
-            } else {
-                provider = Provider.KAKAO;
-            }
+            // upsert by email
+            int finalI = i;
+            User user = userRepository.findByEmail(email).orElseGet(() -> {
+                User u = User.builder()
+                        .email(email)
+                        .password(provider == Provider.EMAIL ? hashedPassword : null)
+                        .nickname(nicknames[finalI])
+                        .provider(provider)
+                        .providerUserId(provider != Provider.EMAIL
+                                ? provider.name().toLowerCase() + "_" + (random.nextInt(900000000) + 100000000)
+                                : null)
+                        .profileImage(finalI % 3 != 0 ? String.format("https://example.com/profile/%03d.jpg", userNum) : null)
+                        .build();
+                return userRepository.save(u);
+            });
 
-            // User 생성
-            User user = User.builder()
-                    .email(String.format("user%03d@example.com", userNum))
-                    .password(provider == Provider.EMAIL ? hashedPassword : null)
-                    .nickname(nicknames[i])
-                    .provider(provider)
-                    .providerUserId(provider != Provider.EMAIL ?
-                            provider.name().toLowerCase() + "_" + (random.nextInt(900000000) + 100000000) : null)
-                    .profileImage(i % 3 != 0 ? String.format("https://example.com/profile/%03d.jpg", userNum) : null)
-                    .build();
+            // profile upsert (create if missing)
+            if (userProfileRepository.findById(user.getUserId()).isEmpty()) {
+                TechPart techPart = techParts.get(i % techParts.size());
 
-            user = userRepository.save(user);
+                UserProfile profile = UserProfile.builder()
+                        .user(user)
+                        .techPart(techPart)
+                        .bio(i % 3 == 0 ? null :
+                                (i % 5 == 0
+                                        ? "안녕하세요! " + nicknames[i] + "입니다. 다양한 프로젝트 경험을 통해 성장하고 있습니다."
+                                        : "열정적인 개발자 " + nicknames[i] + "입니다. 새로운 기술 학습과 협업을 좋아합니다. 함께 멋진 프로젝트를 만들어봅시다!"))
+                        .jobTitle(i % 4 == 0 ? null : getJobTitleByTechPart(techPart.getName()))
+                        .phone(i % 5 == 0 ? null :
+                                String.format("010-%04d-%04d", (userNum * 37) % 10000, (userNum * 73) % 10000))
+                        .githubUrl(i % 3 == 0 ? null :
+                                "https://github.com/" + nicknames[i].toLowerCase().replaceAll("[^a-z0-9]", ""))
+                        .linkedinUrl(i % 4 == 0 ? null :
+                                "https://linkedin.com/in/" + nicknames[i].toLowerCase().replaceAll("[^a-z0-9]", "-"))
+                        .websiteUrl(i % 6 == 0 ? null :
+                                "https://" + nicknames[i].toLowerCase().replaceAll("[^a-z0-9]", "") + ".dev")
+                        .isPortfolioOpen(i % 3 == 1)
+                        .isContactOpen(i % 4 == 1)
+                        .isSearchOpen(i % 2 == 1)
+                        .reputationScore(BigDecimal.valueOf(Math.round((new Random().nextDouble() * 4.5 + 0.5) * 100.0) / 100.0))
+                        .reviewCount(new Random().nextInt(51))
+                        .experienceRange(experienceRanges[i % experienceRanges.length])
+                        .build();
 
-            // UserProfile 생성
-            TechPart techPart = techParts.get(i % techParts.size());
-
-            UserProfile userProfile = UserProfile.builder()
-                    .user(user)
-                    .techPart(techPart)
-                    .bio(i % 3 == 0 ? null :
-                            (i % 5 == 0 ?
-                                    "안녕하세요! " + nicknames[i] + "입니다. 다양한 프로젝트 경험을 통해 성장하고 있습니다." :
-                                    "열정적인 개발자 " + nicknames[i] + "입니다. 새로운 기술 학습과 협업을 좋아합니다. 함께 멋진 프로젝트를 만들어봅시다!"))
-                    .jobTitle(i % 4 == 0 ? null : getJobTitleByTechPart(techPart.getName()))
-                    .phone(i % 5 == 0 ? null :
-                            String.format("010-%04d-%04d", (userNum * 37) % 10000, (userNum * 73) % 10000))
-                    .githubUrl(i % 3 == 0 ? null :
-                            "https://github.com/" + nicknames[i].toLowerCase().replaceAll("[^a-z0-9]", ""))
-                    .linkedinUrl(i % 4 == 0 ? null :
-                            "https://linkedin.com/in/" + nicknames[i].toLowerCase().replaceAll("[^a-z0-9]", "-"))
-                    .websiteUrl(i % 6 == 0 ? null :
-                            "https://" + nicknames[i].toLowerCase().replaceAll("[^a-z0-9]", "") + ".dev")
-                    .isPortfolioOpen(i % 3 == 1)
-                    .isContactOpen(i % 4 == 1)
-                    .isSearchOpen(i % 2 == 1)
-                    .reputationScore(BigDecimal.valueOf(Math.round((random.nextDouble() * 4.5 + 0.5) * 100.0) / 100.0))
-                    .reviewCount(random.nextInt(51))
-                    .experienceRange(experienceRanges[i % experienceRanges.length])
-                    .build();
-
-            userProfileRepository.save(userProfile);
-
-            if ((i + 1) % 20 == 0) {
-                log.info("Created {} users...", i + 1);
+                userProfileRepository.save(profile);
             }
         }
+        log.info("Users & Profiles upserted to 100");
     }
 
     private String getJobTitleByTechPart(String techPartName) {
@@ -390,7 +339,7 @@ public class TestDataInitializer implements CommandLineRunner {
     }
 
     private void initializeProjects() {
-        log.info("Initializing project data...");
+        log.info("Creating projects ...");
 
         List<User> users = userRepository.findAll();
         List<TechPart> techParts = techPartRepository.findAll();
@@ -398,8 +347,7 @@ public class TestDataInitializer implements CommandLineRunner {
         Random random = new Random();
 
         if (users.isEmpty() || techParts.isEmpty() || techStacks.isEmpty()) {
-            log.warn("Required data not found. Users: {}, TechParts: {}, TechStacks: {}",
-                    users.size(), techParts.size(), techStacks.size());
+            log.error("필수 데이터(사용자, 기술 파트, 기술 스택)가 존재하지 않아 프로젝트를 생성할 수 없습니다.");
             return;
         }
 
@@ -510,14 +458,12 @@ public class TestDataInitializer implements CommandLineRunner {
         };
 
         for (int i = 0; i < 50; i++) {
-            // 팀 리더 선택 (랜덤하게 선택)
             User teamLeader = users.get(random.nextInt(users.size()));
 
-            // 프로젝트 생성
             LocalDate today = LocalDate.now();
-            LocalDate recruitDeadline = today.plusDays(random.nextInt(30) + 10); // 10-40일 후
-            LocalDate startDate = recruitDeadline.plusDays(random.nextInt(14) + 1); // 모집 마감 후 1-14일
-            LocalDate endDate = startDate.plusDays(random.nextInt(120) + 30); // 시작일 후 30-150일
+            LocalDate recruitDeadline = today.plusDays(random.nextInt(30) + 10);
+            LocalDate startDate = recruitDeadline.plusDays(random.nextInt(14) + 1);
+            LocalDate endDate = startDate.plusDays(random.nextInt(120) + 30);
 
             ProjectRecruitment project = ProjectRecruitment.builder()
                     .teamLeader(teamLeader)
@@ -531,96 +477,69 @@ public class TestDataInitializer implements CommandLineRunner {
                     .recruitCount(random.nextInt(5) + 3)
                     .build();
 
+            ProjectRecruitment saved = projectRecruitmentRepository.save(project);
 
-            // save 이전에 createdAt 값을 직접 설정
-            project.setCreatedAt(LocalDateTime.now().minusDays(random.nextInt(365)));
-
-
-            final ProjectRecruitment savedProject = projectRecruitmentRepository.save(project);
-
-            // 프로젝트 기술 파트 연결 (1-3개 랜덤 선택)
+            // Tech Parts (1~3)
             int techPartCount = random.nextInt(3) + 1;
-            List<TechPart> selectedTechParts = new java.util.ArrayList<>();
-
+            List<TechPart> selectedParts = new ArrayList<>();
             for (int j = 0; j < techPartCount; j++) {
-                TechPart techPart;
+                TechPart tp;
                 do {
-                    techPart = techParts.get(random.nextInt(techParts.size()));
-                } while (selectedTechParts.contains(techPart));
+                    tp = techParts.get(random.nextInt(techParts.size()));
+                } while (selectedParts.contains(tp));
+                selectedParts.add(tp);
 
-                selectedTechParts.add(techPart);
-
-                ProjectTechPart projectTechPart = ProjectTechPart.builder()
-                        .project(savedProject)
-                        .techPart(techPart)
-                        .recruitCount(random.nextInt(3) + 1) // 각 파트별 1-3명 모집
-                        .build();
-
-                projectTechPartRepository.save(projectTechPart);
+                projectTechPartRepository.save(ProjectTechPart.builder()
+                        .project(saved)
+                        .techPart(tp)
+                        .recruitCount(random.nextInt(3) + 1)
+                        .build());
             }
 
-            // 프로젝트 기술 스택 연결 (프로젝트별 적절한 기술스택 선택)
-            List<String> projectTechStackNames = getProjectTechStacks(i, projectTitles[i % projectTitles.length]);
-
-            for (String techStackName : projectTechStackNames) {
-                techStackRepository.findByNameIgnoreCase(techStackName).ifPresent(techStack -> {
-                    ProjectTechStack projectTechStack = ProjectTechStack.builder()
-                            .project(savedProject)
-                            .techStack(techStack)
-                            .recruitCount(random.nextInt(2) + 1) // 각 기술스택별 1-2명 모집
-                            .build();
-
-                    projectTechStackRepository.save(projectTechStack);
+            // Tech Stacks
+            for (String techName : getProjectTechStacks(i)) {
+                techStackRepository.findByNameIgnoreCase(techName).ifPresent(ts -> {
+                    projectTechStackRepository.save(ProjectTechStack.builder()
+                            .project(saved)
+                            .techStack(ts)
+                            .recruitCount(new Random().nextInt(2) + 1)
+                            .build());
                 });
             }
 
-            // 프로젝트 멤버 생성 (팀 리더 + 랜덤 멤버들)
-            // 1. 팀 리더를 프로젝트 멤버로 추가
-            ProjectMember teamLeaderMember = ProjectMember.builder()
-                    .project(savedProject)
+            // Members (leader + 2~5)
+            projectMemberRepository.save(ProjectMember.builder()
+                    .project(saved)
                     .user(teamLeader)
                     .role(ProjectMember.Role.LEADER)
-                    .techPart(selectedTechParts.get(0).getName()) // 첫 번째 기술 파트
-                    .build();
-            projectMemberRepository.save(teamLeaderMember);
+                    .techPart(selectedParts.get(0).getName())
+                    .build());
 
-            // 2. 추가 멤버들 생성 (2-5명)
-            int additionalMemberCount = random.nextInt(4) + 2; // 2-5명
-            List<User> projectMembers = new java.util.ArrayList<>();
-            projectMembers.add(teamLeader); // 중복 방지를 위해 팀 리더 추가
+            int additional = random.nextInt(4) + 2;
+            Set<Long> usedUserIds = new HashSet<>();
+            usedUserIds.add(teamLeader.getUserId());
 
-            for (int j = 0; j < additionalMemberCount; j++) {
+            for (int j = 0; j < additional; j++) {
                 User member;
                 do {
                     member = users.get(random.nextInt(users.size()));
-                } while (projectMembers.contains(member));
+                } while (!usedUserIds.add(member.getUserId()));
 
-                projectMembers.add(member);
+                String memberPart = selectedParts.get(random.nextInt(selectedParts.size())).getName();
 
-                // 기술 파트는 프로젝트의 기술 파트 중 랜덤 선택
-                String memberTechPart = selectedTechParts.get(random.nextInt(selectedTechParts.size())).getName();
-
-                ProjectMember projectMember = ProjectMember.builder()
-                        .project(savedProject)
+                projectMemberRepository.save(ProjectMember.builder()
+                        .project(saved)
                         .user(member)
                         .role(ProjectMember.Role.MEMBER)
-                        .techPart(memberTechPart)
-                        .build();
-                projectMemberRepository.save(projectMember);
-            }
-
-            if ((i + 1) % 10 == 0) {
-                log.info("Created {} projects with members...", i + 1);
+                        .techPart(memberPart)
+                        .build());
             }
         }
 
-        log.info("Successfully created 50 projects with related tech parts, tech stacks, and members");
+        log.info("Projects created: {}", 50);
     }
 
-    /**
-     * 프로젝트별로 적절한 기술스택을 반환합니다
-     */
-    private List<String> getProjectTechStacks(int projectIndex, String projectTitle) {
+    private List<String> getProjectTechStacks(int projectIndex) {
         return switch (projectIndex % 50) {
             case 0 -> Arrays.asList("React", "TypeScript", "Node.js", "Python", "PostgreSQL", "Docker");
             case 1 -> Arrays.asList("React", "JavaScript", "Node.js", "Express.js", "Socket.io", "MongoDB");
@@ -676,75 +595,156 @@ public class TestDataInitializer implements CommandLineRunner {
         };
     }
 
-    /**
-     * 사용자 기술스택 데이터 초기화
-     * 각 사용자에게 3-7개의 기술스택을 랜덤으로 할당
-     */
     private void initializeUserTechStacks() {
-        log.info("Initializing user tech stack data...");
-
+        log.info("Assigning user tech stacks ...");
         List<User> users = userRepository.findAll();
         List<TechStack> techStacks = techStackRepository.findAll();
         Random random = new Random();
 
-        if (users.isEmpty() || techStacks.isEmpty()) {
-            log.warn("Required data not found. Users: {}, TechStacks: {}",
-                    users.size(), techStacks.size());
-            return;
-        }
-
         for (User user : users) {
-            // 각 사용자에게 3-7개의 기술스택 할당
-            int techStackCount = random.nextInt(5) + 3; // 3-7개
-            List<TechStack> selectedTechStacks = new java.util.ArrayList<>();
-
-            // 중복 없이 기술스택 선택
-            for (int i = 0; i < techStackCount; i++) {
-                TechStack techStack;
+            int count = random.nextInt(5) + 3; // 3~7
+            Set<Long> used = new HashSet<>();
+            for (int i = 0; i < count; i++) {
+                TechStack ts;
                 do {
-                    techStack = techStacks.get(random.nextInt(techStacks.size()));
-                } while (selectedTechStacks.contains(techStack));
+                    ts = techStacks.get(random.nextInt(techStacks.size()));
+                } while (!used.add(ts.getTechStackId()));
 
-                selectedTechStacks.add(techStack);
-
-                // UserTechStack 생성
-                UserTechStack userTechStack = UserTechStack.builder()
+                userTechStackRepository.save(UserTechStack.builder()
                         .user(user)
-                        .stack(techStack)
-                        .skillLevel(random.nextInt(5) + 1) // 1-5 레벨
-                        .build();
-
-                userTechStackRepository.save(userTechStack);
+                        .stack(ts)
+                        .skillLevel(random.nextInt(5) + 1)
+                        .build());
             }
         }
-
-        long totalUserTechStacks = userTechStackRepository.count();
-        log.info("Successfully created {} user tech stack relationships for {} users",
-                totalUserTechStacks, users.size());
+        log.info("User tech stacks assigned to {} users", users.size());
     }
 
-    /**
-     * 팀 멤버 리뷰 데이터 초기화
-     * 완료된 프로젝트의 멤버들이 서로 리뷰를 작성하도록 시뮬레이션
-     */
-    private void initializeTeamMemberReviews() {
-        log.info("Initializing team member review data...");
-
-        List<ProjectRecruitment> completedProjects = projectRecruitmentRepository.findAll()
-                .stream()
-                .filter(project -> project.getStatus() == ProjectStatus.COMPLETED || 
-                        (project.getEndDate() != null && project.getEndDate().isBefore(LocalDate.now().minusDays(3))))
-                .toList();
-
-        if (completedProjects.isEmpty()) {
-            log.info("No completed projects found for review generation");
-            return;
-        }
-
+    private void initializeUserExperiences() {
+        log.info("Creating user experiences ...");
+        List<User> users = userRepository.findAll();
         Random random = new Random();
-        int totalReviews = 0;
 
-        String[] positiveComments = {
+        String[] companyNames = {
+                "네이버","카카오","라인","쿠팡","배달의민족","토스","당근마켓","야놀자",
+                "NHN","넥슨","엔씨소프트","넷마블","크래프톤","스마일게이트","위메프","11번가",
+                "SK텔레콤","KT","LG유플러스","삼성SDS","LG CNS","포스코DX","현대오토에버",
+                "우아한형제들","마켓컬리","직방","집닥","29CM","무신사","브랜디","에이블리",
+                "Google","Microsoft","Amazon","Meta","Apple","Netflix","Uber","Airbnb"
+        };
+
+        String[] departments = {
+                "개발팀","프론트엔드팀","백엔드팀","모바일팀","데브옵스팀","인프라팀",
+                "데이터팀","AI팀","ML팀","보안팀","QA팀","제품팀","기획팀","디자인팀"
+        };
+
+        String[] summaries = {
+                "웹 애플리케이션 개발 및 유지보수 담당",
+                "RESTful API 설계 및 구현",
+                "프론트엔드 컴포넌트 개발 및 최적화",
+                "모바일 앱 개발 및 성능 개선",
+                "데이터베이스 설계 및 쿼리 최적화",
+                "CI/CD 파이프라인 구축 및 관리",
+                "마이크로서비스 아키텍처 설계",
+                "사용자 경험 개선을 위한 UI/UX 개발",
+                "대용량 트래픽 처리 시스템 개발",
+                "클라우드 인프라 구축 및 운영"
+        };
+
+        int total = 0;
+        for (User user : users) {
+            int experienceCount = (random.nextInt(10) < 7) ? (random.nextInt(2) + 1) : (random.nextInt(2) == 0 ? 0 : 3);
+            LocalDate current = LocalDate.now();
+
+            for (int i = 0; i < experienceCount; i++) {
+                String company = companyNames[random.nextInt(companyNames.length)];
+                String dept = departments[random.nextInt(departments.length)];
+                String summary = summaries[random.nextInt(summaries.length)];
+
+                LocalDate endDate;
+                LocalDate startDate;
+                boolean isCurrent = false;
+
+                if (i == 0 && random.nextInt(10) < 4) {
+                    isCurrent = true;
+                    endDate = null;
+                    startDate = current.minusMonths(random.nextInt(36) + 6);
+                } else {
+                    int monthsAgo = 6 + i * 12 + random.nextInt(24);
+                    endDate = current.minusMonths(monthsAgo);
+                    int durationMonths = random.nextInt(24) + 6;
+                    startDate = endDate.minusMonths(durationMonths);
+                }
+
+                userExperienceRepository.save(UserExperience.builder()
+                        .user(user)
+                        .companyName(company)
+                        .department(dept)
+                        .startDate(startDate)
+                        .endDate(endDate)
+                        .isCurrent(isCurrent)
+                        .summary(summary)
+                        .build());
+                total++;
+            }
+        }
+        log.info("User experiences created: {}", total);
+    }
+
+    private void initializeUserEducations() {
+        log.info("Creating user educations ...");
+        List<User> users = userRepository.findAll();
+        Random random = new Random();
+
+        String[] universities = {
+                "서울대학교","연세대학교","고려대학교","성균관대학교","한양대학교",
+                "중앙대학교","경희대학교","서강대학교","이화여자대학교","건국대학교",
+                "동국대학교","홍익대학교","숭실대학교","국민대학교","KAIST",
+                "포항공과대학교","부산대학교","경북대학교","전남대학교","충남대학교"
+        };
+
+        String[] programs = {
+                "컴퓨터공학과","소프트웨어학과","정보통신공학과","전자공학과","컴퓨터과학과",
+                "데이터사이언스학과","인공지능학과","게임학과","정보보호학과","산업공학과",
+                "시각디자인학과","경영학과","경영정보학과","멀티미디어학과","수학과"
+        };
+
+        int total = 0;
+        for (User user : users) {
+            int count = random.nextInt(10) < 8 ? 1 : 2;
+            LocalDate current = LocalDate.now();
+
+            for (int i = 0; i < count; i++) {
+                String institution = universities[random.nextInt(universities.length)];
+                String program = programs[random.nextInt(programs.length)];
+                String degree = (i == 0) ? "학사" : "석사";
+                String programWithDegree = program + " " + degree;
+
+                int yearsAgo = 2 + random.nextInt(7);
+                LocalDate endDate = current.minusYears(yearsAgo);
+                LocalDate startDate = endDate.minusYears(degree.equals("학사") ? 4 : 2);
+
+                userEducationRepository.save(UserEducation.builder()
+                        .user(user)
+                        .institution(institution)
+                        .program(programWithDegree)
+                        .startDate(startDate)
+                        .endDate(endDate)
+                        .isCurrent(false)
+                        .build());
+                total++;
+            }
+        }
+        log.info("User educations created: {}", total);
+    }
+
+    private void initializeTeamMemberReviews() {
+        log.info("Creating team member reviews ...");
+
+        List<ProjectRecruitment> projects = projectRecruitmentRepository.findAll();
+        Random random = new Random();
+
+        String[] positive = {
                 "정말 훌륭한 팀원이었습니다! 프로젝트에 큰 도움이 되었어요.",
                 "커뮤니케이션이 원활하고 책임감이 강한 개발자입니다.",
                 "기술적 역량이 뛰어나고 팀워크가 좋습니다.",
@@ -755,56 +755,40 @@ public class TestDataInitializer implements CommandLineRunner {
                 "기한을 잘 지키시고 꼼꼼하게 작업해주셨습니다."
         };
 
-        String[] neutralComments = {
-            "전반적으로 무난한 팀원이었습니다.",
-            "맡은 역할을 잘 수행해주셨습니다.",
-            "프로젝트에 성실하게 참여해주셨어요.",
-            "기본기가 탄탄한 개발자입니다.",
-            "주어진 업무를 차근차근 완수해주셨습니다."
+        String[] neutral = {
+                "전반적으로 무난한 팀원이었습니다.",
+                "맡은 역할을 잘 수행해주셨습니다.",
+                "프로젝트에 성실하게 참여해주셨어요.",
+                "기본기가 탄탄한 개발자입니다.",
+                "주어진 업무를 차근차근 완수해주셨습니다."
         };
 
-        for (ProjectRecruitment project : completedProjects) {
-            List<ProjectMember> projectMembers = projectMemberRepository
-                    .findAllByProject_ProjectId(project.getProjectId());
+        int total = 0;
+        for (ProjectRecruitment project : projects) {
+            List<ProjectMember> members = projectMemberRepository.findAllByProject_ProjectId(project.getProjectId());
+            if (members.size() < 2) continue;
 
-            if (projectMembers.size() < 2) {
-                continue; // 멤버가 2명 미만이면 리뷰 생성 안함
-            }
+            for (ProjectMember reviewer : members) {
+                for (ProjectMember reviewee : members) {
+                    if (reviewer.getUser().getUserId().equals(reviewee.getUser().getUserId())) continue;
+                    if (!random.nextBoolean()) continue;
 
-            // 각 멤버가 다른 멤버들을 리뷰 (50% 확률로)
-            for (ProjectMember reviewer : projectMembers) {
-                for (ProjectMember reviewee : projectMembers) {
-                    if (reviewer.equals(reviewee)) {
-                        continue; // 자기 자신은 리뷰하지 않음
-                    }
+                    int rating = random.nextInt(3) + 3; // 3~5
+                    String comment = (rating >= 4)
+                            ? positive[random.nextInt(positive.length)]
+                            : neutral[random.nextInt(neutral.length)];
 
-                    // 50% 확률로 리뷰 생성
-                    if (random.nextBoolean()) {
-                        int rating = random.nextInt(3) + 3; // 3-5점 (대부분 긍정적)
-                        String comment;
-
-                        if (rating >= 4) {
-                            comment = positiveComments[random.nextInt(positiveComments.length)];
-                        } else {
-                            comment = neutralComments[random.nextInt(neutralComments.length)];
-                        }
-
-                        TeamMemberReview review = TeamMemberReview.builder()
-                                .project(project)
-                                .reviewer(reviewer.getUser())
-                                .reviewee(reviewee.getUser())
-                                .rating(rating)
-                                .comment(comment)
-                                .build();
-
-                        teamMemberReviewRepository.save(review);
-                        totalReviews++;
-                    }
+                    teamMemberReviewRepository.save(TeamMemberReview.builder()
+                            .project(project)
+                            .reviewer(reviewer.getUser())
+                            .reviewee(reviewee.getUser())
+                            .rating(rating)
+                            .comment(comment)
+                            .build());
+                    total++;
                 }
             }
         }
-
-        log.info("Successfully created {} team member reviews for {} completed projects",
-                totalReviews, completedProjects.size());
+        log.info("Team member reviews created: {}", total);
     }
 }

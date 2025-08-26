@@ -36,6 +36,7 @@ public class ProjectRecruitmentService {
     private final ProjectTechPartRepository projectTechPartRepository;
     private final ProjectTechStackRepository projectTechStackRepository;
     private final ProjectCommentRepository projectCommentRepository;
+    private final ProjectAttachmentRepository projectAttachmentRepository;
     private final TechStackRepository techStackRepository;
     private final TechPartRepository techPartRepository;
     private final LikeRepository likeRepository;
@@ -65,6 +66,14 @@ public class ProjectRecruitmentService {
                         .build())
                 .collect(Collectors.toList());
 
+        List<ProjectAttachmentDto> attachmentDtos = pr.getAttachments().stream()
+                .map(attachment -> ProjectAttachmentDto.builder()
+                        .name(attachment.getName())
+                        .url(attachment.getUrl())
+                        .size(attachment.getSize())
+                        .build())
+                .collect(Collectors.toList());
+
         int appliedCount = projectApplicationRepository.countByProject_ProjectId(pr.getProjectId());
         int acceptedCount = projectApplicationRepository.countByProject_ProjectIdAndStatus(
                 pr.getProjectId(), ProjectApplication.ApplicationStatus.ACCEPTED);
@@ -79,7 +88,6 @@ public class ProjectRecruitmentService {
                 .recruitDeadline(pr.getRecruitDeadline())
                 .startDate(pr.getStartDate())
                 .endDate(pr.getEndDate())
-                .fileUrl(pr.getFileUrl())
                 .status(pr.getStatus().name())
                 .viewCount(pr.getViewCount())
                 .createdAt(pr.getCreatedAt())
@@ -91,6 +99,7 @@ public class ProjectRecruitmentService {
                 .remainingCount(remainingCount)
                 .techStacks(techStackDTOs)
                 .recruitmentParts(partDTOs)
+                .attachments(attachmentDtos)
                 .build();
     }
 
@@ -104,7 +113,6 @@ public class ProjectRecruitmentService {
                 .recruitDeadline(request.getRecruitDeadline())
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
-                .fileUrl(request.getFileUrl())
                 .recruitCount(request.getRecruitCount() != null ? request.getRecruitCount() : 0)
                 .status(ProjectStatus.RECRUITING)
                 .build();
@@ -157,6 +165,19 @@ public class ProjectRecruitmentService {
             }
         }
         project.setTechParts(techParts);
+
+        // 첨부파일 연관 저장
+        if (request.getAttachments() != null) {
+            List<ProjectAttachment> attachments = request.getAttachments().stream()
+                    .map(dto -> ProjectAttachment.builder()
+                            .project(project)
+                            .name(dto.getName())
+                            .url(dto.getUrl())
+                            .size(dto.getSize())
+                            .build())
+                    .collect(Collectors.toList());
+            project.setAttachments(attachments);
+        }
 
         projectRecruitmentRepository.save(project);
 
@@ -238,12 +259,12 @@ public class ProjectRecruitmentService {
         project.setRecruitDeadline(request.getRecruitDeadline());
         project.setStartDate(request.getStartDate());
         project.setEndDate(request.getEndDate());
-        project.setFileUrl(request.getFileUrl());
         if (request.getStatus() != null) project.setStatus(ProjectStatus.valueOf(request.getStatus()));
         if (request.getRecruitCount() != null) project.setRecruitCount(request.getRecruitCount());
 
         projectTechStackRepository.deleteAllByProjectId(id);
         projectTechPartRepository.deleteAllByProjectId(id);
+        projectAttachmentRepository.deleteAllByProjectId(id);
 
         if (request.getTechStacks() != null && !request.getTechStacks().isEmpty()) {
             for (ProjectTechStackDTO tsDto : request.getTechStacks()) {
@@ -286,6 +307,19 @@ public class ProjectRecruitmentService {
                         .build();
 
                 projectTechPartRepository.save(part);
+            }
+        }
+
+        // 첨부파일 저장
+        if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {
+            for (ProjectAttachmentDto dto : request.getAttachments()) {
+                ProjectAttachment attachment = ProjectAttachment.builder()
+                        .project(project)
+                        .name(dto.getName())
+                        .url(dto.getUrl())
+                        .size(dto.getSize())
+                        .build();
+                projectAttachmentRepository.save(attachment);
             }
         }
     }

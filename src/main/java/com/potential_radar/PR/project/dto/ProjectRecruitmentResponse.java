@@ -14,7 +14,6 @@ public class ProjectRecruitmentResponse {
     private LocalDate recruitDeadline;
     private LocalDate startDate;
     private LocalDate endDate;
-    private String fileUrl;
     private String status;
     private Integer viewCount;
     private LocalDateTime createdAt; // 생성 시간 추가
@@ -26,4 +25,5 @@ public class ProjectRecruitmentResponse {
     private Integer remainingCount;    // 남은 모집 인원
     private List<ProjectTechStackDTO> techStacks;
     private List<ProjectPartRecruitmentDTO> recruitmentParts;
+    private List<ProjectAttachmentDto> attachments;
 }

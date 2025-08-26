@@ -160,7 +160,12 @@ public class SearchService {
             log.info("No search conditions, using nickname.exists() to return all users");
         }
 
-        log.info("Visibility filter temporarily removed for debugging - hasConditions: {}", hasConditions);
+        // 검색 가능 유저만 노출
+        finalCriteria = (finalCriteria == null
+                ? new Criteria("isSearchable").is(true)
+                : finalCriteria.and(new Criteria("isSearchable").is(true)))
+                .and(new Criteria("isSearchOpen").is(true));
+        log.debug("Applied visibility filter (isSearchable=true AND isSearchOpen=true). hasConditions: {}", hasConditions);
 
         // 💡 2. 페이징 및 정렬
         Sort sort = Sort.by(Sort.Order.desc("_score"), Sort.Order.desc("createdAt"));
@@ -178,14 +183,16 @@ public class SearchService {
         log.info("Search completed. Found {} users, total hits: {}", responses.size(), totalElements);
 
         long searchTime = System.currentTimeMillis() - startTime;
+        int totalPages = (int) Math.ceil((double) totalElements / request.getSize());
+        boolean hasNext = (request.getPage() + 1) < totalPages;
 
         SearchResult<UserSearchRes> result = SearchResult.<UserSearchRes>builder()
                 .content(responses)
                 .totalElements(totalElements)
-                .totalPages((int) Math.ceil((double) totalElements / request.getSize()))
+                .totalPages(totalPages)
                 .page(request.getPage())
                 .size(request.getSize())
-                .hasNext(request.getPage() < (totalElements / request.getSize()))
+                .hasNext(hasNext)
                 .hasPrevious(request.getPage() > 0)
                 .searchTimeMs(searchTime)
                 .build();
@@ -406,7 +413,12 @@ public class SearchService {
             log.info("No search conditions, using nickname.exists() to return all users");
         }
 
-        log.info("Visibility filter temporarily removed for debugging - hasConditions: {}", hasConditions);
+        // 검색 가능 유저만 노출
+        finalCriteria = (finalCriteria == null
+                ? new Criteria("isSearchable").is(true)
+                : finalCriteria.and(new Criteria("isSearchable").is(true)))
+                .and(new Criteria("isSearchOpen").is(true));
+        log.debug("Applied visibility filter (isSearchable=true AND isSearchOpen=true). hasConditions: {}", hasConditions);
 
         // 페이징 및 정렬
         Sort sort = Sort.by(Sort.Order.desc("_score"), Sort.Order.desc("createdAt"));
@@ -424,14 +436,16 @@ public class SearchService {
         log.info("Search completed. Found {} users, total hits: {}", responses.size(), totalElements);
 
         long searchTime = System.currentTimeMillis() - startTime;
+        int totalPages = (int) Math.ceil((double) totalElements / request.getSize());
+        boolean hasNext = (request.getPage() + 1) < totalPages;
 
         SearchResult<UserSearchRes> result = SearchResult.<UserSearchRes>builder()
                 .content(responses)
                 .totalElements(totalElements)
-                .totalPages((int) Math.ceil((double) totalElements / request.getSize()))
+                .totalPages(totalPages)
                 .page(request.getPage())
                 .size(request.getSize())
-                .hasNext(request.getPage() < (totalElements / request.getSize()))
+                .hasNext(hasNext)
                 .hasPrevious(request.getPage() > 0)
                 .searchTimeMs(searchTime)
                 .build();
@@ -582,14 +596,16 @@ public class SearchService {
         log.info("Project search completed: found {} results", responses.size());
 
         long searchTime = System.currentTimeMillis() - startTime;
+        int totalPages = (int) Math.ceil((double) totalElements / request.getSize());
+        boolean hasNext = (request.getPage() + 1) < totalPages;
 
         SearchResult<ProjectSearchRes> result = SearchResult.<ProjectSearchRes>builder()
                 .content(responses)
                 .totalElements(totalElements)
-                .totalPages((int) Math.ceil((double) totalElements / request.getSize()))
+                .totalPages(totalPages)
                 .page(request.getPage())
                 .size(request.getSize())
-                .hasNext(request.getPage() < (totalElements / request.getSize()))
+                .hasNext(hasNext)
                 .hasPrevious(request.getPage() > 0)
                 .searchTimeMs(searchTime)
                 .fromCache(false) // 캐시에서 조회되지 않음

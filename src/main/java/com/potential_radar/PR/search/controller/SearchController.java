@@ -31,6 +31,25 @@ public class SearchController {
     private final UserSearchRepository userSearchRepository;
     private final ProjectSearchRepository projectSearchRepository;
 
+    /**
+     * String 리스트를 ExperienceRange로 안전하게 변환
+     */
+    private List<ExperienceRange> parseExperienceRanges(List<String> experienceRanges) {
+        if (experienceRanges == null || experienceRanges.isEmpty()) {
+            return null;
+        }
+        
+        try {
+            return experienceRanges.stream()
+                    .filter(java.util.Objects::nonNull)
+                    .map(s -> s.trim().toUpperCase())
+                    .map(ExperienceRange::valueOf)
+                    .collect(java.util.stream.Collectors.toList());
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Invalid experienceRanges value: " + experienceRanges, ex);
+        }
+    }
+
     @GetMapping("/users")
     public ResponseEntity<SearchResult<UserSearchRes>> searchUsers(
             @RequestParam(required = false) String keyword,
@@ -46,13 +65,8 @@ public class SearchController {
         // nickname 파라미터가 있으면 keyword로 사용
         String searchKeyword = (nickname != null && !nickname.trim().isEmpty()) ? nickname : keyword;
         
-        // String을 ExperienceRange로 변환
-        List<ExperienceRange> experienceEnums = null;
-        if (experienceRanges != null && !experienceRanges.isEmpty()) {
-            experienceEnums = experienceRanges.stream()
-                    .map(ExperienceRange::valueOf)
-                    .collect(java.util.stream.Collectors.toList());
-        }
+        // String을 ExperienceRange로 안전하게 변환
+        List<ExperienceRange> experienceEnums = parseExperienceRanges(experienceRanges);
 
         UserSearchReq request = UserSearchReq.builder()
                 .keyword(searchKeyword)
@@ -165,13 +179,8 @@ public class SearchController {
         // nickname 파라미터가 있으면 keyword로 사용
         String searchKeyword = (nickname != null && !nickname.trim().isEmpty()) ? nickname : keyword;
         
-        // String을 ExperienceRange로 변환
-        List<ExperienceRange> experienceEnums = null;
-        if (experienceRanges != null && !experienceRanges.isEmpty()) {
-            experienceEnums = experienceRanges.stream()
-                    .map(ExperienceRange::valueOf)
-                    .collect(java.util.stream.Collectors.toList());
-        }
+        // String을 ExperienceRange로 안전하게 변환
+        List<ExperienceRange> experienceEnums = parseExperienceRanges(experienceRanges);
 
         UserSearchReq request = UserSearchReq.builder()
                 .keyword(searchKeyword)

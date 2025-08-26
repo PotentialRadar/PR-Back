@@ -117,4 +117,8 @@ public class User extends BaseTimeEntity {
     public boolean isPortfolioOpen() {
         return this.userProfile != null && this.userProfile.isPortfolioOpen();
     }
+    
+    public boolean isSearchOpen() {
+        return this.userProfile != null && this.userProfile.isSearchOpen();
+    }
 }

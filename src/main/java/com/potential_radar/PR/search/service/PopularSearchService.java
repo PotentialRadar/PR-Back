@@ -45,6 +45,11 @@ public class PopularSearchService {
     private static final String POPULAR_TECH_STACKS_KEY = "popular:techstacks";
     private static final String POPULAR_TECH_PARTS_KEY = "popular:techparts";
     
+    // 포트폴리오(사용자) 검색 전용 키들
+    private static final String POPULAR_USER_KEYWORDS_KEY = "popular:user:keywords";
+    private static final String POPULAR_USER_TECH_STACKS_KEY = "popular:user:techstacks";
+    private static final String POPULAR_USER_TECH_PARTS_KEY = "popular:user:techparts";
+    
     @Scheduled(fixedRateString = "${app.popular-search.update-interval:3600000}")
     public void updatePopularItems() {
         log.info("Updating popular search items... ({}일 기준, 최소 {}회 검색)", 
@@ -52,6 +57,10 @@ public class PopularSearchService {
         updatePopularKeywords();
         updatePopularTechStacks();
         updatePopularTechParts();
+        // 포트폴리오(사용자) 검색 전용 업데이트
+        updatePopularUserKeywords();
+        updatePopularUserTechStacks();
+        updatePopularUserTechParts();
         log.info("Popular search items updated successfully");
     }
     
@@ -165,6 +174,118 @@ public class PopularSearchService {
             return cached != null ? cached : Collections.emptyList();
         } catch (Exception e) {
             log.warn("Failed to get popular tech parts from cache: {}", e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+    
+    // 포트폴리오(사용자) 검색 전용 메서드들
+    private void updatePopularUserKeywords() {
+        try {
+            LocalDateTime since = LocalDateTime.now().minusDays(popularSearchDays);
+            PageRequest pageRequest = PageRequest.of(0, maxKeywords);
+            
+            List<Object[]> results = searchEventRepository.findPopularUserKeywords(since, pageRequest);
+            
+            List<String> popularUserKeywords = results.stream()
+                .filter(row -> ((Long) row[1]) >= minSearchCount)
+                .map(row -> {
+                    String keyword = (String) row[0];
+                    Long count = (Long) row[1];
+                    log.debug("Popular user keyword: {} ({}회)", keyword, count);
+                    return keyword;
+                })
+                .collect(Collectors.toList());
+                
+            Duration cacheDuration = Duration.ofHours(cacheDurationHours);
+            redisTemplate.opsForValue().set(POPULAR_USER_KEYWORDS_KEY, popularUserKeywords, cacheDuration);
+            log.info("Updated {} popular user keywords ({}+ searches in {} days)", 
+                    popularUserKeywords.size(), minSearchCount, popularSearchDays);
+        } catch (Exception e) {
+            log.error("Failed to update popular user keywords: {}", e.getMessage());
+        }
+    }
+    
+    private void updatePopularUserTechStacks() {
+        try {
+            LocalDateTime since = LocalDateTime.now().minusDays(popularSearchDays);
+            PageRequest pageRequest = PageRequest.of(0, maxTechStacks);
+            
+            List<Object[]> results = searchEventRepository.findPopularUserTechStacks(since, pageRequest);
+            
+            List<String> popularUserTechStacks = results.stream()
+                .filter(row -> ((Long) row[1]) >= minSearchCount)
+                .map(row -> {
+                    String techStack = (String) row[0];
+                    Long count = (Long) row[1];
+                    log.debug("Popular user tech stack: {} ({}회)", techStack, count);
+                    return techStack;
+                })
+                .collect(Collectors.toList());
+                
+            Duration cacheDuration = Duration.ofHours(cacheDurationHours);
+            redisTemplate.opsForValue().set(POPULAR_USER_TECH_STACKS_KEY, popularUserTechStacks, cacheDuration);
+            log.info("Updated {} popular user tech stacks ({}+ searches in {} days)", 
+                    popularUserTechStacks.size(), minSearchCount, popularSearchDays);
+        } catch (Exception e) {
+            log.error("Failed to update popular user tech stacks: {}", e.getMessage());
+        }
+    }
+    
+    private void updatePopularUserTechParts() {
+        try {
+            LocalDateTime since = LocalDateTime.now().minusDays(popularSearchDays);
+            PageRequest pageRequest = PageRequest.of(0, maxTechParts);
+            
+            List<Object[]> results = searchEventRepository.findPopularUserTechParts(since, pageRequest);
+            
+            List<String> popularUserTechParts = results.stream()
+                .filter(row -> ((Long) row[1]) >= minSearchCount)
+                .map(row -> {
+                    String techPart = (String) row[0];
+                    Long count = (Long) row[1];
+                    log.debug("Popular user tech part: {} ({}회)", techPart, count);
+                    return techPart;
+                })
+                .collect(Collectors.toList());
+                
+            Duration cacheDuration = Duration.ofHours(cacheDurationHours);
+            redisTemplate.opsForValue().set(POPULAR_USER_TECH_PARTS_KEY, popularUserTechParts, cacheDuration);
+            log.info("Updated {} popular user tech parts ({}+ searches in {} days)", 
+                    popularUserTechParts.size(), minSearchCount, popularSearchDays);
+        } catch (Exception e) {
+            log.error("Failed to update popular user tech parts: {}", e.getMessage());
+        }
+    }
+    
+    @SuppressWarnings("unchecked")
+    public List<String> getPopularUserKeywords() {
+        try {
+            List<String> cached = (List<String>) redisTemplate.opsForValue().get(POPULAR_USER_KEYWORDS_KEY);
+            return cached != null ? cached : Collections.emptyList();
+        } catch (Exception e) {
+            log.warn("Failed to get popular user keywords from cache: {}", e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+    
+    @SuppressWarnings("unchecked")
+    public List<String> getPopularUserTechStacks() {
+        try {
+            List<String> cached = (List<String>) redisTemplate.opsForValue().get(POPULAR_USER_TECH_STACKS_KEY);
+            return cached != null ? cached : Collections.emptyList();
+        } catch (Exception e) {
+            log.warn("Failed to get popular user tech stacks from cache: {}", e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+    
+    @SuppressWarnings("unchecked")
+    public List<String> getPopularUserTechParts() {
+        try {
+            List<String> cached = (List<String>) redisTemplate.opsForValue().get(POPULAR_USER_TECH_PARTS_KEY);
+            return cached != null ? cached : Collections.emptyList();
+        } catch (Exception e) {
+            log.warn("Failed to get popular user tech parts from cache: {}", e.getMessage());
             return Collections.emptyList();
         }
     }

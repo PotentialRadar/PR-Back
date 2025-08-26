@@ -19,6 +19,10 @@
     "techPart": {
       "type": "keyword"
     },
+    "jobTitle": {
+      "type": "keyword",
+      "index": false
+    },
     "techStacks": {
       "type": "text",
       "analyzer": "tech_stack_analyzer",

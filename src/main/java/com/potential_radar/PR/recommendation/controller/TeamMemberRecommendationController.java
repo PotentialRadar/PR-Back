@@ -6,6 +6,7 @@ import com.potential_radar.PR.recommendation.service.TeamMemberRecommendationSer
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,10 +22,20 @@ public class TeamMemberRecommendationController {
 
     @PostMapping("/members")
     public ResponseEntity<List<RecommendedMember>> recommendMembers(
-            @RequestBody RecommendMemberRequest request) {
+            @RequestBody RecommendMemberRequest request,
+            @RequestHeader(value = "User-Id", required = false) Long teamLeaderId) {
         
-        log.info("🤖 팀원 추천 요청 - 프로젝트 ID: {}, 필요 기술: {}, 팀 크기: {}", 
-                request.getProjectId(), request.getRequiredSkills(), request.getTeamSize());
+        // User-Id 헤더가 없으면 기본값 1L 사용 (개발/테스트용)
+        if (teamLeaderId == null) {
+            teamLeaderId = 1L;
+            log.warn("⚠️ User-Id 헤더가 없어서 기본값 1L 사용");
+        }
+        
+        // 팀장 ID를 request에 설정 (추천 이력 저장을 위해)
+        request.setExcludeUserId(teamLeaderId);
+        
+        log.info("🤖 팀원 추천 요청 - 팀장: {}, 프로젝트 ID: {}, 필요 기술: {}, 팀 크기: {}", 
+                teamLeaderId, request.getProjectId(), request.getRequiredSkills(), request.getTeamSize());
         
         try {
             List<RecommendedMember> recommendedMembers = recommendationService.recommendTeamMembers(request);

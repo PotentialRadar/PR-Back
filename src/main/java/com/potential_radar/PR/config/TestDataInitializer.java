@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +31,7 @@ import java.util.Random;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-@Profile("!test") // 테스트 환경에서는 실행하지 않음
+@Profile("!test & false") // 테스트 환경에서는 실행하지 않음
 public class TestDataInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;
@@ -46,6 +47,7 @@ public class TestDataInitializer implements CommandLineRunner {
     private final UserTechStackRepository userTechStackRepository;
     private final TeamInvitationRepository teamInvitationRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JdbcTemplate jdbcTemplate;
 
     @Override
     @Transactional
@@ -58,6 +60,9 @@ public class TestDataInitializer implements CommandLineRunner {
         boolean hasProjectData = projectRecruitmentRepository.count() > 0;
 
         log.info("Initializing test data...");
+        
+        // 0. recommendation_history 테이블 구조 업데이트 (먼저 실행)
+        updateRecommendationHistoryTable();
         
         // 1. TechPart 데이터 생성
         initializeTechParts();
@@ -319,12 +324,12 @@ public class TestDataInitializer implements CommandLineRunner {
             // User 생성
             User user = User.builder()
                 .email(String.format("user%03d@example.com", userNum))
-                .password(provider == Provider.EMAIL ? hashedPassword : null)
+                .password(hashedPassword) // ✅ 모든 사용자에게 비밀번호 설정 (개발/테스트용)
                 .nickname(nicknames[i])
                 .provider(provider)
                 .providerUserId(provider != Provider.EMAIL ? 
                     provider.name().toLowerCase() + "_" + (random.nextInt(900000000) + 100000000) : null)
-                .profileImage(i % 3 != 0 ? String.format("https://example.com/profile/%03d.jpg", userNum) : null)
+                .profileImage(null) // 더미 URL 대신 null로 설정하여 dicebear API 사용
                 .build();
 
             user = userRepository.save(user);
@@ -679,5 +684,68 @@ public class TestDataInitializer implements CommandLineRunner {
         long totalUserTechStacks = userTechStackRepository.count();
         log.info("Successfully created {} user tech stack relationships for {} users", 
             totalUserTechStacks, users.size());
+    }
+    
+    /**
+     * recommendation_history 테이블 구조 업데이트
+     * 추천 타입과 프로젝트 컨텍스트 ID 컬럼 추가
+     */
+    private void updateRecommendationHistoryTable() {
+        try {
+            log.info("Updating recommendation_history table structure...");
+            
+            // 1. recommendation_type 컬럼 추가 (이미 있으면 무시)
+            jdbcTemplate.execute("""
+                ALTER TABLE recommendation_history 
+                ADD COLUMN IF NOT EXISTS recommendation_type VARCHAR(10) DEFAULT 'PROJECT'
+                """);
+            
+            // 2. project_context_id 컬럼 추가 (이미 있으면 무시)
+            jdbcTemplate.execute("""
+                ALTER TABLE recommendation_history 
+                ADD COLUMN IF NOT EXISTS project_context_id BIGINT
+                """);
+            
+            // 3. 기존 데이터에 대한 타입 설정
+            jdbcTemplate.update("""
+                UPDATE recommendation_history 
+                SET recommendation_type = 'PROJECT' 
+                WHERE recommended_project_id IS NOT NULL AND recommendation_type IS NULL
+                """);
+            
+            jdbcTemplate.update("""
+                UPDATE recommendation_history 
+                SET recommendation_type = 'MEMBER' 
+                WHERE recommended_user_id IS NOT NULL AND recommendation_type IS NULL
+                """);
+            
+            // 4. 인덱스 추가 (이미 있으면 무시)
+            try {
+                jdbcTemplate.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_recommendation_history_type 
+                    ON recommendation_history(recommendation_type)
+                    """);
+                    
+                jdbcTemplate.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_recommendation_history_user_type 
+                    ON recommendation_history(user_id, recommendation_type)
+                    """);
+                    
+                jdbcTemplate.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_recommendation_history_project_context 
+                    ON recommendation_history(project_context_id)
+                    """);
+            } catch (Exception e) {
+                // 인덱스 생성 실패는 무시 (이미 존재하거나 DB가 지원하지 않을 수 있음)
+                log.debug("Index creation failed (may already exist): {}", e.getMessage());
+            }
+            
+            log.info("✅ recommendation_history 테이블 구조 업데이트 완료");
+            
+        } catch (Exception e) {
+            log.warn("⚠️ recommendation_history 테이블 구조 업데이트 실패: {}", e.getMessage());
+            log.debug("상세 에러:", e);
+            // 테이블 구조 업데이트 실패가 전체 초기화를 방해하지 않도록 예외를 던지지 않음
+        }
     }
 }

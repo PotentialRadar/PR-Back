@@ -210,11 +210,16 @@ public class ProjectRecruitmentService {
 
     @Transactional(readOnly = true)
     public List<ProjectMemberResponseDTO> getConfirmedProjectMembers(Long projectId, Long currentUserId) {
-        projectRecruitmentRepository.findById(projectId)
+        ProjectRecruitment project = projectRecruitmentRepository.findById(projectId)
                 .orElseThrow(() -> new NotFoundException("프로젝트를 찾을 수 없습니다."));
 
-        projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, currentUserId)
-                .orElseThrow(() -> new AccessDeniedException("해당 프로젝트의 멤버만 팀원 목록을 볼 수 있습니다."));
+        // 프로젝트 오너이거나 멤버인지 확인
+        boolean isProjectOwner = project.getTeamLeader().getUserId().equals(currentUserId);
+        boolean isProjectMember = projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, currentUserId).isPresent();
+        
+        if (!isProjectOwner && !isProjectMember) {
+            throw new AccessDeniedException("해당 프로젝트의 오너나 멤버만 팀원 목록을 볼 수 있습니다.");
+        }
 
         List<ProjectMember> members = projectMemberRepository.findAllByProject_ProjectId(projectId);
 
@@ -224,6 +229,7 @@ public class ProjectRecruitmentService {
                         .userName(member.getUser().getNickname())
                         .role(member.getRole().name())
                         .techPart(member.getTechPart())
+                        .profileImageUrl(member.getUser().getProfileImage()) // 프로필 이미지 URL 추가
                         .build())
                 .collect(Collectors.toList());
     }

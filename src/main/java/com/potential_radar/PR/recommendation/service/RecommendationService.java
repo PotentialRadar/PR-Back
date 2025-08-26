@@ -7,6 +7,7 @@ import com.potential_radar.PR.project.domain.ProjectRecruitment;
 import com.potential_radar.PR.project.repository.ProjectApplicationRepository;
 import com.potential_radar.PR.project.repository.ProjectRecruitmentRepository;
 import com.potential_radar.PR.recommendation.domain.RecommendationHistory;
+import com.potential_radar.PR.recommendation.domain.RecommendationType;
 import com.potential_radar.PR.recommendation.dto.LikedProject;
 import com.potential_radar.PR.recommendation.dto.RecommendRequest;
 import com.potential_radar.PR.recommendation.dto.RecommendedProjectResponse;
@@ -159,27 +160,47 @@ public class RecommendationService {
     }
 
     private void saveRecommendationHistories(Long userId, List<RecommendedProjectResponse> responses) {
-        // 추천받은 사용자의 엔티티를 조회합니다.
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + userId));
+        try {
+            // 추천받은 사용자의 엔티티를 조회합니다.
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + userId));
 
-        List<RecommendationHistory> histories = new ArrayList<>();
-        for (RecommendedProjectResponse res : responses) {
-            // 추천된 프로젝트의 엔티티를 조회합니다.
-            projectRecruitmentRepository.findById(res.getProjectId()).ifPresent(project -> {
+            List<RecommendationHistory> histories = new ArrayList<>();
+            for (RecommendedProjectResponse res : responses) {
+                // 추천된 프로젝트의 엔티티를 조회합니다.
+                ProjectRecruitment project = projectRecruitmentRepository.findById(res.getProjectId())
+                        .orElse(null);
+                        
+                if (project == null) {
+                    log.warn("⚠️ 프로젝트 ID {}를 찾을 수 없습니다. 추천 이력에서 제외", res.getProjectId());
+                    continue;
+                }
+                
                 RecommendationHistory history = RecommendationHistory.builder()
                         .user(user)
+                        .recommendationType(RecommendationType.PROJECT) // 명시적으로 프로젝트 추천 타입 설정
                         .recommendedProject(project)
+                        .recommendedMember(null) // 프로젝트 추천이므로 null
+                        .projectContextId(null) // 프로젝트 추천이므로 null
                         .matchScore(res.getMatchScore())
                         .modelVersion(CURRENT_MODEL_VERSION)
                         .build();
+                        
                 histories.add(history);
-            });
-        }
+                log.debug("✅ 프로젝트 추천 이력 생성: 사용자 {} → 프로젝트 {} (점수: {})", 
+                    userId, project.getTitle(), res.getMatchScore());
+            }
 
-        if (!histories.isEmpty()) {
-            recommendationHistoryRepository.saveAll(histories);
-            log.info("{}개의 추천 이력을 저장했습니다. (사용자 ID: {})", histories.size(), userId);
+            if (!histories.isEmpty()) {
+                recommendationHistoryRepository.saveAll(histories);
+                log.info("✅ {}개의 프로젝트 추천 이력을 저장했습니다. (사용자 ID: {})", histories.size(), userId);
+            } else {
+                log.warn("⚠️ 저장할 프로젝트 추천 이력이 없습니다. (사용자 ID: {})", userId);
+            }
+            
+        } catch (Exception e) {
+            log.error("❌ 프로젝트 추천 이력 저장 실패 (사용자 ID: {}): {}", userId, e.getMessage(), e);
+            // 이력 저장 실패가 전체 추천을 방해하지 않도록 예외를 던지지 않음
         }
     }
 

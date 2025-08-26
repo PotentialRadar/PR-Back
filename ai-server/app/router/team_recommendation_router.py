@@ -123,11 +123,19 @@ def get_users_from_db(db: Session) -> List[dict]:
                 "ETC": "기타"
             }.get(experience_range, "1-3년")
             
+            # 프로필 이미지 처리 (더 안정적인 fallback)
+            profile_image = None
+            if user.profile_image and user.profile_image.startswith('http'):
+                profile_image = user.profile_image
+            else:
+                # dicebear API를 사용한 더 다양한 아바타 생성
+                profile_image = f"https://api.dicebear.com/7.x/avataaars/svg?seed={user.user_id}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf"
+            
             user_data = {
                 "userId": user.user_id,
                 "name": user.nickname,
                 "email": user.email,
-                "profileImage": user.profile_image or f"https://api.dicebear.com/7.x/avataaars/svg?seed={user.user_id}",
+                "profileImage": profile_image,
                 "userTechStacks": tech_stacks,
                 "experience": experience_text,
                 "portfolioCount": 0,  # 추후 실제 포트폴리오 테이블과 연동
@@ -168,6 +176,11 @@ async def recommend_team_members(request: RecommendMemberRequest, db: Session = 
         logger.info(f"🎯 매칭 대상 기술: {request.requiredSkills}")
         
         for user in users_data:
+            # 팀장 본인은 추천에서 제외
+            if request.excludeUserId and user["userId"] == request.excludeUserId:
+                logger.info(f"❌ {user['name']}({user['userId']}) - 팀장 본인이므로 제외")
+                continue
+                
             if not user["isAvailable"]:
                 logger.info(f"❌ {user['name']} - 참여 불가능 상태")
                 continue

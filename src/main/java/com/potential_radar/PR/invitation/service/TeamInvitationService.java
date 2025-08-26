@@ -7,7 +7,9 @@ import com.potential_radar.PR.invitation.dto.TeamInvitationDto;
 import com.potential_radar.PR.invitation.repository.TeamInvitationRepository;
 import com.potential_radar.PR.notification.domain.NotificationType;
 import com.potential_radar.PR.notification.service.NotificationService;
+import com.potential_radar.PR.project.domain.ProjectMember;
 import com.potential_radar.PR.project.domain.ProjectRecruitment;
+import com.potential_radar.PR.project.repository.ProjectMemberRepository;
 import com.potential_radar.PR.project.repository.ProjectRecruitmentRepository;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.repository.UserRepository;
@@ -29,6 +31,7 @@ public class TeamInvitationService {
     private final TeamInvitationRepository teamInvitationRepository;
     private final UserRepository userRepository;
     private final ProjectRecruitmentRepository projectRepository;
+    private final ProjectMemberRepository projectMemberRepository;
     private final NotificationService notificationService;
 
     /**
@@ -153,6 +156,32 @@ public class TeamInvitationService {
             if (request.getStatus() == InvitationStatus.ACCEPTED) {
                 invitation.accept();
                 log.info("초대 수락: 사용자 {} → 프로젝트 {}", userId, invitation.getProject().getTitle());
+                
+                // 5. 초대 수락 시 프로젝트 멤버로 추가
+                try {
+                    // 이미 멤버인지 확인
+                    boolean alreadyMember = projectMemberRepository.existsByProject_ProjectIdAndUser_UserId(
+                            invitation.getProject().getProjectId(), userId);
+                    
+                    if (!alreadyMember) {
+                        ProjectMember newMember = ProjectMember.builder()
+                                .project(invitation.getProject())
+                                .user(invitation.getInvitee())
+                                .role(ProjectMember.Role.MEMBER)
+                                .build();
+                        
+                        projectMemberRepository.save(newMember);
+                        log.info("프로젝트 멤버 추가 완료: 사용자 {} → 프로젝트 {}", 
+                                userId, invitation.getProject().getTitle());
+                    } else {
+                        log.warn("이미 프로젝트 멤버인 사용자: {} → 프로젝트 {}", 
+                                userId, invitation.getProject().getTitle());
+                    }
+                } catch (Exception e) {
+                    log.error("프로젝트 멤버 추가 실패: {}", e.getMessage(), e);
+                    // 멤버 추가 실패해도 초대는 수락으로 처리
+                }
+                
             } else if (request.getStatus() == InvitationStatus.REJECTED) {
                 invitation.reject();
                 log.info("초대 거절: 사용자 {} → 프로젝트 {}", userId, invitation.getProject().getTitle());

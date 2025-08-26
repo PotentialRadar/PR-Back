@@ -1,6 +1,14 @@
 # app/ml/generate_training_data.py
 """
 향상된 알고리즘으로 ML 훈련 데이터 생성
+
+이 모듈은 실제 데이터베이스의 사용자 기술스택 정보와 프로젝트 정보를 기반으로
+머신러닝 훈련 데이터를 생성합니다.
+
+주요 기능:
+- 실제 DB에서 사용자 기술스택 조회
+- 프로젝트별 기술요구사항과 사용자 스킬 매칭
+- 훈련용 특성 벡터 및 라벨 생성
 """
 
 import sys
@@ -20,45 +28,7 @@ from app.utils.preprocess import normalize_tech_stacks, to_name_list
 # 데이터베이스 연결 (기존 설정 사용)
 from app.database import SessionLocal
 
-# 다양한 사용자 기술스택 프로필 (훈련용)
-USER_PROFILES = [
-    # Frontend 개발자들
-    {"name": "React 초급자", "techs": [{"name": "JavaScript", "level": 3}, {"name": "React", "level": 2}, {"name": "HTML", "level": 4}]},
-    {"name": "React 중급자", "techs": [{"name": "JavaScript", "level": 4}, {"name": "React", "level": 4}, {"name": "TypeScript", "level": 3}, {"name": "Node.js", "level": 2}]},
-    {"name": "React 고급자", "techs": [{"name": "JavaScript", "level": 5}, {"name": "React", "level": 5}, {"name": "TypeScript", "level": 4}, {"name": "Node.js", "level": 4}, {"name": "Redux", "level": 3}]},
-    
-    {"name": "Vue 초급자", "techs": [{"name": "JavaScript", "level": 3}, {"name": "Vue.js", "level": 2}, {"name": "HTML", "level": 4}]},
-    {"name": "Vue 중급자", "techs": [{"name": "JavaScript", "level": 4}, {"name": "Vue.js", "level": 4}, {"name": "TypeScript", "level": 3}, {"name": "Nuxt.js", "level": 2}]},
-    
-    # Backend 개발자들
-    {"name": "Python Django 개발자", "techs": [{"name": "Python", "level": 4}, {"name": "Django", "level": 4}, {"name": "PostgreSQL", "level": 3}, {"name": "Redis", "level": 2}]},
-    {"name": "Python FastAPI 개발자", "techs": [{"name": "Python", "level": 4}, {"name": "FastAPI", "level": 4}, {"name": "SQLAlchemy", "level": 3}, {"name": "PostgreSQL", "level": 3}]},
-    {"name": "Node.js 개발자", "techs": [{"name": "JavaScript", "level": 4}, {"name": "Node.js", "level": 4}, {"name": "Express", "level": 4}, {"name": "MongoDB", "level": 3}]},
-    {"name": "Java Spring 개발자", "techs": [{"name": "Java", "level": 4}, {"name": "Spring Boot", "level": 4}, {"name": "PostgreSQL", "level": 3}, {"name": "Docker", "level": 2}]},
-    
-    # 풀스택 개발자들
-    {"name": "MERN 스택", "techs": [{"name": "JavaScript", "level": 4}, {"name": "React", "level": 4}, {"name": "Node.js", "level": 4}, {"name": "MongoDB", "level": 3}, {"name": "Express", "level": 3}]},
-    {"name": "PERN 스택", "techs": [{"name": "JavaScript", "level": 4}, {"name": "React", "level": 4}, {"name": "Node.js", "level": 4}, {"name": "PostgreSQL", "level": 3}, {"name": "Express", "level": 3}]},
-    
-    # 모바일 개발자들
-    {"name": "React Native 개발자", "techs": [{"name": "JavaScript", "level": 4}, {"name": "React", "level": 4}, {"name": "React Native", "level": 4}, {"name": "TypeScript", "level": 3}]},
-    {"name": "Flutter 개발자", "techs": [{"name": "Flutter", "level": 4}, {"name": "Dart", "level": 4}, {"name": "Firebase", "level": 3}, {"name": "SQLite", "level": 2}]},
-    
-    # DevOps/인프라
-    {"name": "DevOps 엔지니어", "techs": [{"name": "Docker", "level": 4}, {"name": "Kubernetes", "level": 4}, {"name": "AWS", "level": 3}, {"name": "Terraform", "level": 3}]},
-    
-    # 게임/데이터 개발자
-    {"name": "Unity 게임 개발자", "techs": [{"name": "Unity", "level": 4}, {"name": "C#", "level": 4}, {"name": "Blender", "level": 2}]},
-    {"name": "ML 엔지니어", "techs": [{"name": "Python", "level": 4}, {"name": "TensorFlow", "level": 4}, {"name": "scikit-learn", "level": 3}, {"name": "Pandas", "level": 4}, {"name": "NumPy", "level": 4}]},
-    
-    # 초보자 프로필들
-    {"name": "프로그래밍 입문자", "techs": [{"name": "Python", "level": 1}, {"name": "HTML", "level": 2}]},
-    {"name": "웹개발 입문자", "techs": [{"name": "HTML", "level": 3}, {"name": "CSS", "level": 2}, {"name": "JavaScript", "level": 1}]},
-    
-    # 크로스 스킬 개발자들
-    {"name": "Python + JS", "techs": [{"name": "Python", "level": 3}, {"name": "JavaScript", "level": 3}, {"name": "React", "level": 2}, {"name": "Django", "level": 2}]},
-    {"name": "Java + React", "techs": [{"name": "Java", "level": 4}, {"name": "Spring Boot", "level": 3}, {"name": "JavaScript", "level": 3}, {"name": "React", "level": 3}]},
-]
+# 훈련 데이터는 실제 데이터베이스의 사용자 정보를 사용합니다.
 
 def generate_training_data():
     """향상된 알고리즘으로 훈련 데이터 생성"""

@@ -1,5 +1,6 @@
 package com.potential_radar.PR.recommendation.controller;
 
+import com.potential_radar.PR.common.exception.RecommendationServiceException;
 import com.potential_radar.PR.recommendation.dto.RecommendRequest;
 import com.potential_radar.PR.recommendation.dto.RecommendedProjectResponse;
 import com.potential_radar.PR.recommendation.service.RecommendationService;

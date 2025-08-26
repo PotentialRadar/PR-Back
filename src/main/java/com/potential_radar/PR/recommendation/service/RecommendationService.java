@@ -217,7 +217,7 @@ public class RecommendationService {
             log.info("✅ 사용자 {} 확인됨: {}", userId, user.getEmail());
             
             // 프로젝트 좋아요 데이터 조회
-            List<Like> projectLikes = likeRepository.findAllByUserAndTargetType(user, TargetType.PROJECT);
+            List<Like> projectLikes = likeRepository.findByUserAndTargetType(user, TargetType.PROJECT);
             
             log.info("🔍 사용자 {}의 프로젝트 좋아요 {}개 발견", userId, projectLikes.size());
             

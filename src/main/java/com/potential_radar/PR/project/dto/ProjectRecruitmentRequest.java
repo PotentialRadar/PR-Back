@@ -14,11 +14,11 @@ public class ProjectRecruitmentRequest {
     private LocalDate startDate;
     @NotNull
     private LocalDate endDate;
-    private String fileUrl;
     private String status;
     @Valid
     private List<ProjectTechStackDTO> techStacks;
     @Valid
     private List<ProjectPartRecruitmentDTO> recruitmentParts;
     private Integer recruitCount;   //총 모집인원
+    private List<ProjectAttachmentDto> attachments;
 }

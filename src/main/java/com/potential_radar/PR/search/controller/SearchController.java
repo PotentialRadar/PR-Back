@@ -9,6 +9,8 @@ import com.potential_radar.PR.search.service.DataSyncService;
 import com.potential_radar.PR.search.service.PopularSearchService;
 import com.potential_radar.PR.search.repository.UserSearchRepository;
 import com.potential_radar.PR.search.repository.ProjectSearchRepository;
+import com.potential_radar.PR.tech.repository.TechStackRepository;
+import com.potential_radar.PR.tech.domain.TechStack;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +32,7 @@ public class SearchController {
     private final PopularSearchService popularSearchService;
     private final UserSearchRepository userSearchRepository;
     private final ProjectSearchRepository projectSearchRepository;
+    private final TechStackRepository techStackRepository;
 
     /**
      * String 리스트를 ExperienceRange로 안전하게 변환
@@ -126,6 +129,27 @@ public class SearchController {
         long count = searchService.countAllProjects();
         return ResponseEntity.ok(Map.of("count", count));
     }
+
+//     // 프로젝트 개수 미리보기 엔드포인트
+//     @GetMapping("/projects/count-preview")
+//     public ResponseEntity<Map<String, Object>> getProjectCountPreview(
+//             @RequestParam(required = false) String keyword,
+//             @RequestParam(required = false) List<String> techParts,
+//             @RequestParam(required = false) List<String> techStacks,
+//             @RequestParam(required = false) List<String> statuses) {
+        
+//         ProjectSearchReq request = ProjectSearchReq.builder()
+//                 .keyword(keyword)
+//                 .techParts(techParts)
+//                 .techStacks(techStacks)
+//                 .statuses(statuses)
+//                 .page(0)
+//                 .size(1)
+//                 .build();
+
+//         SearchResult<ProjectSearchRes> result = searchService.searchProjects(request);
+//         return ResponseEntity.ok(Map.of("totalCount", result.getTotalElements()));
+//     }
     
     @GetMapping("/test/projects/all")
     public ResponseEntity<Map<String, Object>> testFindAllProjects() {
@@ -166,6 +190,8 @@ public class SearchController {
                 "searchTime", result.getSearchTimeMs()
         ));
     }
+   
+
 
     // 사용자(포트폴리오) 필터별 결과 수 미리보기 엔드포인트
     @GetMapping("/users/count-preview")

@@ -26,4 +26,6 @@ public class RecommendedProjectResponse {
     private Integer recruitCount;
     private Integer appliedCount;
     private LocalDate recruitDeadline;
+    private Integer viewCount;
+    private Integer likeCount;
 }

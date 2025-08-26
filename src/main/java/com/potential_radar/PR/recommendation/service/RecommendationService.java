@@ -234,6 +234,13 @@ public class RecommendationService {
                 // 지원자 수 계산
                 int appliedCount = projectApplicationRepository.countByProject_ProjectId(project.getProjectId());
                 response.setAppliedCount(appliedCount);
+                
+                // 조회수 설정
+                response.setViewCount(project.getViewCount());
+                
+                // 좋아요 수 계산
+                int likeCount = (int) likeRepository.countByTargetTypeAndTargetId(TargetType.PROJECT, project.getProjectId());
+                response.setLikeCount(likeCount);
             });
         }
     }

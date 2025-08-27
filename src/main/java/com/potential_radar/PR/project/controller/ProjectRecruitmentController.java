@@ -1,17 +1,13 @@
 package com.potential_radar.PR.project.controller;
 
 import com.potential_radar.PR.common.S3.S3Uploader;
-import com.potential_radar.PR.common.exception.NotFoundException;
-import com.potential_radar.PR.project.dto.ProjectAttachmentDto;
-import com.potential_radar.PR.project.dto.ProjectMemberResponseDTO;
-import com.potential_radar.PR.project.dto.ProjectRecruitmentRequest;
-import com.potential_radar.PR.project.dto.ProjectRecruitmentResponse;
-import com.potential_radar.PR.project.dto.ProjectStatusUpdateRequest;
+import com.potential_radar.PR.project.dto.*;
 import com.potential_radar.PR.project.service.ProjectRecruitmentService;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.repository.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j; // Added Slf4j import
 import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -29,6 +25,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
+@Slf4j // Added Slf4j annotation
 public class ProjectRecruitmentController {
     private final ProjectRecruitmentService projectRecruitmentService;
     private final S3Uploader s3Uploader;
@@ -140,8 +137,8 @@ public class ProjectRecruitmentController {
         return ResponseEntity.ok().build();
     }
     // S3 파일 업로드
-    @PostMapping("/upload-file")
-    public ResponseEntity<ProjectAttachmentDto> uploadFile(@RequestParam("file") MultipartFile file) {
+    @PostMapping(value = "/upload-file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ProjectAttachmentDto> uploadFile(@RequestPart("file") MultipartFile file) {
         try {
             // 1. 파일 유효성 검사
             String originalFilename = file.getOriginalFilename();
@@ -169,7 +166,7 @@ public class ProjectRecruitmentController {
             
             return ResponseEntity.ok(attachmentDto);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error during file upload: {}", e.getMessage(), e); // Modified logging
             return ResponseEntity.internalServerError().body(null); // 에러 발생 시 null 반환 또는 적절한 에러 DTO 반환
         }
     }

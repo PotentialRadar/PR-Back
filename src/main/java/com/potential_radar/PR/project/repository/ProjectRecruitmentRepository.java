@@ -64,4 +64,22 @@ public interface ProjectRecruitmentRepository extends JpaRepository<ProjectRecru
     // 종료일과 상태로 프로젝트 조회
     List<ProjectRecruitment> findByEndDateAndStatus(LocalDate endDate, ProjectStatus status);
 
+    // 증분 동기화용 - 기본 프로젝트와 팀리더만 로딩 (기술스택, 기술파트는 lazy loading)
+    @Query("SELECT DISTINCT p FROM ProjectRecruitment p " +
+           "LEFT JOIN FETCH p.teamLeader " +
+           "WHERE p.updatedAt > :since ORDER BY p.updatedAt ASC")
+    List<ProjectRecruitment> findProjectsModifiedAfter(@Param("since") LocalDateTime since);
+
+    // 증분 동기화용 - 기술스택만 함께 로딩
+    @Query("SELECT DISTINCT p FROM ProjectRecruitment p " +
+           "LEFT JOIN FETCH p.techStacks pts LEFT JOIN FETCH pts.techStack " +
+           "WHERE p.projectId IN :projectIds")
+    List<ProjectRecruitment> findProjectsWithTechStacks(@Param("projectIds") List<Long> projectIds);
+
+    // 증분 동기화용 - 기술파트만 함께 로딩  
+    @Query("SELECT DISTINCT p FROM ProjectRecruitment p " +
+           "LEFT JOIN FETCH p.techParts ptp LEFT JOIN FETCH ptp.techPart " +
+           "WHERE p.projectId IN :projectIds")
+    List<ProjectRecruitment> findProjectsWithTechParts(@Param("projectIds") List<Long> projectIds);
+
 }

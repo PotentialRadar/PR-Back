@@ -220,7 +220,6 @@ public class DataSyncService {
                 .githubUrl("https://github.com/" + user.getNickname().toLowerCase()) // 기본 GitHub URL
                 .jobTitle(user.getUserProfile() != null ? user.getUserProfile().getJobTitle() : null) // 사용자 직무
                 .experienceRange(user.getExperienceRange()) // 경력 정보
-                .isSearchable(true) // 검색 가능 여부 (기본값 true)
                 .isPortfolioOpen(user.isPortfolioOpen()) // 포트폴리오 공개 여부
                 .isSearchOpen(user.isSearchOpen()) // 실제 사용자 설정 반영
                 .createdAt(user.getCreatedAt().format(ELASTICSEARCH_DATE_FORMAT))

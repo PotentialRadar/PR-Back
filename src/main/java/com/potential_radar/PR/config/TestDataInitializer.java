@@ -57,13 +57,13 @@ public class TestDataInitializer implements CommandLineRunner {
     @Transactional
     public void run(String... args) throws Exception {
         // 이미 사용자 테스트 데이터가 있는지 확인
-        boolean hasUserData = userRepository.findByEmail("user001@example.com").isPresent();
+        boolean hasUserData = userRepository.findByEmail("user001@naver.com").isPresent();
         // TechStack 데이터가 있는지 확인 (새로 추가된 데이터)
         boolean hasTechStackData = techStackRepository.count() > 20; // 기본 데이터보다 많으면 초기화된 것으로 간주
         // 프로젝트 데이터가 있는지 확인
         boolean hasProjectData = projectRecruitmentRepository.count() > 0;
 
-        log.info("Initializing test data...");
+        log.info("=== Initializing seed data (idempotent for ddl-auto:update) ===");
         
         // 0. recommendation_history 테이블 구조 업데이트 (먼저 실행)
         updateRecommendationHistoryTable();
@@ -322,20 +322,12 @@ public class TestDataInitializer implements CommandLineRunner {
 
         for (int i = 0; i < 100; i++) {
             int userNum = i + 1;
-            
-            // Provider 결정 (EMAIL 60%, GOOGLE 20%, KAKAO 20%)
-            Provider provider;
-            if (i % 5 < 3) {
-                provider = Provider.EMAIL;
-            } else if (i % 5 == 3) {
-                provider = Provider.GOOGLE;
-            } else {
-                provider = Provider.KAKAO;
-            }
+            String email = String.format("user%03d@naver.com", userNum);
+            Provider provider = (i % 5 < 3) ? Provider.EMAIL : (i % 5 == 3 ? Provider.GOOGLE : Provider.KAKAO);
 
             // User 생성
             User user = User.builder()
-                .email(String.format("user%03d@example.com", userNum))
+                .email(email)
                 .password(hashedPassword) // ✅ 모든 사용자에게 비밀번호 설정 (개발/테스트용)
                 .nickname(nicknames[i])
                 .provider(provider)

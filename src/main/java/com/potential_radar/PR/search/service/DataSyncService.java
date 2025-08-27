@@ -36,7 +36,7 @@ public class DataSyncService {
     public void syncAllUsersToElasticsearch() {
         log.info("Starting user data synchronization to Elasticsearch...");
         
-        List<User> users = userRepository.findAll();
+        List<User> users = userRepository.findAllWithUserProfile();
         List<UserSearchDocument> userDocs = users.stream()
                 .map(this::convertUserToDocument)
                 .collect(Collectors.toList());

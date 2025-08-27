@@ -1,19 +1,16 @@
 package com.potential_radar.PR.project.controller;
 
 import com.potential_radar.PR.common.S3.S3Uploader;
-import com.potential_radar.PR.project.dto.ProjectMemberResponseDTO;
-import com.potential_radar.PR.project.dto.ProjectRecruitmentRequest;
-import com.potential_radar.PR.project.dto.ProjectRecruitmentResponse;
-import com.potential_radar.PR.project.dto.ProjectStatusUpdateRequest;
+import com.potential_radar.PR.project.dto.*;
 import com.potential_radar.PR.project.service.ProjectRecruitmentService;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.repository.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -27,6 +24,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
+@Slf4j
 public class ProjectRecruitmentController {
     private final ProjectRecruitmentService projectRecruitmentService;
     private final S3Uploader s3Uploader;
@@ -35,6 +33,9 @@ public class ProjectRecruitmentController {
     // 허용된 파일 확장자 및 MIME 타입 정의
     private static final Set<String> ALLOWED_EXTENSIONS = Arrays.asList("jpg", "jpeg", "png", "gif", "pdf")
             .stream().collect(Collectors.toSet());
+    private static final Set<String> ALLOWED_MIME_TYPES = Arrays.asList(
+            "image/jpeg", "image/jpg", "image/png", "image/gif", "application/pdf"
+    ).stream().collect(Collectors.toSet());
     private static final Set<String> ALLOWED_MIME_TYPES = Arrays.asList("image/jpeg", "image/png", "image/gif", "application/pdf")
             .stream().collect(Collectors.toSet());
 
@@ -137,38 +138,38 @@ public class ProjectRecruitmentController {
         projectRecruitmentService.deleteProject(id);
         return ResponseEntity.ok().build();
     }
-    // S3 파일 업로드 - ProjectAttachment 관련 기능 비활성화
-//    @PostMapping("/upload-file")
-//    public ResponseEntity<ProjectAttachmentDto> uploadFile(@RequestParam("file") MultipartFile file) {
-//        try {
-//            // 1. 파일 유효성 검사
-//            String originalFilename = file.getOriginalFilename();
-//            String fileExtension = "";
-//            if (originalFilename != null && originalFilename.contains(".")) {
-//                fileExtension = originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase();
-//            }
-//
-//            String contentType = file.getContentType();
-//
-//            if (!ALLOWED_EXTENSIONS.contains(fileExtension) || !ALLOWED_MIME_TYPES.contains(contentType)) {
-//                // 적절한 에러 메시지를 포함한 응답 반환
-//                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null); 
-//            }
-//
-//            // 2. S3 업로드
-//            String fileUrl = s3Uploader.upload(file, "project-files");
-//            
-//            // 3. ProjectAttachmentDto 객체 생성 및 반환
-//            ProjectAttachmentDto attachmentDto = ProjectAttachmentDto.builder()
-//                    .name(originalFilename) // 원본 파일명 사용
-//                    .url(fileUrl)
-//                    .size(file.getSize())
-//                    .build();
-//            
-//            return ResponseEntity.ok(attachmentDto);
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            return ResponseEntity.internalServerError().body(null); // 에러 발생 시 null 반환 또는 적절한 에러 DTO 반환
-//        }
-//    }
+    // S3 파일 업로드
+    @PostMapping(value = "/upload-file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ProjectAttachmentDto> uploadFile(@RequestPart("file") MultipartFile file) {
+        try {
+            // 1. 파일 유효성 검사
+            String originalFilename = file.getOriginalFilename();
+            String fileExtension = "";
+            if (originalFilename != null && originalFilename.contains(".")) {
+                fileExtension = originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase();
+            }
+
+            String contentType = file.getContentType();
+
+            if (!ALLOWED_EXTENSIONS.contains(fileExtension) || !ALLOWED_MIME_TYPES.contains(contentType)) {
+                // 적절한 에러 메시지를 포함한 응답 반환
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+            }
+
+            // 2. S3 업로드
+            String fileUrl = s3Uploader.upload(file, "project-files");
+
+            // 3. ProjectAttachmentDto 객체 생성 및 반환
+            ProjectAttachmentDto attachmentDto = ProjectAttachmentDto.builder()
+                    .name(originalFilename) // 원본 파일명 사용
+                    .url(fileUrl)
+                    .size(file.getSize())
+                    .build();
+
+            return ResponseEntity.ok(attachmentDto);
+        } catch (Exception e) {
+            log.error("Error during file upload: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(null); // 에러 발생 시 null 반환 또는 적절한 에러 DTO 반환
+        }
+    }
 }

@@ -49,7 +49,7 @@ public class ProjectRecruitment {
     private List<ProjectTechPart> techParts = new ArrayList<>();
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ProjectAttachment> attachments = new ArrayList<>();
+//    private List<ProjectAttachment> attachments = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {

@@ -88,7 +88,7 @@ def get_recommended_projects(
     
     # 🆕 피드백 영향 분석 로그
     try:
-        feedback_service.log_feedback_impact(request.userId)
+        feedback_service.log_feedback_impact(request.user_id)
     except Exception as e:
         logger.warning(f"⚠️ 피드백 영향 분석 실패: {e}")
     
@@ -204,7 +204,7 @@ def get_recommended_projects(
         try:
             adjusted_score = feedback_service.adjust_recommendation_score(
                 base_score=score,
-                user_id=request.userId,
+                user_id=request.user_id,
                 project_tech_stacks=p.projectTechStacks
             )
             if adjusted_score != score:

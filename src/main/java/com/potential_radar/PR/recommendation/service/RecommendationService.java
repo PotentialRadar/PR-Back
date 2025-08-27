@@ -486,4 +486,48 @@ public class RecommendationService {
             throw e;
         }
     }
+    
+    /**
+     * 피드백 모달 표시 여부 결정 (세션 기반)
+     * 세션당 한 번만 피드백 모달을 표시하도록 제어
+     */
+    public boolean shouldShowFeedbackModal(Long userId, String sessionId) {
+        try {
+            // 사용자 확인
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다: " + userId));
+
+            // 세션 ID가 없으면 기본적으로 표시 안 함
+            if (sessionId == null || sessionId.trim().isEmpty()) {
+                log.warn("⚠️ 세션 ID가 없어서 피드백 모달을 표시하지 않습니다 (사용자: {})", userId);
+                return false;
+            }
+
+            // 최근 30분 내에 해당 사용자가 같은 세션에서 피드백을 제공했는지 확인
+            java.time.LocalDateTime thirtyMinutesAgo = java.time.LocalDateTime.now().minusMinutes(30);
+            
+            // 최근 피드백 중에 세션 정보가 있는지 확인 (실제로는 세션을 따로 저장하지 않으므로 시간 기반으로 판단)
+            List<RecommendationFeedback> recentFeedbacks = feedbackRepository
+                    .findByUserUserIdOrderByCreatedAtDesc(userId)
+                    .stream()
+                    .filter(feedback -> {
+                        java.time.LocalDateTime feedbackTime = feedback.getCreatedAt();
+                        return feedbackTime != null && feedbackTime.isAfter(thirtyMinutesAgo);
+                    })
+                    .toList();
+
+            boolean hasRecentFeedback = !recentFeedbacks.isEmpty();
+            
+            log.info("🔍 피드백 모달 표시 여부 확인 - 사용자 {}, 세션 {}: 최근 30분 피드백 {}개, 모달 표시 여부: {}", 
+                    userId, sessionId, recentFeedbacks.size(), !hasRecentFeedback);
+
+            // 최근 30분 내에 피드백을 제공하지 않았으면 모달 표시
+            return !hasRecentFeedback;
+
+        } catch (Exception e) {
+            log.error("❌ 피드백 모달 표시 여부 확인 실패 (사용자 ID: {}, 세션: {}): {}", userId, sessionId, e.getMessage(), e);
+            // 에러 시 안전하게 모달을 표시하지 않음
+            return false;
+        }
+    }
 }

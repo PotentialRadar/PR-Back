@@ -1,8 +1,6 @@
 package com.potential_radar.PR.project.controller;
 
 import com.potential_radar.PR.common.S3.S3Uploader;
-import com.potential_radar.PR.common.exception.NotFoundException;
-import com.potential_radar.PR.project.dto.ProjectAttachmentDto;
 import com.potential_radar.PR.project.dto.ProjectMemberResponseDTO;
 import com.potential_radar.PR.project.dto.ProjectRecruitmentRequest;
 import com.potential_radar.PR.project.dto.ProjectRecruitmentResponse;
@@ -12,14 +10,14 @@ import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.repository.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Arrays;
 import java.util.List;
@@ -139,38 +137,38 @@ public class ProjectRecruitmentController {
         projectRecruitmentService.deleteProject(id);
         return ResponseEntity.ok().build();
     }
-    // S3 파일 업로드
-    @PostMapping("/upload-file")
-    public ResponseEntity<ProjectAttachmentDto> uploadFile(@RequestParam("file") MultipartFile file) {
-        try {
-            // 1. 파일 유효성 검사
-            String originalFilename = file.getOriginalFilename();
-            String fileExtension = "";
-            if (originalFilename != null && originalFilename.contains(".")) {
-                fileExtension = originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase();
-            }
-
-            String contentType = file.getContentType();
-
-            if (!ALLOWED_EXTENSIONS.contains(fileExtension) || !ALLOWED_MIME_TYPES.contains(contentType)) {
-                // 적절한 에러 메시지를 포함한 응답 반환
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null); 
-            }
-
-            // 2. S3 업로드
-            String fileUrl = s3Uploader.upload(file, "project-files");
-            
-            // 3. ProjectAttachmentDto 객체 생성 및 반환
-            ProjectAttachmentDto attachmentDto = ProjectAttachmentDto.builder()
-                    .name(originalFilename) // 원본 파일명 사용
-                    .url(fileUrl)
-                    .size(file.getSize())
-                    .build();
-            
-            return ResponseEntity.ok(attachmentDto);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.internalServerError().body(null); // 에러 발생 시 null 반환 또는 적절한 에러 DTO 반환
-        }
-    }
+    // S3 파일 업로드 - ProjectAttachment 관련 기능 비활성화
+//    @PostMapping("/upload-file")
+//    public ResponseEntity<ProjectAttachmentDto> uploadFile(@RequestParam("file") MultipartFile file) {
+//        try {
+//            // 1. 파일 유효성 검사
+//            String originalFilename = file.getOriginalFilename();
+//            String fileExtension = "";
+//            if (originalFilename != null && originalFilename.contains(".")) {
+//                fileExtension = originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase();
+//            }
+//
+//            String contentType = file.getContentType();
+//
+//            if (!ALLOWED_EXTENSIONS.contains(fileExtension) || !ALLOWED_MIME_TYPES.contains(contentType)) {
+//                // 적절한 에러 메시지를 포함한 응답 반환
+//                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null); 
+//            }
+//
+//            // 2. S3 업로드
+//            String fileUrl = s3Uploader.upload(file, "project-files");
+//            
+//            // 3. ProjectAttachmentDto 객체 생성 및 반환
+//            ProjectAttachmentDto attachmentDto = ProjectAttachmentDto.builder()
+//                    .name(originalFilename) // 원본 파일명 사용
+//                    .url(fileUrl)
+//                    .size(file.getSize())
+//                    .build();
+//            
+//            return ResponseEntity.ok(attachmentDto);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            return ResponseEntity.internalServerError().body(null); // 에러 발생 시 null 반환 또는 적절한 에러 DTO 반환
+//        }
+//    }
 }

@@ -17,6 +17,23 @@ public interface TeamInvitationRepository extends JpaRepository<TeamInvitation, 
     // 특정 사용자가 보낸 초대 목록 (최신순)
     List<TeamInvitation> findByInviterUserIdOrderByCreatedAtDesc(Long inviterUserId);
     
+    // N+1 문제 해결을 위한 fetch join 쿼리들
+    @Query("SELECT ti FROM TeamInvitation ti " +
+           "JOIN FETCH ti.inviter " +
+           "JOIN FETCH ti.invitee " +
+           "JOIN FETCH ti.project " +
+           "WHERE ti.invitee.userId = :inviteeUserId " +
+           "ORDER BY ti.createdAt DESC")
+    List<TeamInvitation> findByInviteeUserIdWithDetailsOrderByCreatedAtDesc(@Param("inviteeUserId") Long inviteeUserId);
+    
+    @Query("SELECT ti FROM TeamInvitation ti " +
+           "JOIN FETCH ti.inviter " +
+           "JOIN FETCH ti.invitee " +
+           "JOIN FETCH ti.project " +
+           "WHERE ti.inviter.userId = :inviterUserId " +
+           "ORDER BY ti.createdAt DESC")
+    List<TeamInvitation> findByInviterUserIdWithDetailsOrderByCreatedAtDesc(@Param("inviterUserId") Long inviterUserId);
+    
     // 특정 프로젝트의 초대 목록
     List<TeamInvitation> findByProjectProjectIdOrderByCreatedAtDesc(Long projectId);
     

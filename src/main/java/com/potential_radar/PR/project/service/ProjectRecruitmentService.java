@@ -3,7 +3,6 @@ package com.potential_radar.PR.project.service;
 
 import com.potential_radar.PR.common.exception.AccessDeniedException;
 import com.potential_radar.PR.common.exception.NotFoundException;
-
 import com.potential_radar.PR.like.domain.TargetType;
 import com.potential_radar.PR.like.repository.LikeRepository;
 import com.potential_radar.PR.project.domain.*;
@@ -18,13 +17,14 @@ import com.potential_radar.PR.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import java.util.*;
-import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -36,7 +36,7 @@ public class ProjectRecruitmentService {
     private final ProjectTechPartRepository projectTechPartRepository;
     private final ProjectTechStackRepository projectTechStackRepository;
     private final ProjectCommentRepository projectCommentRepository;
-    private final ProjectAttachmentRepository projectAttachmentRepository;
+//    private final ProjectAttachmentRepository projectAttachmentRepository;
     private final TechStackRepository techStackRepository;
     private final TechPartRepository techPartRepository;
     private final LikeRepository likeRepository;
@@ -66,13 +66,15 @@ public class ProjectRecruitmentService {
                         .build())
                 .collect(Collectors.toList());
 
-        List<ProjectAttachmentDto> attachmentDtos = pr.getAttachments().stream()
-                .map(attachment -> ProjectAttachmentDto.builder()
-                        .name(attachment.getName())
-                        .url(attachment.getUrl())
-                        .size(attachment.getSize())
-                        .build())
-                .collect(Collectors.toList());
+        // ProjectAttachment 관련 코드 비활성화
+//        List<ProjectAttachmentDto> attachmentDtos = pr.getAttachments().stream()
+//                .map(attachment -> ProjectAttachmentDto.builder()
+//                        .name(attachment.getName())
+//                        .url(attachment.getUrl())
+//                        .size(attachment.getSize())
+//                        .build())
+//                .collect(Collectors.toList());
+        // List<ProjectAttachmentDto> attachmentDtos = new ArrayList<>();
 
         int appliedCount = projectApplicationRepository.countByProject_ProjectId(pr.getProjectId());
         int acceptedCount = projectApplicationRepository.countByProject_ProjectIdAndStatus(
@@ -99,7 +101,7 @@ public class ProjectRecruitmentService {
                 .remainingCount(remainingCount)
                 .techStacks(techStackDTOs)
                 .recruitmentParts(partDTOs)
-                .attachments(attachmentDtos)
+                // .attachments(attachmentDtos)
                 .build();
     }
 
@@ -166,18 +168,18 @@ public class ProjectRecruitmentService {
         }
         project.setTechParts(techParts);
 
-        // 첨부파일 연관 저장
-        if (request.getAttachments() != null) {
-            List<ProjectAttachment> attachments = request.getAttachments().stream()
-                    .map(dto -> ProjectAttachment.builder()
-                            .project(project)
-                            .name(dto.getName())
-                            .url(dto.getUrl())
-                            .size(dto.getSize())
-                            .build())
-                    .collect(Collectors.toList());
-            project.setAttachments(attachments);
-        }
+        // 첨부파일 연관 저장 - ProjectAttachment 관련 기능 비활성화
+//        if (request.getAttachments() != null) {
+//            List<ProjectAttachment> attachments = request.getAttachments().stream()
+//                    .map(dto -> ProjectAttachment.builder()
+//                            .project(project)
+//                            .name(dto.getName())
+//                            .url(dto.getUrl())
+//                            .size(dto.getSize())
+//                            .build())
+//                    .collect(Collectors.toList());
+//            project.setAttachments(attachments);
+//        }
 
         projectRecruitmentRepository.save(project);
 
@@ -270,7 +272,8 @@ public class ProjectRecruitmentService {
 
         projectTechStackRepository.deleteAllByProjectId(id);
         projectTechPartRepository.deleteAllByProjectId(id);
-        projectAttachmentRepository.deleteAllByProjectId(id);
+        // ProjectAttachment 관련 기능 비활성화
+        // projectAttachmentRepository.deleteAllByProjectId(id);
 
         if (request.getTechStacks() != null && !request.getTechStacks().isEmpty()) {
             for (ProjectTechStackDTO tsDto : request.getTechStacks()) {
@@ -316,18 +319,18 @@ public class ProjectRecruitmentService {
             }
         }
 
-        // 첨부파일 저장
-        if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {
-            for (ProjectAttachmentDto dto : request.getAttachments()) {
-                ProjectAttachment attachment = ProjectAttachment.builder()
-                        .project(project)
-                        .name(dto.getName())
-                        .url(dto.getUrl())
-                        .size(dto.getSize())
-                        .build();
-                projectAttachmentRepository.save(attachment);
-            }
-        }
+        // 첨부파일 저장 - ProjectAttachment 관련 기능 비활성화
+//        if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {
+//            for (ProjectAttachmentDto dto : request.getAttachments()) {
+//                ProjectAttachment attachment = ProjectAttachment.builder()
+//                        .project(project)
+//                        .name(dto.getName())
+//                        .url(dto.getUrl())
+//                        .size(dto.getSize())
+//                        .build();
+//                projectAttachmentRepository.save(attachment);
+//            }
+//        }
     }
 
     // 구인글 상태 수정

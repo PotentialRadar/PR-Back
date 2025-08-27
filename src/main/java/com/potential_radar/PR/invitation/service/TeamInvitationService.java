@@ -216,7 +216,8 @@ public class TeamInvitationService {
      * 받은 초대 목록 조회
      */
     public List<TeamInvitationDto.InvitationResponse> getReceivedInvitations(Long userId) {
-        List<TeamInvitation> invitations = teamInvitationRepository.findByInviteeUserIdOrderByCreatedAtDesc(userId);
+        // N+1 문제 해결을 위해 fetch join 사용
+        List<TeamInvitation> invitations = teamInvitationRepository.findByInviteeUserIdWithDetailsOrderByCreatedAtDesc(userId);
         return invitations.stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
@@ -226,7 +227,8 @@ public class TeamInvitationService {
      * 보낸 초대 목록 조회
      */
     public List<TeamInvitationDto.InvitationResponse> getSentInvitations(Long userId) {
-        List<TeamInvitation> invitations = teamInvitationRepository.findByInviterUserIdOrderByCreatedAtDesc(userId);
+        // N+1 문제 해결을 위해 fetch join 사용
+        List<TeamInvitation> invitations = teamInvitationRepository.findByInviterUserIdWithDetailsOrderByCreatedAtDesc(userId);
         return invitations.stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());

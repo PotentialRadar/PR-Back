@@ -108,4 +108,36 @@ public class RecommendationController {
             return ResponseEntity.ok(defaultStats);
         }
     }
+
+    /**
+     * 사용자가 현재 세션에서 이미 피드백을 제공했는지 확인 (세션 기반)
+     * 프론트엔드에서 피드백 모달 표시 여부 결정에 사용
+     */
+    @GetMapping("/users/{userId}/should-show-feedback-modal")
+    public ResponseEntity<Map<String, Object>> shouldShowFeedbackModal(
+            @PathVariable Long userId,
+            @RequestParam(required = false) String sessionId) {
+        try {
+            boolean shouldShow = recommendationService.shouldShowFeedbackModal(userId, sessionId);
+            String message = shouldShow 
+                ? "피드백 모달을 표시할 수 있습니다." 
+                : (sessionId == null ? "세션 정보가 없습니다." : "이 세션에서 이미 피드백을 제공했습니다.");
+                
+            Map<String, Object> response = Map.of(
+                "shouldShow", shouldShow,
+                "message", message,
+                "sessionId", sessionId != null ? sessionId : "none"
+            );
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("❌ 피드백 모달 표시 여부 확인 실패: {}", e.getMessage());
+            // 에러 시 기본적으로 모달을 표시하지 않음
+            Map<String, Object> response = Map.of(
+                "shouldShow", false,
+                "message", "피드백 모달 표시 여부를 확인할 수 없습니다.",
+                "sessionId", sessionId != null ? sessionId : "none"
+            );
+            return ResponseEntity.ok(response);
+        }
+    }
 }

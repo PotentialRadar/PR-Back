@@ -25,10 +25,10 @@ public interface ProjectRecruitmentRepository extends JpaRepository<ProjectRecru
 
     List<ProjectRecruitment> findByUpdatedAtBetween(LocalDateTime start, LocalDateTime end);
 
-    @Query("SELECT COUNT(p) FROM ProjectRecruitment p WHERE p.updatedAt > :since")
+    @Query("SELECT COUNT(p) FROM ProjectRecruitment p WHERE p.updatedAt >= :since")
     long countByUpdatedAtAfter(@Param("since") LocalDateTime since);
 
-    @Query("SELECT p FROM ProjectRecruitment p WHERE p.updatedAt > :since ORDER BY p.updatedAt ASC")
+    @Query("SELECT p FROM ProjectRecruitment p WHERE p.updatedAt >= :since ORDER BY p.updatedAt ASC")
     List<ProjectRecruitment> findByUpdatedAtAfterOrderByUpdatedAt(@Param("since") LocalDateTime since);
 
     // 페이징 지원 증분 동기화
@@ -67,7 +67,7 @@ public interface ProjectRecruitmentRepository extends JpaRepository<ProjectRecru
     // 증분 동기화용 - 기본 프로젝트와 팀리더만 로딩 (기술스택, 기술파트는 lazy loading)
     @Query("SELECT DISTINCT p FROM ProjectRecruitment p " +
            "LEFT JOIN FETCH p.teamLeader " +
-           "WHERE p.updatedAt > :since ORDER BY p.updatedAt ASC")
+           "WHERE p.updatedAt >= :since ORDER BY p.updatedAt ASC")
     List<ProjectRecruitment> findProjectsModifiedAfter(@Param("since") LocalDateTime since);
 
     // 증분 동기화용 - 기술스택만 함께 로딩

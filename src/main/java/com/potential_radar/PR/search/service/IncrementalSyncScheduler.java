@@ -76,12 +76,13 @@ public class IncrementalSyncScheduler {
             
             int cleanedUp = 0;
             for (SyncStatus syncStatus : inProgressJobs) {
-                if (syncStatus.getUpdatedAt().isBefore(cutoffTime)) {
+                LocalDateTime updatedAt = syncStatus.getUpdatedAt();
+                if (updatedAt == null || updatedAt.isBefore(cutoffTime)) {
                     log.warn("Found stuck sync job: {} - last updated: {}", 
                             syncStatus.getSyncType(), syncStatus.getUpdatedAt());
                     
                     syncStatus.setStatus("FAILED");
-                    syncStatus.setErrorMessage("Job timeout - cleaned up by scheduler");
+                    syncStatus.setErrorMessage("Job timeout - manually cleaned up");
                     syncStatus.setUpdatedAt(LocalDateTime.now());
                     syncStatusRepository.save(syncStatus);
                     cleanedUp++;

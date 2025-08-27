@@ -69,7 +69,8 @@ public class DataSyncService {
         
         try {
             LocalDateTime lastSyncTime = syncStatus.getLastSyncTime();
-            log.info("Looking for users modified after: {}", lastSyncTime);
+            LocalDateTime queryStartTime = LocalDateTime.now();
+            log.info("Looking for users modified since(inclusive): {}", lastSyncTime);
             
             // 마지막 동기화 이후 수정된 사용자들 조회
             List<User> modifiedUsers = userRepository.findUsersModifiedAfter(lastSyncTime);
@@ -83,8 +84,12 @@ public class DataSyncService {
                 userSearchRepository.saveAll(userDocs);
                 log.info("Synchronized {} modified users to Elasticsearch", userDocs.size());
                 
-                // 동기화 상태 업데이트
-                syncStatus.setLastSyncTime(LocalDateTime.now());
+                // 동기화 상태 업데이트: 워터마크(최대 updatedAt) 저장
+                LocalDateTime nextCheckpoint = modifiedUsers.stream()
+                        .map(User::getUpdatedAt)
+                        .max(LocalDateTime::compareTo)
+                        .orElse(lastSyncTime);
+                syncStatus.setLastSyncTime(nextCheckpoint);
                 syncStatus.setSyncedCount((long) userDocs.size());
                 updateSyncStatus(syncStatus, "SUCCESS", null);
             } else {
@@ -109,7 +114,8 @@ public class DataSyncService {
         
         try {
             LocalDateTime lastSyncTime = syncStatus.getLastSyncTime();
-            log.info("Looking for projects modified after: {}", lastSyncTime);
+            LocalDateTime queryStartTime = LocalDateTime.now();
+            log.info("Looking for projects modified since(inclusive): {}", lastSyncTime);
             
             // 1단계: 기본 프로젝트와 팀리더 정보 로딩
             List<ProjectRecruitment> modifiedProjects = projectRecruitmentRepository.findProjectsModifiedAfter(lastSyncTime);
@@ -145,8 +151,12 @@ public class DataSyncService {
                 projectSearchRepository.saveAll(projectDocs);
                 log.info("Synchronized {} modified projects to Elasticsearch", projectDocs.size());
                 
-                // 동기화 상태 업데이트
-                syncStatus.setLastSyncTime(LocalDateTime.now());
+                // 동기화 상태 업데이트: 워터마크(최대 updatedAt) 저장
+                LocalDateTime nextCheckpoint = modifiedProjects.stream()
+                        .map(ProjectRecruitment::getUpdatedAt)
+                        .max(LocalDateTime::compareTo)
+                        .orElse(lastSyncTime);
+                syncStatus.setLastSyncTime(nextCheckpoint);
                 syncStatus.setSyncedCount((long) projectDocs.size());
                 updateSyncStatus(syncStatus, "SUCCESS", null);
             } else {

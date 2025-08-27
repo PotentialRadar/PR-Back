@@ -740,15 +740,19 @@ public class SearchService {
             Criteria searchableCriteria = new Criteria("isPortfolioOpen").is(true)
                     .and(new Criteria("isSearchOpen").is(true));
             
-            Query query = new CriteriaQuery(searchableCriteria);
+            Pageable pageable = PageRequest.of(0, 10_000);
+            Query query = new CriteriaQuery(searchableCriteria).setPageable(pageable);
             SearchHits<UserSearchDocument> searchHits = elasticsearchOperations.search(query, UserSearchDocument.class);
+            if (searchHits.getTotalHits() > 10_000) {
+                log.warn("Searchable users ({}) exceed 10,000; tech stack counts may be underrepresented. Consider switching to terms aggregation.", searchHits.getTotalHits());
+            }
             
             Map<String, Long> techStackCounts = new HashMap<>();
 
             for (SearchHit<UserSearchDocument> hit : searchHits.getSearchHits()) {
                 UserSearchDocument user = hit.getContent();
                 if (user.getTechStacks() != null) {
-                    for (String techStack : user.getTechStacks()) {
+                    for (String techStack : new java.util.HashSet<>(user.getTechStacks())) {
                         techStackCounts.merge(techStack, 1L, Long::sum);
                     }
                 }

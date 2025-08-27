@@ -43,17 +43,21 @@ public class NotificationService {
 
     public SseEmitter subscribe(String lastEventId) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        
+        // DB 조회는 별도 트랜잭션으로 처리하여 연결 즉시 해제
         User user = getCurrentUser(email);
-        String emitterId = user.getUserId() + "_" + System.currentTimeMillis();
+        Long userId = user.getUserId(); // 필요한 값만 추출
+        
+        String emitterId = userId + "_" + System.currentTimeMillis();
         SseEmitter sseEmitter = emitterRepository.save(emitterId, new SseEmitter(DEFAULT_TIMEOUT));
 
         setupSseCallbacks(sseEmitter, emitterId);
 
         // 초기 연결 시 클라이언트에게 연결 성공 메시지 전송
-        sendConnectionComment(sseEmitter, user.getUserId(), emitterId);
+        sendConnectionComment(sseEmitter, userId, emitterId);
 
         // 유실된 이벤트가 있다면 전송
-        resendLostEvents(sseEmitter, lastEventId, user.getUserId());
+        resendLostEvents(sseEmitter, lastEventId, userId);
 
         return sseEmitter;
     }
@@ -154,6 +158,7 @@ public class NotificationService {
         notificationRepository.markAllAsReadByUser(user);
     }
 
+    @Transactional(readOnly = true)
     public User getCurrentUser(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new EntityNotFoundException("Member not found with email: " + email));

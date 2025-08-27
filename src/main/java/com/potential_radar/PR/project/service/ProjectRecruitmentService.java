@@ -15,11 +15,16 @@ import com.potential_radar.PR.tech.repository.TechPartRepository;
 import com.potential_radar.PR.tech.repository.TechStackRepository;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.repository.UserRepository;
+import com.potential_radar.PR.notification.service.NotificationService;
+import com.potential_radar.PR.notification.domain.NotificationType;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
@@ -36,11 +41,12 @@ public class ProjectRecruitmentService {
     private final ProjectTechPartRepository projectTechPartRepository;
     private final ProjectTechStackRepository projectTechStackRepository;
     private final ProjectCommentRepository projectCommentRepository;
-    private final ProjectAttachmentRepository projectAttachmentRepository;
+//    private final ProjectAttachmentRepository projectAttachmentRepository;
     private final TechStackRepository techStackRepository;
     private final TechPartRepository techPartRepository;
     private final LikeRepository likeRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     public ProjectRecruitmentResponse convertToResponseDto(ProjectRecruitment pr, String userEmail) {
         logger.debug("Entering convertToResponseDto for Project ID: {}", pr.getProjectId());
@@ -66,13 +72,13 @@ public class ProjectRecruitmentService {
                         .build())
                 .collect(Collectors.toList());
 
-        List<ProjectAttachmentDto> attachmentDtos = pr.getAttachments().stream()
-                .map(attachment -> ProjectAttachmentDto.builder()
-                        .name(attachment.getName())
-                        .url(attachment.getUrl())
-                        .size(attachment.getSize())
-                        .build())
-                .collect(Collectors.toList());
+//        List<ProjectAttachmentDto> attachmentDtos = pr.getAttachments().stream()
+//                .map(attachment -> ProjectAttachmentDto.builder()
+//                        .name(attachment.getName())
+//                        .url(attachment.getUrl())
+//                        .size(attachment.getSize())
+//                        .build())
+//                .collect(Collectors.toList());
 
         int appliedCount = projectApplicationRepository.countByProject_ProjectId(pr.getProjectId());
         int acceptedCount = projectApplicationRepository.countByProject_ProjectIdAndStatus(
@@ -99,7 +105,7 @@ public class ProjectRecruitmentService {
                 .remainingCount(remainingCount)
                 .techStacks(techStackDTOs)
                 .recruitmentParts(partDTOs)
-                .attachments(attachmentDtos)
+//                .attachments(attachmentDtos)
                 .build();
     }
 
@@ -167,17 +173,17 @@ public class ProjectRecruitmentService {
         project.setTechParts(techParts);
 
         // 첨부파일 연관 저장
-        if (request.getAttachments() != null) {
-            List<ProjectAttachment> attachments = request.getAttachments().stream()
-                    .map(dto -> ProjectAttachment.builder()
-                            .project(project)
-                            .name(dto.getName())
-                            .url(dto.getUrl())
-                            .size(dto.getSize())
-                            .build())
-                    .collect(Collectors.toList());
-            project.setAttachments(attachments);
-        }
+//        if (request.getAttachments() != null) {
+//            List<ProjectAttachment> attachments = request.getAttachments().stream()
+//                    .map(dto -> ProjectAttachment.builder()
+//                            .project(project)
+//                            .name(dto.getName())
+//                            .url(dto.getUrl())
+//                            .size(dto.getSize())
+//                            .build())
+//                    .collect(Collectors.toList());
+//            project.setAttachments(attachments);
+//        }
 
         projectRecruitmentRepository.save(project);
 
@@ -264,7 +270,7 @@ public class ProjectRecruitmentService {
 
         projectTechStackRepository.deleteAllByProjectId(id);
         projectTechPartRepository.deleteAllByProjectId(id);
-        projectAttachmentRepository.deleteAllByProjectId(id);
+//        projectAttachmentRepository.deleteAllByProjectId(id);
 
         if (request.getTechStacks() != null && !request.getTechStacks().isEmpty()) {
             for (ProjectTechStackDTO tsDto : request.getTechStacks()) {
@@ -311,17 +317,17 @@ public class ProjectRecruitmentService {
         }
 
         // 첨부파일 저장
-        if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {
-            for (ProjectAttachmentDto dto : request.getAttachments()) {
-                ProjectAttachment attachment = ProjectAttachment.builder()
-                        .project(project)
-                        .name(dto.getName())
-                        .url(dto.getUrl())
-                        .size(dto.getSize())
-                        .build();
-                projectAttachmentRepository.save(attachment);
-            }
-        }
+//        if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {
+//            for (ProjectAttachmentDto dto : request.getAttachments()) {
+//                ProjectAttachment attachment = ProjectAttachment.builder()
+//                        .project(project)
+//                        .name(dto.getName())
+//                        .url(dto.getUrl())
+//                        .size(dto.getSize())
+//                        .build();
+//                projectAttachmentRepository.save(attachment);
+//            }
+//        }
     }
 
     // 구인글 상태 수정
@@ -336,8 +342,14 @@ public class ProjectRecruitmentService {
         }
 
         try {
+            ProjectStatus oldStatus = project.getStatus();
             ProjectStatus newStatus = ProjectStatus.valueOf(status.toUpperCase());
             project.setStatus(newStatus);
+            
+            // COMPLETED로 상태 변경 시 팀원들에게 리뷰 요청 알림 전송
+            if (newStatus == ProjectStatus.COMPLETED && oldStatus != ProjectStatus.COMPLETED) {
+                sendReviewRequestNotificationAfterCommit(project);
+            }
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("유효하지 않은 상태값입니다: " + status);
         }
@@ -358,5 +370,38 @@ public class ProjectRecruitmentService {
 
         // 2) 부모 삭제
         projectRecruitmentRepository.delete(project);
+    }
+    
+    // 트랜잭션 커밋 후 리뷰 요청 알림 전송하는 메서드
+    private void sendReviewRequestNotificationAfterCommit(ProjectRecruitment project) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    // 프로젝트 멤버들 조회
+                    List<ProjectMember> members = projectMemberRepository.findAllByProject_ProjectId(project.getProjectId());
+                    
+                    for (ProjectMember member : members) {
+                        // 팀 리더는 제외 (본인이 상태를 변경했으므로)
+                        if (!member.getUser().getUserId().equals(project.getTeamLeader().getUserId())) {
+                            String notificationContent = String.format("'%s' 프로젝트가 완료되었습니다. 리뷰를 작성해주세요!", 
+                                project.getTitle());
+                            String url = String.format("/projects/%d/review", project.getProjectId());
+                            
+                            notificationService.send(
+                                member.getUser(), 
+                                NotificationType.REVIEW_REMINDER, 
+                                notificationContent, 
+                                url, 
+                                null, 
+                                LocalDateTime.now()
+                            );
+                        }
+                    }
+                } catch (Exception e) {
+                    System.err.println("리뷰 요청 알림 전송 실패: " + e.getMessage());
+                }
+            }
+        });
     }
 }

@@ -7,7 +7,7 @@ import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.repository.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j; // Added Slf4j import
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
-@Slf4j // Added Slf4j annotation
+@Slf4j
 public class ProjectRecruitmentController {
     private final ProjectRecruitmentService projectRecruitmentService;
     private final S3Uploader s3Uploader;
@@ -151,22 +151,22 @@ public class ProjectRecruitmentController {
 
             if (!ALLOWED_EXTENSIONS.contains(fileExtension) || !ALLOWED_MIME_TYPES.contains(contentType)) {
                 // 적절한 에러 메시지를 포함한 응답 반환
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null); 
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
             }
 
             // 2. S3 업로드
             String fileUrl = s3Uploader.upload(file, "project-files");
-            
+
             // 3. ProjectAttachmentDto 객체 생성 및 반환
             ProjectAttachmentDto attachmentDto = ProjectAttachmentDto.builder()
                     .name(originalFilename) // 원본 파일명 사용
                     .url(fileUrl)
                     .size(file.getSize())
                     .build();
-            
+
             return ResponseEntity.ok(attachmentDto);
         } catch (Exception e) {
-            log.error("Error during file upload: {}", e.getMessage(), e); // Modified logging
+            log.error("Error during file upload: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().body(null); // 에러 발생 시 null 반환 또는 적절한 에러 DTO 반환
         }
     }

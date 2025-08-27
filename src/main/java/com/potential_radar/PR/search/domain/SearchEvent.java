@@ -15,6 +15,7 @@ public class SearchEvent {
     private String keyword;
     private String singleTechStack;
     private String techPart;
+    private String searchType; // "project" or "user"
     private LocalDateTime searchTime;
     private String sessionId;
     private Integer resultCount;

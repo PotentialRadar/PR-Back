@@ -16,13 +16,18 @@ import com.potential_radar.PR.project.repository.ProjectRecruitmentRepository;
 import com.potential_radar.PR.project.service.ProjectRecruitmentService;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.repository.UserRepository;
+import com.potential_radar.PR.notification.service.NotificationService;
+import com.potential_radar.PR.notification.domain.NotificationType;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -41,6 +46,7 @@ public class LikeService {
     private final ProjectApplicationRepository projectApplicationRepository;
     private final ProjectRecruitmentService projectRecruitmentService; // ProjectRecruitmentService 주입
     private final RedisTemplate<String, Object> redisTemplate;
+    private final NotificationService notificationService;
 
     private static final String LIKE_COUNT_KEY_PREFIX = "likeCount::";
 
@@ -50,6 +56,10 @@ public class LikeService {
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new NotFoundException("유저를 찾을 수 없습니다."));
 
+        boolean wasLiked = likeRepository.findByUserAndTargetTypeAndTargetId(
+                user, requestDto.getTargetType(), requestDto.getTargetId()
+        ).isPresent();
+        
         likeRepository.findByUserAndTargetTypeAndTargetId(
                 user, requestDto.getTargetType(), requestDto.getTargetId()
         ).ifPresentOrElse(
@@ -57,6 +67,8 @@ public class LikeService {
                 () -> {
                     Like like = new Like(user, requestDto.getTargetType(), requestDto.getTargetId());
                     likeRepository.save(like);
+                    // 좋아요 추가 시에만 알림 전송 (좋아요 취소는 알림 안함)
+                    sendLikeNotificationAfterCommit(user, requestDto);
                 }
         );
 
@@ -119,5 +131,55 @@ public class LikeService {
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new NotFoundException("유저를 찾을 수 없습니다."));
         return likeRepository.findByUserAndTargetTypeAndTargetId(user, targetType, targetId).isPresent();
+    }
+    
+    // 트랜잭션 커밋 후 좋아요 알림 전송하는 메서드
+    private void sendLikeNotificationAfterCommit(User liker, LikeRequestDto requestDto) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    if (requestDto.getTargetType() == TargetType.PROJECT) {
+                        // 프로젝트 좋아요 알림
+                        ProjectRecruitment project = projectRecruitmentRepository.findById(requestDto.getTargetId())
+                            .orElse(null);
+                        if (project != null && !liker.getUserId().equals(project.getTeamLeader().getUserId())) {
+                            String notificationContent = String.format("%s님이 '%s' 프로젝트에 좋아요를 눌렀습니다.", 
+                                liker.getNickname(), project.getTitle());
+                            String url = String.format("/projects/%d", project.getProjectId());
+                            
+                            notificationService.send(
+                                project.getTeamLeader(), 
+                                NotificationType.LIKE, 
+                                notificationContent, 
+                                url, 
+                                null, 
+                                LocalDateTime.now()
+                            );
+                        }
+                    } else if (requestDto.getTargetType() == TargetType.PORTFOLIO) {
+                        // 포트폴리오 좋아요 알림 (User 엔티티에서 포트폴리오 소유자 찾기)
+                        User portfolioOwner = userRepository.findById(requestDto.getTargetId())
+                            .orElse(null);
+                        if (portfolioOwner != null && !liker.getUserId().equals(portfolioOwner.getUserId())) {
+                            String notificationContent = String.format("%s님이 회원님의 포트폴리오에 좋아요를 눌렀습니다.", 
+                                liker.getNickname());
+                            String url = String.format("/portfolios/%d", portfolioOwner.getUserId());
+                            
+                            notificationService.send(
+                                portfolioOwner, 
+                                NotificationType.LIKE, 
+                                notificationContent, 
+                                url, 
+                                null, 
+                                LocalDateTime.now()
+                            );
+                        }
+                    }
+                } catch (Exception e) {
+                    System.err.println("좋아요 알림 전송 실패: " + e.getMessage());
+                }
+            }
+        });
     }
 }

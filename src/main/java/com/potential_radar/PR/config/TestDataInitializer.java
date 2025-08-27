@@ -47,10 +47,16 @@ public class TestDataInitializer implements CommandLineRunner {
 
     @Override
     @Transactional
-    public void run(String... args) {
+    public void run(String... args) throws Exception {
+        // 이미 사용자 테스트 데이터가 있는지 확인
+        boolean hasUserData = userRepository.findByEmail("user001@naver.com").isPresent();
+        // TechStack 데이터가 있는지 확인 (새로 추가된 데이터)
+        boolean hasTechStackData = techStackRepository.count() > 20; // 기본 데이터보다 많으면 초기화된 것으로 간주
+        // 프로젝트 데이터가 있는지 확인
+        boolean hasProjectData = projectRecruitmentRepository.count() > 0;
+
         log.info("=== Initializing seed data (idempotent for ddl-auto:update) ===");
 
-        // 1) Tech Parts
         initializeTechParts();
 
         // 2) Tech Stacks
@@ -238,7 +244,7 @@ public class TestDataInitializer implements CommandLineRunner {
         }
 
         Random random = new Random();
-        String hashedPassword = passwordEncoder.encode("password123");
+        String hashedPassword = passwordEncoder.encode("1234"); // 공통 비밀번호
 
         String[] nicknames = {
                 "코딩마스터001","개발자김철수","프론트엔드박영희","백엔드이민수","풀스택홍길동",
@@ -267,7 +273,7 @@ public class TestDataInitializer implements CommandLineRunner {
 
         for (int i = 0; i < 100; i++) {
             int userNum = i + 1;
-            String email = String.format("user%03d@example.com", userNum);
+            String email = String.format("user%03d@naver.com", userNum);
             Provider provider = (i % 5 < 3) ? Provider.EMAIL : (i % 5 == 3 ? Provider.GOOGLE : Provider.KAKAO);
 
             // upsert by email

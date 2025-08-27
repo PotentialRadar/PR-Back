@@ -159,10 +159,17 @@ public class SearchController {
         return ResponseEntity.ok(Map.of("projects", projectList, "size", projectList.size()));
     }
 
-    // 기술 태그 조회 엔드포인트
+    // 기술 태그 조회 엔드포인트 (프로젝트 기반)
     @GetMapping("/tags")
     public ResponseEntity<TechTagsRes> getTechTags() {
         TechTagsRes techTags = searchService.getTechTags();
+        return ResponseEntity.ok(techTags);
+    }
+
+    // 유저 기반 기술 태그 조회 엔드포인트
+    @GetMapping("/user-tags")
+    public ResponseEntity<TechTagsRes> getUserTechTags() {
+        TechTagsRes techTags = searchService.getUserTechTags();
         return ResponseEntity.ok(techTags);
     }
 

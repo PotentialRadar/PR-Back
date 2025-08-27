@@ -20,5 +20,5 @@ public class ProjectRecruitmentRequest {
     @Valid
     private List<ProjectPartRecruitmentDTO> recruitmentParts;
     private Integer recruitCount;   //총 모집인원
-    private List<ProjectAttachmentDto> attachments;
+//    private List<ProjectAttachmentDto> attachments;
 }

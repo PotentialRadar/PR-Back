@@ -15,5 +15,8 @@ public enum NotificationType {
     DEADLINE_TODAY,
 
     // 팀원 알림
-    REVIEW_REMINDER
+    REVIEW_REMINDER,
+    
+    // 승인 알림
+    APPLICATION_APPROVED
 }

@@ -160,12 +160,13 @@ public class SearchService {
             log.info("No search conditions, using nickname.exists() to return all users");
         }
 
-        // 검색 가능 유저만 노출
+        // 검색 가능 유저만 노출 (포트폴리오도 공개된 유저만)
         finalCriteria = (finalCriteria == null
                 ? new Criteria("isSearchable").is(true)
                 : finalCriteria.and(new Criteria("isSearchable").is(true)))
-                .and(new Criteria("isSearchOpen").is(true));
-        log.debug("Applied visibility filter (isSearchable=true AND isSearchOpen=true). hasConditions: {}", hasConditions);
+                .and(new Criteria("isSearchOpen").is(true))
+                .and(new Criteria("isPortfolioOpen").is(true));
+        log.debug("Applied visibility filter (isSearchable=true AND isSearchOpen=true AND isPortfolioOpen=true). hasConditions: {}", hasConditions);
 
         // 💡 2. 페이징 및 정렬
         Sort sort = Sort.by(Sort.Order.desc("_score"), Sort.Order.desc("createdAt"));
@@ -413,12 +414,13 @@ public class SearchService {
             log.info("No search conditions, using nickname.exists() to return all users");
         }
 
-        // 검색 가능 유저만 노출
+        // 검색 가능 유저만 노출 (포트폴리오도 공개된 유저만)
         finalCriteria = (finalCriteria == null
                 ? new Criteria("isSearchable").is(true)
                 : finalCriteria.and(new Criteria("isSearchable").is(true)))
-                .and(new Criteria("isSearchOpen").is(true));
-        log.debug("Applied visibility filter (isSearchable=true AND isSearchOpen=true). hasConditions: {}", hasConditions);
+                .and(new Criteria("isSearchOpen").is(true))
+                .and(new Criteria("isPortfolioOpen").is(true));
+        log.debug("Applied visibility filter (isSearchable=true AND isSearchOpen=true AND isPortfolioOpen=true). hasConditions: {}", hasConditions);
 
         // 페이징 및 정렬
         Sort sort = Sort.by(Sort.Order.desc("_score"), Sort.Order.desc("createdAt"));

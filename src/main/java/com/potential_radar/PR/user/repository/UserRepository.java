@@ -36,4 +36,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("UPDATE User u SET u.nickname = :nickname, u.updatedAt = CURRENT_TIMESTAMP WHERE u.userId = :userId")
     void updateNickname(Long userId, String nickname);
 
+    @Query("SELECT u FROM User u LEFT JOIN FETCH u.userProfile")
+    List<User> findAllWithUserProfile();
+
 }

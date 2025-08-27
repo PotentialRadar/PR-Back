@@ -34,7 +34,7 @@ import java.util.Random;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-@Profile("!test & false") // 테스트 환경에서는 실행하지 않음
+@Profile("!test") // 테스트 환경에서는 실행하지 않음
 public class TestDataInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;
@@ -85,40 +85,49 @@ public class TestDataInitializer implements CommandLineRunner {
             log.info("User data already exists, skipping user initialization");
         }
         
-        // 5. 사용자 기술스택 데이터 생성 (AI 추천을 위해)
+        // 5. 사용자 기술스택 데이터 생성 (AI 추천을 위해) - 매칭 개선을 위해 항상 재생성
         boolean hasUserTechStackData = userTechStackRepository.count() > 0;
-        if (!hasUserTechStackData) {
-            initializeUserTechStacks();
-        } else {
-            log.info("User tech stack data already exists, skipping initialization");
+        if (hasUserTechStackData) {
+            log.info("Clearing existing user tech stack data for better project matching...");
+            userTechStackRepository.deleteAll();
+            log.info("Deleted existing user tech stacks");
         }
+        initializeUserTechStacks();
         
         // 4. 프로젝트 데이터 생성 (기술스택 매칭 개선을 위해 항상 재생성)
         // 기존 프로젝트 데이터 삭제 (외래키 제약조건 고려하여 순서대로)
         if (hasProjectData) {
             log.info("Clearing existing project data for tech stack improvement...");
-            // 1단계: 추천 이력 먼저 삭제 (외래키 참조 제거)
+            // 1단계: 추천 피드백 먼저 삭제 (외래키 참조 제거)
+            try {
+                jdbcTemplate.execute("DELETE FROM recommendation_feedback");
+                log.info("Deleted recommendation feedbacks");
+            } catch (Exception e) {
+                log.warn("Failed to delete recommendation feedbacks: {}", e.getMessage());
+            }
+            
+            // 2단계: 추천 이력 삭제
             recommendationHistoryRepository.deleteAll();
             log.info("Deleted recommendation histories");
             
-            // 2단계: 팀 초대 삭제 (team_invitations)
+            // 3단계: 팀 초대 삭제 (team_invitations)
             teamInvitationRepository.deleteAll();
             log.info("Deleted team invitations");
             
-            // 3단계: 프로젝트 멤버 삭제 (project_member)
+            // 4단계: 프로젝트 멤버 삭제 (project_member)
             projectMemberRepository.deleteAll();
             log.info("Deleted project members");
             
-            // 4단계: 프로젝트 지원 삭제 (project_application)
+            // 5단계: 프로젝트 지원 삭제 (project_application)
             projectApplicationRepository.deleteAll();
             log.info("Deleted project applications");
             
-            // 5단계: 프로젝트 관련 연결 테이블 삭제
+            // 6단계: 프로젝트 관련 연결 테이블 삭제
             projectTechStackRepository.deleteAll();
             projectTechPartRepository.deleteAll();
             log.info("Deleted project relations");
             
-            // 6단계: 프로젝트 삭제
+            // 7단계: 프로젝트 삭제
             projectRecruitmentRepository.deleteAll();
             log.info("Deleted projects");
         }
@@ -321,22 +330,34 @@ public class TestDataInitializer implements CommandLineRunner {
         ExperienceRange[] experienceRanges = ExperienceRange.values();
 
         for (int i = 0; i < 100; i++) {
+            final int userIndex = i;
             int userNum = i + 1;
             String email = String.format("user%03d@naver.com", userNum);
-            Provider provider = (i % 5 < 3) ? Provider.EMAIL : (i % 5 == 3 ? Provider.GOOGLE : Provider.KAKAO);
+            final Provider finalProvider = (i % 5 < 3) ? Provider.EMAIL : (i % 5 == 3 ? Provider.GOOGLE : Provider.KAKAO);
 
-            // User 생성
-            User user = User.builder()
-                .email(email)
-                .password(hashedPassword) // ✅ 모든 사용자에게 비밀번호 설정 (개발/테스트용)
-                .nickname(nicknames[i])
-                .provider(provider)
-                .providerUserId(provider != Provider.EMAIL ? 
-                    provider.name().toLowerCase() + "_" + (random.nextInt(900000000) + 100000000) : null)
-                .profileImage(null) // 더미 URL 대신 null로 설정하여 dicebear API 사용
-                .build();
-
-            user = userRepository.save(user);
+            // User 생성 (upsert 방식)
+            User user = userRepository.findByEmail(email).orElseGet(() -> {
+                // 닉네임 중복 체크 및 고유 닉네임 생성
+                String baseNickname = nicknames[userIndex];
+                String uniqueNickname = baseNickname;
+                int suffix = 1;
+                
+                while (userRepository.findByNickname(uniqueNickname).isPresent()) {
+                    uniqueNickname = baseNickname + "_" + suffix;
+                    suffix++;
+                }
+                
+                User newUser = User.builder()
+                    .email(email)
+                    .password(hashedPassword)
+                    .nickname(uniqueNickname)
+                    .provider(finalProvider)
+                    .providerUserId(finalProvider != Provider.EMAIL ? 
+                        finalProvider.name().toLowerCase() + "_" + (random.nextInt(900000000) + 100000000) : null)
+                    .profileImage(null)
+                    .build();
+                return userRepository.save(newUser);
+            });
 
             // UserProfile 생성
             TechPart techPart = techParts.get(i % techParts.size());
@@ -512,8 +533,9 @@ public class TestDataInitializer implements CommandLineRunner {
         };
 
         for (int i = 0; i < 50; i++) {
-            // 팀 리더 선택 (user001@example.com을 고정으로 설정하여 테스트 용이성 확보)
-            User teamLeader = users.get(0); // 첫 번째 사용자를 항상 팀 리더로 설정
+            // 팀 리더 선택 (규칙적 분산: user001~005가 각각 10개씩)
+            int teamLeaderIndex = i / 10; // 0-9: user001, 10-19: user002, 20-29: user003, 30-39: user004, 40-49: user005
+            User teamLeader = users.get(teamLeaderIndex);
             
             // 프로젝트 생성
             LocalDate today = LocalDate.now();
@@ -660,28 +682,86 @@ public class TestDataInitializer implements CommandLineRunner {
             return;
         }
         
+        // 프로젝트에서 많이 사용되는 핵심 기술스택들 (대소문자 구분 없이)
+        String[] commonTechNames = {
+            "React", "TypeScript", "JavaScript", "Node.js", "Python", "Java", "Spring Boot", 
+            "PostgreSQL", "MongoDB", "Docker", "AWS", "Vue.js", "Angular", "Django", 
+            "FastAPI", "Express.js", "MySQL", "Redis", "Flutter", "React Native",
+            "Kubernetes", "TensorFlow", "Unity 3D", "HTML", "CSS", "Git", "Linux"
+        };
+        
+        // 핵심 기술스택들을 DB에서 찾기
+        List<TechStack> commonTechStacks = new java.util.ArrayList<>();
+        List<TechStack> otherTechStacks = new java.util.ArrayList<>();
+        
+        for (TechStack techStack : techStacks) {
+            boolean isCommon = false;
+            for (String commonName : commonTechNames) {
+                if (techStack.getName().equalsIgnoreCase(commonName)) {
+                    isCommon = true;
+                    break;
+                }
+            }
+            
+            if (isCommon) {
+                commonTechStacks.add(techStack);
+            } else {
+                otherTechStacks.add(techStack);
+            }
+        }
+        
+        log.info("Found {} common tech stacks out of {} total", commonTechStacks.size(), techStacks.size());
+        
         for (User user : users) {
-            // 각 사용자에게 3-7개의 기술스택 할당
-            int techStackCount = random.nextInt(5) + 3; // 3-7개
+            // 각 사용자에게 3-6개의 기술스택 할당
+            int techStackCount = random.nextInt(4) + 3; // 3-6개
             List<TechStack> selectedTechStacks = new java.util.ArrayList<>();
             
-            // 중복 없이 기술스택 선택
+            // 80% 확률로 핵심 기술스택 선택, 20% 확률로 기타 기술스택 선택
             for (int i = 0; i < techStackCount; i++) {
                 TechStack techStack;
+                int maxAttempts = 10; // 무한루프 방지
+                int attempts = 0;
+                
                 do {
-                    techStack = techStacks.get(random.nextInt(techStacks.size()));
+                    attempts++;
+                    if (random.nextDouble() < 0.8 && !commonTechStacks.isEmpty()) {
+                        // 80% 확률로 핵심 기술스택에서 선택
+                        techStack = commonTechStacks.get(random.nextInt(commonTechStacks.size()));
+                    } else if (!otherTechStacks.isEmpty()) {
+                        // 20% 확률로 기타 기술스택에서 선택
+                        techStack = otherTechStacks.get(random.nextInt(otherTechStacks.size()));
+                    } else {
+                        // 기타 기술스택이 없으면 전체에서 선택
+                        techStack = techStacks.get(random.nextInt(techStacks.size()));
+                    }
+                    
+                    if (attempts >= maxAttempts) {
+                        break; // 무한루프 방지
+                    }
                 } while (selectedTechStacks.contains(techStack));
                 
-                selectedTechStacks.add(techStack);
-                
-                // UserTechStack 생성
-                UserTechStack userTechStack = UserTechStack.builder()
-                    .user(user)
-                    .stack(techStack)
-                    .skillLevel(random.nextInt(5) + 1) // 1-5 레벨
-                    .build();
-                
-                userTechStackRepository.save(userTechStack);
+                if (!selectedTechStacks.contains(techStack)) {
+                    selectedTechStacks.add(techStack);
+                    
+                    // UserTechStack 생성 (핵심 기술스택은 높은 레벨로)
+                    int skillLevel;
+                    if (commonTechStacks.contains(techStack)) {
+                        // 핵심 기술스택은 3-5 레벨
+                        skillLevel = random.nextInt(3) + 3;
+                    } else {
+                        // 기타 기술스택은 1-4 레벨
+                        skillLevel = random.nextInt(4) + 1;
+                    }
+                    
+                    UserTechStack userTechStack = UserTechStack.builder()
+                        .user(user)
+                        .stack(techStack)
+                        .skillLevel(skillLevel)
+                        .build();
+                    
+                    userTechStackRepository.save(userTechStack);
+                }
             }
         }
         
@@ -770,9 +850,13 @@ public class TestDataInitializer implements CommandLineRunner {
             return;
         }
         
+        // 성능 최적화: 좋아요는 처음 20명 사용자만 생성
+        List<User> likeUsers = users.size() > 20 ? users.subList(0, 20) : users;
+        log.info("Using {} users (out of {}) for like generation", likeUsers.size(), users.size());
+        
         int totalLikes = 0;
         
-        for (User user : users) {
+        for (User user : likeUsers) {
             // 각 사용자가 좋아요할 프로젝트 수 (1-8개, 평균 4개)
             int likesPerUser = random.nextInt(8) + 1;
             List<ProjectRecruitment> likedProjects = new java.util.ArrayList<>();
@@ -883,18 +967,18 @@ public class TestDataInitializer implements CommandLineRunner {
                 }
             }
             
-            // 로깅 (20명마다)
-            if ((users.indexOf(user) + 1) % 20 == 0) {
+            // 로깅 (10명마다)
+            if ((likeUsers.indexOf(user) + 1) % 10 == 0) {
                 log.info("Processed {} users, generated {} likes so far...", 
-                    users.indexOf(user) + 1, totalLikes);
+                    likeUsers.indexOf(user) + 1, totalLikes);
             }
         }
         
         log.info("✅ Successfully generated {} smart likes for {} users based on tech stack similarity", 
-            totalLikes, users.size());
+            totalLikes, likeUsers.size());
         
         // 통계 로깅
-        logLikeStatistics(totalLikes, users.size());
+        logLikeStatistics(totalLikes, likeUsers.size());
     }
     
     /**

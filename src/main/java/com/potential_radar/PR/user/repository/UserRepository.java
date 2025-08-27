@@ -18,6 +18,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmail(String email);
 
     boolean existsByNickname(String nickname);
+    
+    Optional<User> findByNickname(String nickname);
 
     // 증분 동기화를 위한 메서드들
     List<User> findByUpdatedAtAfter(LocalDateTime since);

@@ -15,7 +15,6 @@ class Project(Base):
     recruit_deadline = Column(DateTime)
     view_count = Column(Integer)
     team_leader_id = Column(BigInteger, ForeignKey("users.user_id"))
-    file_url = Column(String(255))
     status = Column(String(255), nullable=False)
     created_at = Column(DateTime)
     updated_at = Column(DateTime)
@@ -28,7 +27,7 @@ class ProjectTechStack(Base):
     __tablename__ = "project_tech_stack"
 
     id = Column(BigInteger, primary_key=True, index=True)
-    tech_stack_id = Column(BigInteger, ForeignKey("tech_stack.stack_id"), nullable=False)
+    tech_stack_id = Column(BigInteger, ForeignKey("tech_stack.tech_stack_id"), nullable=False)
     project_id = Column(BigInteger, ForeignKey("project_recruitment.project_id"), nullable=False)
     recruit_count = Column(Integer, nullable=False)
 
@@ -39,8 +38,7 @@ class TechStack(Base):
     # Spring Boot의 TechStack 엔티티에 매핑
     __tablename__ = "tech_stack"
     
-    stack_id = Column(BigInteger, primary_key=True, index=True)
-    tech_stack_id = Column(BigInteger)
+    tech_stack_id = Column(BigInteger, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
 
 class User(Base):
@@ -90,7 +88,7 @@ class UserTechStack(Base):
     
     user_tech_stack_id = Column(BigInteger, primary_key=True, index=True)
     user_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
-    stack_id = Column(BigInteger, ForeignKey("tech_stack.stack_id"), nullable=False)
+    stack_id = Column(BigInteger, ForeignKey("tech_stack.tech_stack_id"), nullable=False)
     skill_level = Column(Integer, nullable=False)
     
     # 관계 설정

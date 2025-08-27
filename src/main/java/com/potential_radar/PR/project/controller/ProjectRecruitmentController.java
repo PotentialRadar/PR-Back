@@ -10,11 +10,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Arrays;
 import java.util.List;
@@ -33,9 +36,6 @@ public class ProjectRecruitmentController {
     // 허용된 파일 확장자 및 MIME 타입 정의
     private static final Set<String> ALLOWED_EXTENSIONS = Arrays.asList("jpg", "jpeg", "png", "gif", "pdf")
             .stream().collect(Collectors.toSet());
-    private static final Set<String> ALLOWED_MIME_TYPES = Arrays.asList(
-            "image/jpeg", "image/jpg", "image/png", "image/gif", "application/pdf"
-    ).stream().collect(Collectors.toSet());
     private static final Set<String> ALLOWED_MIME_TYPES = Arrays.asList("image/jpeg", "image/png", "image/gif", "application/pdf")
             .stream().collect(Collectors.toSet());
 

@@ -34,7 +34,7 @@ import java.util.Random;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-@Profile("!test") // 테스트 환경에서는 실행하지 않음
+@Profile("!test & false") // 테스트 환경에서는 실행하지 않음
 public class TestDataInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;

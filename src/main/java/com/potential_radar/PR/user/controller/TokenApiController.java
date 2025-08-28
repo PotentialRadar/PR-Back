@@ -2,12 +2,14 @@ package com.potential_radar.PR.user.controller;
 
 import com.potential_radar.PR.user.dto.CreateAccessTokenRequest;
 import com.potential_radar.PR.user.dto.CreateAccessTokenResponse;
+import com.potential_radar.PR.config.jwt.TokenProvider;
 import com.potential_radar.PR.user.service.TokenService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -41,6 +43,10 @@ import java.util.Map;
 public class TokenApiController {
     // 🔧 토큰 관리 비즈니스 로직 서비스
     private final TokenService tokenService;
+    private final TokenProvider tokenProvider;
+    
+    @Value("${app.cookie.secure:true}")
+    private boolean cookieSecure;
 
 
     /**
@@ -86,9 +92,11 @@ public class TokenApiController {
         // 🍪 새 Access Token을 HttpOnly 쿠키로 설정
         Cookie accessTokenCookie = new Cookie("access_token", newAccessToken);
         accessTokenCookie.setHttpOnly(true);
-        accessTokenCookie.setSecure(true);
+        accessTokenCookie.setSecure(cookieSecure); // 환경에 따라 설정
         accessTokenCookie.setPath("/");
-        accessTokenCookie.setMaxAge(24 * 60 * 60); // 24시간
+        accessTokenCookie.setMaxAge((int) (tokenProvider.getJwtProperties().getAccessTokenExpiration() / 1000));
+        // 도메인 설정 제거 - 브라우저가 자동으로 현재 도메인:포트를 사용하도록
+        // accessTokenCookie.setDomain("localhost");
         response.addCookie(accessTokenCookie);
         
         // 🎆 201 Created 상태코드와 함께 성공 메시지 반환

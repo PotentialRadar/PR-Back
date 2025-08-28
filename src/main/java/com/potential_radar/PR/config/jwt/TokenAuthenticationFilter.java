@@ -60,7 +60,9 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
         if (request.getCookies() != null) {
             for (Cookie cookie : request.getCookies()) {
                 if ("access_token".equals(cookie.getName())) {
-                    return cookie.getValue();
+                    String value = cookie.getValue();
+                    // 빈 문자열이나 null인 경우 토큰이 없는 것으로 처리
+                    return (value != null && !value.trim().isEmpty()) ? value : null;
                 }
             }
         }

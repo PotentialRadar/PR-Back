@@ -16,6 +16,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -81,6 +82,8 @@ public class WebSecurityConfig {
         http
                 // 🚫 CSRF 비활성화: JWT 토큰 사용 시 CSRF 공격에 대한 보안이 내장되어 있음
                 .csrf(csrf -> csrf.disable())
+                // 📴 세션을 생성/사용하지 않는 무상태 정책 (JWT)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // 🌐 CORS 설정: 프론트엔드와의 교차 출처 리소스 공유 허용
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 // 🔐 URL별 접근 권한 설정
@@ -90,6 +93,7 @@ public class WebSecurityConfig {
                                 "/api/login",        // 로그인 엔드포인트
                                 "/api/signup",       // 회원가입 엔드포인트
                                 "/api/token",        // 토큰 갱신 엔드포인트
+                                "/api/auth/status",  // 인증 상태 확인 엔드포인트
                                 "/oauth2/**",        // OAuth2 관련 모든 엔드포인트
                                 "/login/oauth2/**",  // OAuth2 로그인 콜백 엔드포인트
                                 "/api/login/**",     // 로그인 관련 모든 엔드포인트
@@ -114,12 +118,8 @@ public class WebSecurityConfig {
                 // 🔧 JWT 토큰 인증 필터를 UsernamePasswordAuthenticationFilter 앞에 등록
                 // 이를 통해 모든 요청에서 JWT 토큰을 먼저 검증하고 인증 정보를 설정
                 .addFilterBefore(tokenAuthenticationFilter(), org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
-                // 🚪 로그아웃 설정
-                .logout(logout -> logout
-                        .logoutSuccessUrl("/login")      // 로그아웃 성공 시 리다이렉트 URL
-                        .invalidateHttpSession(true)     // 세션 무효화로 보안성 강화
-                        .permitAll()                      // 로그아웃은 누구나 접근 가능
-                );
+                // 🚪 Spring Security 기본 로그아웃 비활성화 (커스텀 로그아웃 API 사용)
+                .logout(logout -> logout.disable());
         return http.build();
     }
 

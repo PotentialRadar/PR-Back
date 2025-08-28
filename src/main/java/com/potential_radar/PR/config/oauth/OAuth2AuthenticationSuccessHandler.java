@@ -31,6 +31,9 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
 
     @Value("${app.frontend-redirect-url}")
     private String frontendCallbackUrl;
+    
+    @Value("${app.cookie.secure:true}")
+    private boolean cookieSecure;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -71,17 +74,21 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         // Access Token을 HttpOnly 쿠키로 전달
         Cookie accessTokenCookie = new Cookie("access_token", accessToken);
         accessTokenCookie.setHttpOnly(true);
-        accessTokenCookie.setSecure(true); // HTTPS 환경에서만 전송되도록 설정
+        accessTokenCookie.setSecure(cookieSecure); // 환경에 따라 설정
         accessTokenCookie.setPath("/"); // 모든 경로에서 쿠키 사용
         accessTokenCookie.setMaxAge((int) (tokenProvider.getJwtProperties().getAccessTokenExpiration() / 1000)); // 만료시간 설정 (초 단위)
+        // 도메인 설정 제거 - 브라우저가 자동으로 현재 도메인:포트를 사용하도록
+        // accessTokenCookie.setDomain("localhost");
         response.addCookie(accessTokenCookie);
 
         // Refresh Token은 보안을 위해 HttpOnly 쿠키로 전달
         Cookie refreshTokenCookie = new Cookie("refresh_token", refreshToken);
         refreshTokenCookie.setHttpOnly(true);
-        refreshTokenCookie.setSecure(true); // HTTPS 환경에서만 전송되도록 설정
+        refreshTokenCookie.setSecure(cookieSecure); // 환경에 따라 설정
         refreshTokenCookie.setPath("/"); // 모든 경로에서 쿠키 사용
         refreshTokenCookie.setMaxAge((int) (tokenProvider.getJwtProperties().getRefreshTokenExpiration() / 1000)); // 만료시간 설정 (초 단위)
+        // 도메인 설정 제거 - 브라우저가 자동으로 현재 도메인:포트를 사용하도록
+        // refreshTokenCookie.setDomain("localhost");
         response.addCookie(refreshTokenCookie);
 
         // 프론트엔드로 리다이렉트 (토큰은 쿠키로 전달됨)

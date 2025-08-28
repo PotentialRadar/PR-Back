@@ -68,6 +68,14 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         log.info("🔑 생성된 AccessToken: {}", accessToken.substring(0, Math.min(50, accessToken.length())) + "...");
         log.info("🔑 토큰 검증 결과: {}", tokenProvider.validToken(accessToken));
 
+        // Access Token을 HttpOnly 쿠키로 전달
+        Cookie accessTokenCookie = new Cookie("access_token", accessToken);
+        accessTokenCookie.setHttpOnly(true);
+        accessTokenCookie.setSecure(true); // HTTPS 환경에서만 전송되도록 설정
+        accessTokenCookie.setPath("/"); // 모든 경로에서 쿠키 사용
+        accessTokenCookie.setMaxAge((int) (tokenProvider.getJwtProperties().getAccessTokenExpiration() / 1000)); // 만료시간 설정 (초 단위)
+        response.addCookie(accessTokenCookie);
+
         // Refresh Token은 보안을 위해 HttpOnly 쿠키로 전달
         Cookie refreshTokenCookie = new Cookie("refresh_token", refreshToken);
         refreshTokenCookie.setHttpOnly(true);
@@ -76,9 +84,8 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         refreshTokenCookie.setMaxAge((int) (tokenProvider.getJwtProperties().getRefreshTokenExpiration() / 1000)); // 만료시간 설정 (초 단위)
         response.addCookie(refreshTokenCookie);
 
-        // Access Token은 프론트엔드가 바로 사용할 수 있도록 리다이렉트 URL의 쿼리 파라미터로 전달
-        String redirectWithToken = frontendCallbackUrl + "?accessToken=" + accessToken;
-        response.sendRedirect(redirectWithToken);
+        // 프론트엔드로 리다이렉트 (토큰은 쿠키로 전달됨)
+        response.sendRedirect(frontendCallbackUrl);
 
         log.info("✅ OAuth2 로그인 성공. JWT 발급 완료: {}", email);
     }

@@ -11,6 +11,8 @@ import com.potential_radar.PR.user.dto.editInfo.UpdatedUserProfileResponse;
 import com.potential_radar.PR.user.dto.editInfo.UserProfileUpdateRequest;
 import com.potential_radar.PR.user.service.TokenService;
 import com.potential_radar.PR.user.service.UserService;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,9 +35,26 @@ public class UserController {
     private final LikeService likeService;
 
     @PostMapping("/login")
-    public ResponseEntity<Object> login(@RequestBody UserLoginRequest loginRequest) {
+    public ResponseEntity<Object> login(@RequestBody UserLoginRequest loginRequest, HttpServletResponse response) {
         LoginResponse tokens = userService.login(loginRequest);
-        return ResponseEntity.status(HttpStatus.OK).body(tokens);
+        
+        // Access Token을 HttpOnly 쿠키로 설정
+        Cookie accessTokenCookie = new Cookie("access_token", tokens.accessToken());
+        accessTokenCookie.setHttpOnly(true);
+        accessTokenCookie.setSecure(true);
+        accessTokenCookie.setPath("/");
+        accessTokenCookie.setMaxAge(24 * 60 * 60); // 24시간 (초 단위)
+        response.addCookie(accessTokenCookie);
+        
+        // Refresh Token을 HttpOnly 쿠키로 설정
+        Cookie refreshTokenCookie = new Cookie("refresh_token", tokens.refreshToken());
+        refreshTokenCookie.setHttpOnly(true);
+        refreshTokenCookie.setSecure(true);
+        refreshTokenCookie.setPath("/");
+        refreshTokenCookie.setMaxAge(7 * 24 * 60 * 60); // 7일 (초 단위)
+        response.addCookie(refreshTokenCookie);
+        
+        return ResponseEntity.status(HttpStatus.OK).body(Map.of("message", "로그인 성공"));
     }
 
     @PostMapping("/signup")
@@ -47,7 +66,7 @@ public class UserController {
 
 
     @PostMapping("/logout")
-    public ResponseEntity<Object> logout(Principal principal) {
+    public ResponseEntity<Object> logout(Principal principal, HttpServletResponse response) {
         if (principal == null) {
             // Spring Security의 FilterChain에서 처리되지만, 만약을 위한 방어 코드
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("인증되지 않은 사용자입니다.");
@@ -55,6 +74,23 @@ public class UserController {
         String email = principal.getName();
         User user = userService.findByEmail(email);
         tokenService.deleteRefreshToken(user.getUserId());
+        
+        // Access Token 쿠키 삭제
+        Cookie accessTokenCookie = new Cookie("access_token", null);
+        accessTokenCookie.setHttpOnly(true);
+        accessTokenCookie.setSecure(true);
+        accessTokenCookie.setPath("/");
+        accessTokenCookie.setMaxAge(0); // 즉시 만료
+        response.addCookie(accessTokenCookie);
+        
+        // Refresh Token 쿠키 삭제
+        Cookie refreshTokenCookie = new Cookie("refresh_token", null);
+        refreshTokenCookie.setHttpOnly(true);
+        refreshTokenCookie.setSecure(true);
+        refreshTokenCookie.setPath("/");
+        refreshTokenCookie.setMaxAge(0); // 즉시 만료
+        response.addCookie(refreshTokenCookie);
+        
         return ResponseEntity.ok("로그아웃 성공");
     }
 

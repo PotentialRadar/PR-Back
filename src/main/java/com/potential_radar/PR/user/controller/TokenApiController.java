@@ -3,6 +3,9 @@ package com.potential_radar.PR.user.controller;
 import com.potential_radar.PR.user.dto.CreateAccessTokenRequest;
 import com.potential_radar.PR.user.dto.CreateAccessTokenResponse;
 import com.potential_radar.PR.user.service.TokenService;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -10,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+
+import java.util.Map;
 
 /**
  * 🎫 토큰 관리 API 컸트롤러
@@ -41,27 +46,53 @@ public class TokenApiController {
     /**
      * 🔄 새로운 Access Token 발급 API
      * 
-     * Refresh Token을 사용하여 새로운 Access Token을 발급합니다.
+     * HttpOnly 쿠키의 Refresh Token을 사용하여 새로운 Access Token을 발급합니다.
      * 이 API는 Access Token이 만료되었을 때 프론트엔드에서 호출합니다.
      * 
      * 처리 과정:
-     * 1. Refresh Token 유효성 검증
-     * 2. Refresh Token이 만료되었으면 DB에서 삭제
-     * 3. 유효한 Refresh Token이면 새 Access Token 생성
-     * 4. 201 Created 상태코드와 함께 새 토큰 반환
+     * 1. 쿠키에서 Refresh Token 추출
+     * 2. Refresh Token 유효성 검증
+     * 3. Refresh Token이 만료되었으면 DB에서 삭제
+     * 4. 유효한 Refresh Token이면 새 Access Token 생성
+     * 5. 새 Access Token을 HttpOnly 쿠키로 설정하여 반환
      * 
-     * @param request Refresh Token을 포함하는 요청 객체
-     * @return 새로운 Access Token을 포함하는 응답 객체
+     * @param request HttpServletRequest 객체 (쿠키 추출용)
+     * @param response HttpServletResponse 객체 (쿠키 설정용)
+     * @return 성공 메시지를 포함하는 응답 객체
      * @throws InvalidTokenException 만료되거나 유효하지 않은 Refresh Token인 경우
      */
     @PostMapping("/api/token")
-    public ResponseEntity<CreateAccessTokenResponse> createNewAccessToken(@Valid @RequestBody CreateAccessTokenRequest request){
+    public ResponseEntity<Object> createNewAccessToken(HttpServletRequest request, HttpServletResponse response){
+        // 🍪 쿠키에서 Refresh Token 추출
+        String refreshToken = null;
+        if (request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if ("refresh_token".equals(cookie.getName())) {
+                    refreshToken = cookie.getValue();
+                    break;
+                }
+            }
+        }
+        
+        if (refreshToken == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Refresh Token이 없습니다."));
+        }
+        
         // 🔄 Refresh Token을 사용하여 새 Access Token 생성
         // 예외 발생 시 GlobalExceptionHandler에서 401 Unauthorized로 처리됨
-        String newAccessToken = tokenService.createNewAccessToken(request.getRefreshToken());
+        String newAccessToken = tokenService.createNewAccessToken(refreshToken);
         
-        // 🎆 201 Created 상태코드와 함께 새로운 Access Token 반환
+        // 🍪 새 Access Token을 HttpOnly 쿠키로 설정
+        Cookie accessTokenCookie = new Cookie("access_token", newAccessToken);
+        accessTokenCookie.setHttpOnly(true);
+        accessTokenCookie.setSecure(true);
+        accessTokenCookie.setPath("/");
+        accessTokenCookie.setMaxAge(24 * 60 * 60); // 24시간
+        response.addCookie(accessTokenCookie);
+        
+        // 🎆 201 Created 상태코드와 함께 성공 메시지 반환
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new CreateAccessTokenResponse(newAccessToken));
+                .body(Map.of("message", "새로운 Access Token이 발급되었습니다."));
     }
 }

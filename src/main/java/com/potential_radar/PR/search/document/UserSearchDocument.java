@@ -50,9 +50,6 @@ public class UserSearchDocument {
     private ExperienceRange experienceRange;
 
     @Field(type = FieldType.Boolean)
-    private Boolean isSearchable = true;
-
-    @Field(type = FieldType.Boolean)
     private Boolean isPortfolioOpen = true;
 
     @Field(type = FieldType.Boolean)

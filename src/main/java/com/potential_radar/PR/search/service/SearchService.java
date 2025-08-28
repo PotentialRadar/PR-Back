@@ -160,13 +160,12 @@ public class SearchService {
             log.info("No search conditions, using nickname.exists() to return all users");
         }
 
-        // 검색 가능 유저만 노출 (포트폴리오도 공개된 유저만)
+        // 검색 가능 유저만 노출 (포트폴리오 공개 + 검색 공개)
         finalCriteria = (finalCriteria == null
-                ? new Criteria("isSearchable").is(true)
-                : finalCriteria.and(new Criteria("isSearchable").is(true)))
-                .and(new Criteria("isSearchOpen").is(true))
-                .and(new Criteria("isPortfolioOpen").is(true));
-        log.debug("Applied visibility filter (isSearchable=true AND isSearchOpen=true AND isPortfolioOpen=true). hasConditions: {}", hasConditions);
+                ? new Criteria("isPortfolioOpen").is(true)
+                : finalCriteria.and(new Criteria("isPortfolioOpen").is(true)))
+                .and(new Criteria("isSearchOpen").is(true));
+        log.debug("Applied visibility filter (isPortfolioOpen=true AND isSearchOpen=true). hasConditions: {}", hasConditions);
 
         // 💡 2. 페이징 및 정렬
         Sort sort = Sort.by(Sort.Order.desc("_score"), Sort.Order.desc("createdAt"));
@@ -414,13 +413,12 @@ public class SearchService {
             log.info("No search conditions, using nickname.exists() to return all users");
         }
 
-        // 검색 가능 유저만 노출 (포트폴리오도 공개된 유저만)
+        // 검색 가능 유저만 노출 (포트폴리오 공개 + 검색 공개)
         finalCriteria = (finalCriteria == null
-                ? new Criteria("isSearchable").is(true)
-                : finalCriteria.and(new Criteria("isSearchable").is(true)))
-                .and(new Criteria("isSearchOpen").is(true))
-                .and(new Criteria("isPortfolioOpen").is(true));
-        log.debug("Applied visibility filter (isSearchable=true AND isSearchOpen=true AND isPortfolioOpen=true). hasConditions: {}", hasConditions);
+                ? new Criteria("isPortfolioOpen").is(true)
+                : finalCriteria.and(new Criteria("isPortfolioOpen").is(true)))
+                .and(new Criteria("isSearchOpen").is(true));
+        log.debug("Applied visibility filter (isPortfolioOpen=true AND isSearchOpen=true). hasConditions: {}", hasConditions);
 
         // 페이징 및 정렬
         Sort sort = Sort.by(Sort.Order.desc("_score"), Sort.Order.desc("createdAt"));
@@ -658,13 +656,34 @@ public class SearchService {
 
 
     public TechTagsRes getTechTags() {
-        log.info("Getting tech tags for frontend");
+        log.info("Getting tech tags for frontend (project-based)");
 
         // 기술 파트 목록 (캐시된 데이터 사용)
         List<String> techParts = techPartService.getAllTechPartNames();
 
-        // 인기 기술 스택 조회 (Elasticsearch aggregation 사용)
+        // 인기 기술 스택 조회 (프로젝트 기반)
         List<TechTagsRes.PopularTechStack> popularTechStacks = getPopularTechStacks();
+
+        // 기술 스택 이름만 추출
+        List<String> techStacks = popularTechStacks.stream()
+                .map(TechTagsRes.PopularTechStack::getName)
+                .collect(Collectors.toList());
+
+        return TechTagsRes.builder()
+                .techParts(techParts)
+                .techStacks(techStacks) // 기술 스택 이름 리스트 추가
+                .popularTechStacks(popularTechStacks)
+                .build();
+    }
+
+    public TechTagsRes getUserTechTags() {
+        log.info("Getting tech tags for frontend (user-based)");
+
+        // 기술 파트 목록 (캐시된 데이터 사용)
+        List<String> techParts = techPartService.getAllTechPartNames();
+
+        // 유저 기반 인기 기술 스택 조회
+        List<TechTagsRes.PopularTechStack> popularTechStacks = getPopularTechStacksFromUsers();
 
         // 기술 스택 이름만 추출
         List<String> techStacks = popularTechStacks.stream()
@@ -703,7 +722,57 @@ public class SearchService {
                     .collect(Collectors.toList());
 
         } catch (Exception e) {
-            log.error("Failed to get popular tech stacks: {}", e.getMessage());
+            log.error("Failed to get popular tech stacks from projects: {}", e.getMessage());
+            // 기본값 반환
+            return List.of(
+                TechTagsRes.PopularTechStack.builder().name("Java").count(0L).build(),
+                TechTagsRes.PopularTechStack.builder().name("JavaScript").count(0L).build(),
+                TechTagsRes.PopularTechStack.builder().name("Python").count(0L).build(),
+                TechTagsRes.PopularTechStack.builder().name("React").count(0L).build(),
+                TechTagsRes.PopularTechStack.builder().name("Spring Boot").count(0L).build()
+            );
+        }
+    }
+
+    private List<TechTagsRes.PopularTechStack> getPopularTechStacksFromUsers() {
+        try {
+            // 포트폴리오 공개 + 검색 공개된 유저만 조회
+            Criteria searchableCriteria = new Criteria("isPortfolioOpen").is(true)
+                    .and(new Criteria("isSearchOpen").is(true));
+            
+            Pageable pageable = PageRequest.of(0, 10_000);
+            Query query = new CriteriaQuery(searchableCriteria).setPageable(pageable);
+            SearchHits<UserSearchDocument> searchHits = elasticsearchOperations.search(query, UserSearchDocument.class);
+            if (searchHits.getTotalHits() > 10_000) {
+                log.warn("Searchable users ({}) exceed 10,000; tech stack counts may be underrepresented. Consider switching to terms aggregation.", searchHits.getTotalHits());
+            }
+            
+            Map<String, Long> techStackCounts = new HashMap<>();
+
+            for (SearchHit<UserSearchDocument> hit : searchHits.getSearchHits()) {
+                UserSearchDocument user = hit.getContent();
+                if (user.getTechStacks() != null) {
+                    for (String techStack : new java.util.HashSet<>(user.getTechStacks())) {
+                        techStackCounts.merge(techStack, 1L, Long::sum);
+                    }
+                }
+            }
+
+            log.info("Found {} searchable users with {} unique tech stacks", 
+                    searchHits.getTotalHits(), techStackCounts.size());
+
+            // 상위 20개 기술 스택 반환 (20개로 증가)
+            return techStackCounts.entrySet().stream()
+                    .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                    .limit(20)
+                    .map(entry -> TechTagsRes.PopularTechStack.builder()
+                            .name(entry.getKey())
+                            .count(entry.getValue())
+                            .build())
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            log.error("Failed to get popular tech stacks from users: {}", e.getMessage());
             // 기본값 반환
             return List.of(
                 TechTagsRes.PopularTechStack.builder().name("Java").count(0L).build(),

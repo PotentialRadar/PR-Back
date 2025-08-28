@@ -47,9 +47,6 @@
     "experienceRange": {
       "type": "keyword"
     },
-    "isSearchable": {
-      "type": "boolean"
-    },
     "isPortfolioOpen": {
       "type": "boolean"
     },

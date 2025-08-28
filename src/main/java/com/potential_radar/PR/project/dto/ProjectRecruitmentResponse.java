@@ -25,5 +25,5 @@ public class ProjectRecruitmentResponse {
     private Integer remainingCount;    // 남은 모집 인원
     private List<ProjectTechStackDTO> techStacks;
     private List<ProjectPartRecruitmentDTO> recruitmentParts;
-//    private List<ProjectAttachmentDto> attachments;
+    private List<ProjectAttachmentDto> attachments;
 }

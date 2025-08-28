@@ -10,6 +10,7 @@ import lombok.AllArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProjectAttachmentDto {
+    private Long fileId;
     private String name;
     private String url;
     private Long size;

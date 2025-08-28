@@ -41,7 +41,7 @@ public class ProjectRecruitmentService {
     private final ProjectTechPartRepository projectTechPartRepository;
     private final ProjectTechStackRepository projectTechStackRepository;
     private final ProjectCommentRepository projectCommentRepository;
-//    private final ProjectAttachmentRepository projectAttachmentRepository;
+    private final ProjectAttachmentRepository projectAttachmentRepository;
     private final TechStackRepository techStackRepository;
     private final TechPartRepository techPartRepository;
     private final LikeRepository likeRepository;
@@ -72,13 +72,14 @@ public class ProjectRecruitmentService {
                         .build())
                 .collect(Collectors.toList());
 
-//        List<ProjectAttachmentDto> attachmentDtos = pr.getAttachments().stream()
-//                .map(attachment -> ProjectAttachmentDto.builder()
-//                        .name(attachment.getName())
-//                        .url(attachment.getUrl())
-//                        .size(attachment.getSize())
-//                        .build())
-//                .collect(Collectors.toList());
+        List<ProjectAttachmentDto> attachmentDtos = pr.getAttachments().stream()
+                .map(attachment -> ProjectAttachmentDto.builder()
+                        .fileId(attachment.getId())
+                        .name(attachment.getName())
+                        .url(attachment.getUrl())
+                        .size(attachment.getSize())
+                        .build())
+                .collect(Collectors.toList());
 
         int appliedCount = projectApplicationRepository.countByProject_ProjectId(pr.getProjectId());
         int acceptedCount = projectApplicationRepository.countByProject_ProjectIdAndStatus(
@@ -105,7 +106,7 @@ public class ProjectRecruitmentService {
                 .remainingCount(remainingCount)
                 .techStacks(techStackDTOs)
                 .recruitmentParts(partDTOs)
-//                .attachments(attachmentDtos)
+                .attachments(attachmentDtos)
                 .build();
     }
 
@@ -173,17 +174,17 @@ public class ProjectRecruitmentService {
         project.setTechParts(techParts);
 
         // 첨부파일 연관 저장
-//        if (request.getAttachments() != null) {
-//            List<ProjectAttachment> attachments = request.getAttachments().stream()
-//                    .map(dto -> ProjectAttachment.builder()
-//                            .project(project)
-//                            .name(dto.getName())
-//                            .url(dto.getUrl())
-//                            .size(dto.getSize())
-//                            .build())
-//                    .collect(Collectors.toList());
-//            project.setAttachments(attachments);
-//        }
+        if (request.getAttachments() != null) {
+            List<ProjectAttachment> attachments = request.getAttachments().stream()
+                    .map(dto -> ProjectAttachment.builder()
+                            .project(project)
+                            .name(dto.getName())
+                            .url(dto.getUrl())
+                            .size(dto.getSize())
+                            .build())
+                    .collect(Collectors.toList());
+            project.setAttachments(attachments);
+        }
 
         projectRecruitmentRepository.save(project);
 
@@ -199,7 +200,7 @@ public class ProjectRecruitmentService {
         return project.getProjectId();
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public ProjectRecruitmentResponse getProject(Long id, String userEmail) {
         ProjectRecruitment pr = projectRecruitmentRepository.findByIdWithTeamLeader(id)
                 .orElseThrow(() -> new NotFoundException("해당 구인글이 존재하지 않습니다."));
@@ -270,7 +271,7 @@ public class ProjectRecruitmentService {
 
         projectTechStackRepository.deleteAllByProjectId(id);
         projectTechPartRepository.deleteAllByProjectId(id);
-//        projectAttachmentRepository.deleteAllByProjectId(id);
+        projectAttachmentRepository.deleteAllByProjectId(id);
 
         if (request.getTechStacks() != null && !request.getTechStacks().isEmpty()) {
             for (ProjectTechStackDTO tsDto : request.getTechStacks()) {
@@ -317,17 +318,17 @@ public class ProjectRecruitmentService {
         }
 
         // 첨부파일 저장
-//        if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {
-//            for (ProjectAttachmentDto dto : request.getAttachments()) {
-//                ProjectAttachment attachment = ProjectAttachment.builder()
-//                        .project(project)
-//                        .name(dto.getName())
-//                        .url(dto.getUrl())
-//                        .size(dto.getSize())
-//                        .build();
-//                projectAttachmentRepository.save(attachment);
-//            }
-//        }
+        if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {
+            for (ProjectAttachmentDto dto : request.getAttachments()) {
+                ProjectAttachment attachment = ProjectAttachment.builder()
+                        .project(project)
+                        .name(dto.getName())
+                        .url(dto.getUrl())
+                        .size(dto.getSize())
+                        .build();
+                projectAttachmentRepository.save(attachment);
+            }
+        }
     }
 
     // 구인글 상태 수정

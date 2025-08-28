@@ -58,6 +58,10 @@ public class ProjectApplicationService {
         ProjectRecruitment project = projectRecruitmentRepository.findById(projectId)
                 .orElseThrow(() -> new NotFoundException("프로젝트를 찾을 수 없습니다."));
 
+        if (project.getStatus() != ProjectStatus.RECRUITING) {
+            throw new IllegalStateException("모집중인 프로젝트에만 지원할 수 있습니다.");
+        }
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
 

@@ -90,18 +90,29 @@ def generate_explanation(user: dict, required_skills: List[str], match_score: fl
 def get_users_from_db(db: Session) -> List[dict]:
     """실제 DB에서 사용자 데이터를 가져오는 함수"""
     try:
+        logger.info("🔍 사용자 데이터 조회 시작...")
         users = db.query(User).join(UserProfile, User.user_id == UserProfile.user_id, isouter=True).all()
         logger.info(f"🔍 DB에서 조회된 총 사용자 수: {len(users)}")
         
+        if not users:
+            logger.warning("⚠️ 조회된 사용자가 없습니다!")
+            return []
+        
         users_data = []
-        for user in users:
-            # 사용자 기술스택 조회 (올바른 JOIN 조건 사용)
-            user_tech_stacks = db.query(UserTechStackModel).join(
-                TechStack, UserTechStackModel.stack_id == TechStack.stack_id
-            ).filter(
-                UserTechStackModel.user_id == user.user_id
-            ).all()
-            logger.info(f"👤 사용자 {user.nickname}({user.user_id})의 기술스택 수: {len(user_tech_stacks)}")
+        for i, user in enumerate(users):
+            logger.info(f"🔄 처리 중: {i+1}/{len(users)} - {user.nickname}")
+            
+            try:
+                # 사용자 기술스택 조회 (올바른 JOIN 조건 사용)
+                user_tech_stacks = db.query(UserTechStackModel).join(
+                    TechStack, UserTechStackModel.stack_id == TechStack.tech_stack_id
+                ).filter(
+                    UserTechStackModel.user_id == user.user_id
+                ).all()
+                logger.info(f"👤 사용자 {user.nickname}({user.user_id})의 기술스택 수: {len(user_tech_stacks)}")
+            except Exception as e:
+                logger.error(f"❌ {user.nickname}의 기술스택 조회 실패: {e}")
+                continue
             
             tech_stacks = [
                 {"name": uts.stack.name, "level": uts.skill_level}

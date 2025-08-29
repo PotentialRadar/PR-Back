@@ -70,9 +70,7 @@ def train_enhanced_model():
     # RandomForest: 여러 개의 의사결정트리를 조합한 모델
     model = RandomForestClassifier(
         n_estimators=100,        # 트리 100개 사용 (더 많을수록 정확하지만 느림)
-        max_depth=10,           # 트리 깊이 제한 (과적합 방지)
-        min_samples_split=5,    # 노드를 분할하는 최소 샘플 수
-        min_samples_leaf=2,     # 잎 노드의 최소 샘플 수
+        max_depth=10,           # 과적합 방지
         random_state=42,        # 재현 가능한 결과를 위한 시드값
         class_weight='balanced' # 긍정/부정 라벨 불균형 자동 보정
     )

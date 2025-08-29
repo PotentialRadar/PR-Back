@@ -31,6 +31,14 @@ ALIAS_MAP = {
     "pycharm": "intellij idea",
     "webstorm": "intellij idea",
     "netbeans": "netbeans ide",
+    # 데이터베이스 관련
+    "oracle db": "oracle database",
+    "oracle": "oracle database",
+    "bigquery": "google bigquery",
+    "big query": "google bigquery",
+    # 게임 엔진 관련
+    "construct3": "construct 3",
+    "construct": "construct 3",
 }
 
 # 데이터베이스에서 동적으로 가져올 기술스택 캐시
@@ -51,8 +59,28 @@ def get_allowed_tech_from_db():
         db = next(get_db())
         tech_stacks = db.query(TechStack).all()
         
-        # 소문자로 정규화해서 set 생성
-        _ALLOWED_TECH_CACHE = {stack.name.lower() for stack in tech_stacks}
+        # 소문자로 정규화하고 별칭도 포함해서 set 생성
+        _ALLOWED_TECH_CACHE = set()
+        for stack in tech_stacks:
+            # 원본 이름 (소문자)
+            normalized_name = stack.name.lower()
+            _ALLOWED_TECH_CACHE.add(normalized_name)
+            
+            # 별칭 매핑도 추가 (역방향)
+            for alias, canonical in ALIAS_MAP.items():
+                if canonical == normalized_name:
+                    _ALLOWED_TECH_CACHE.add(alias)
+                    
+        # 추가적인 변형들도 포함 (공백, 하이픈 등)
+        additional_variants = set()
+        for tech in list(_ALLOWED_TECH_CACHE):
+            # 공백을 하이픈/언더바로 변경한 버전들도 추가
+            if ' ' in tech:
+                additional_variants.add(tech.replace(' ', '-'))
+                additional_variants.add(tech.replace(' ', '_'))
+                additional_variants.add(tech.replace(' ', ''))
+        
+        _ALLOWED_TECH_CACHE.update(additional_variants)
         
         dprint(f"[DEBUG] Loaded {len(_ALLOWED_TECH_CACHE)} tech stacks from database")
         return _ALLOWED_TECH_CACHE

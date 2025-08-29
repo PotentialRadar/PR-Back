@@ -73,7 +73,7 @@ class LikePatternAnalyzer:
         for project in liked_projects:
             # 최근일수록 높은 가중치
             days_ago = (now - project.likedAt).days
-            time_weight = max(0.1, 1.0 - (days_ago / 365))  # 1년 전까지 고려
+            time_weight = max(0.1, 1.0 - (days_ago / 365))
             
             for tech in project.techStacks:
                 tech_normalized = tech.lower().strip()

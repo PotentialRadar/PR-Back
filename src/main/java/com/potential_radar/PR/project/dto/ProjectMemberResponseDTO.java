@@ -14,4 +14,5 @@ public class ProjectMemberResponseDTO {
     private String userName;
     private String role; // LEADER, MEMBER
     private String techPart;
+    private String profileImageUrl; // 프로필 이미지 URL 추가
 }

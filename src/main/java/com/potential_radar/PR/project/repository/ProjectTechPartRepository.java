@@ -1,5 +1,6 @@
 package com.potential_radar.PR.project.repository;
 
+import com.potential_radar.PR.project.domain.ProjectRecruitment;
 import com.potential_radar.PR.project.domain.ProjectTechPart;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
@@ -8,6 +9,11 @@ import java.util.List;
 
 public interface ProjectTechPartRepository extends JpaRepository<ProjectTechPart, Long> {
     List<ProjectTechPart> findByProject_ProjectId(Long projectId);
+    
+    /**
+     * 특정 프로젝트의 기술파트 목록 조회
+     */
+    List<ProjectTechPart> findByProject(ProjectRecruitment project);
 
     // 벌크 삭제: 컬렉션 로딩 없이 곧바로 DELETE
     @Modifying(clearAutomatically = true, flushAutomatically = true)

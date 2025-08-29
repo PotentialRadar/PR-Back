@@ -14,4 +14,5 @@ public class RecommendMemberRequest {
     private List<String> requiredSkills;
     private Integer teamSize = 4; // 기본값 4명
     private String experienceLevel = "any"; // 기본값
+    private Long excludeUserId; // 제외할 사용자 ID (팀장 본인)
 }

@@ -5,7 +5,11 @@ import com.potential_radar.PR.invitation.domain.InvitationStatus;
 import com.potential_radar.PR.invitation.domain.TeamInvitation;
 import com.potential_radar.PR.invitation.dto.TeamInvitationDto;
 import com.potential_radar.PR.invitation.repository.TeamInvitationRepository;
+import com.potential_radar.PR.notification.domain.NotificationType;
+import com.potential_radar.PR.notification.service.NotificationService;
+import com.potential_radar.PR.project.domain.ProjectMember;
 import com.potential_radar.PR.project.domain.ProjectRecruitment;
+import com.potential_radar.PR.project.repository.ProjectMemberRepository;
 import com.potential_radar.PR.project.repository.ProjectRecruitmentRepository;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.repository.UserRepository;
@@ -27,10 +31,8 @@ public class TeamInvitationService {
     private final TeamInvitationRepository teamInvitationRepository;
     private final UserRepository userRepository;
     private final ProjectRecruitmentRepository projectRepository;
-    
-    // 알림 서비스가 나중에 구현되면 연동 가능하게 Optional로 설정
-    // @Autowired(required = false)
-    // private NotificationService notificationService;
+    private final ProjectMemberRepository projectMemberRepository;
+    private final NotificationService notificationService;
 
     /**
      * 팀원 초대 보내기
@@ -87,10 +89,25 @@ public class TeamInvitationService {
 
             TeamInvitation savedInvitation = teamInvitationRepository.save(invitation);
 
-            // 8. 향후 알림 서비스 연동 지점
-            // if (notificationService != null) {
-            //     notificationService.sendInvitationNotification(savedInvitation);
-            // }
+            // 8. 알림 전송
+            try {
+                String notificationContent = String.format("%s님이 '%s' 프로젝트에 초대했습니다.", 
+                    inviter.getNickname(), project.getTitle());
+                String notificationUrl = "/projects/" + project.getProjectId();
+                
+                notificationService.send(
+                    invitee,
+                    NotificationType.INVITATION,
+                    notificationContent,
+                    notificationUrl,
+                    savedInvitation.getId(),
+                    savedInvitation.getCreatedAt()
+                );
+                
+                log.info("팀 초대 알림 전송 완료: {} → {}", inviter.getNickname(), invitee.getNickname());
+            } catch (Exception e) {
+                log.warn("팀 초대 알림 전송 실패: {}", e.getMessage());
+            }
 
             log.info("팀원 초대 전송 완료: 프로젝트 {} → 사용자 {}", project.getTitle(), invitee.getNickname());
 
@@ -139,6 +156,32 @@ public class TeamInvitationService {
             if (request.getStatus() == InvitationStatus.ACCEPTED) {
                 invitation.accept();
                 log.info("초대 수락: 사용자 {} → 프로젝트 {}", userId, invitation.getProject().getTitle());
+                
+                // 5. 초대 수락 시 프로젝트 멤버로 추가
+                try {
+                    // 이미 멤버인지 확인
+                    boolean alreadyMember = projectMemberRepository.existsByProject_ProjectIdAndUser_UserId(
+                            invitation.getProject().getProjectId(), userId);
+                    
+                    if (!alreadyMember) {
+                        ProjectMember newMember = ProjectMember.builder()
+                                .project(invitation.getProject())
+                                .user(invitation.getInvitee())
+                                .role(ProjectMember.Role.MEMBER)
+                                .build();
+                        
+                        projectMemberRepository.save(newMember);
+                        log.info("프로젝트 멤버 추가 완료: 사용자 {} → 프로젝트 {}", 
+                                userId, invitation.getProject().getTitle());
+                    } else {
+                        log.warn("이미 프로젝트 멤버인 사용자: {} → 프로젝트 {}", 
+                                userId, invitation.getProject().getTitle());
+                    }
+                } catch (Exception e) {
+                    log.error("프로젝트 멤버 추가 실패: {}", e.getMessage(), e);
+                    // 멤버 추가 실패해도 초대는 수락으로 처리
+                }
+                
             } else if (request.getStatus() == InvitationStatus.REJECTED) {
                 invitation.reject();
                 log.info("초대 거절: 사용자 {} → 프로젝트 {}", userId, invitation.getProject().getTitle());
@@ -173,7 +216,8 @@ public class TeamInvitationService {
      * 받은 초대 목록 조회
      */
     public List<TeamInvitationDto.InvitationResponse> getReceivedInvitations(Long userId) {
-        List<TeamInvitation> invitations = teamInvitationRepository.findByInviteeUserIdOrderByCreatedAtDesc(userId);
+        // N+1 문제 해결을 위해 fetch join 사용
+        List<TeamInvitation> invitations = teamInvitationRepository.findByInviteeUserIdWithDetailsOrderByCreatedAtDesc(userId);
         return invitations.stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
@@ -183,7 +227,8 @@ public class TeamInvitationService {
      * 보낸 초대 목록 조회
      */
     public List<TeamInvitationDto.InvitationResponse> getSentInvitations(Long userId) {
-        List<TeamInvitation> invitations = teamInvitationRepository.findByInviterUserIdOrderByCreatedAtDesc(userId);
+        // N+1 문제 해결을 위해 fetch join 사용
+        List<TeamInvitation> invitations = teamInvitationRepository.findByInviterUserIdWithDetailsOrderByCreatedAtDesc(userId);
         return invitations.stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());

@@ -119,6 +119,7 @@ class RecommendMemberRequest(BaseModel):
     requiredSkills: List[str] = Field(..., description="필요한 기술스택 목록")
     teamSize: int = Field(default=4, description="추천받을 팀원 수")
     experienceLevel: str = Field(default="any", description="경험 수준")
+    excludeUserId: Optional[int] = Field(None, description="제외할 사용자 ID (팀장 본인)")  # 추가
 
 class RecommendedMember(BaseModel):
     userId: int = Field(..., description="사용자 ID")

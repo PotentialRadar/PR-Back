@@ -11,6 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class RecommendedProjectResponse {
+    private Long recommendationHistoryId; // 피드백을 위한 추천 이력 ID
     private Long projectId;
     private String title;
     private String description;
@@ -25,4 +26,6 @@ public class RecommendedProjectResponse {
     private Integer recruitCount;
     private Integer appliedCount;
     private LocalDate recruitDeadline;
+    private Integer viewCount;
+    private Integer likeCount;
 }

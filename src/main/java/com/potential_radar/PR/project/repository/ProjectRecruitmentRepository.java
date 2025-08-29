@@ -58,11 +58,20 @@ public interface ProjectRecruitmentRepository extends JpaRepository<ProjectRecru
     @Query("SELECT p FROM ProjectRecruitment p ORDER BY (SELECT count(l.id) FROM Like l WHERE l.targetId = p.projectId AND l.targetType = 'PROJECT') DESC, p.createdAt DESC")
     Page<ProjectRecruitment> findAllOrderByLikeCountAndCreatedAt(Pageable pageable);
 
+    // 마감임박순 정렬
+    Page<ProjectRecruitment> findAllByOrderByRecruitDeadlineAsc(Pageable pageable);
+
     // 지원마감일과 상태로 프로젝트 조회
     List<ProjectRecruitment> findByRecruitDeadlineAndStatus(LocalDate recruitDeadline, ProjectStatus status);
 
     // 종료일과 상태로 프로젝트 조회
     List<ProjectRecruitment> findByEndDateAndStatus(LocalDate endDate, ProjectStatus status);
+
+    // 상태와 모집마감일로 프로젝트 조회 (마감일이 지난)
+    List<ProjectRecruitment> findByStatusAndRecruitDeadlineBefore(ProjectStatus status, LocalDate date);
+
+    // 상태와 종료일로 프로젝트 조회 (종료일이 지난)
+    List<ProjectRecruitment> findByStatusAndEndDateBefore(ProjectStatus status, LocalDate date);
 
     // 증분 동기화용 - 기본 프로젝트와 팀리더만 로딩 (기술스택, 기술파트는 lazy loading)
     @Query("SELECT DISTINCT p FROM ProjectRecruitment p " +

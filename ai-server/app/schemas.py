@@ -136,6 +136,7 @@ class RecommendedMember(BaseModel):
     lastActiveDate: str = Field(..., description="마지막 활동일")
     isAvailable: bool = Field(default=True, description="현재 참여 가능 여부")
     currentProjectCount: int = Field(default=0, description="현재 참여 중인 프로젝트 수")
+    isPortfolioOpen: bool = Field(default=False, description="포트폴리오 공개 여부")
 
 # 프로젝트 추천 관련 스키마 (새로 추가)
 class RecommendProjectRequest(BaseModel):

@@ -154,7 +154,8 @@ def get_users_from_db(db: Session) -> List[dict]:
                 "averageRating": float(user.profile.reputation_score) if user.profile and user.profile.reputation_score else 4.0,
                 "lastActiveDate": "2025-08-24",  # 추후 실제 활동 데이터와 연동
                 "isAvailable": True,
-                "currentProjectCount": 0  # 추후 실제 참여 중인 프로젝트 수와 연동
+                "currentProjectCount": 0,  # 추후 실제 참여 중인 프로젝트 수와 연동
+                "isPortfolioOpen": user.profile.is_portfolio_open if user.profile else False  # 🆕 포트폴리오 공개 여부
             }
             users_data.append(user_data)
         
@@ -221,7 +222,8 @@ async def recommend_team_members(request: RecommendMemberRequest, db: Session = 
                 averageRating=user["averageRating"],
                 lastActiveDate=user["lastActiveDate"],
                 isAvailable=user["isAvailable"],
-                currentProjectCount=user["currentProjectCount"]
+                currentProjectCount=user["currentProjectCount"],
+                isPortfolioOpen=user.get("isPortfolioOpen", False)  # 🆕 포트폴리오 공개 여부
             )
             
             candidates.append(recommended_member)

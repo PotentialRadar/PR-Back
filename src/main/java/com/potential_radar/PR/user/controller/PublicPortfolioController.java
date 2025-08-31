@@ -26,21 +26,26 @@ public class PublicPortfolioController {
     @GetMapping("/{portfolio_id}")
     public ResponseEntity<?> getPublicPortfolio(@PathVariable("portfolio_id") Long portfolioId) {
         try {
-            log.info("공개 포트폴리오 조회 API 호출: portfolio_id = {}", portfolioId);
+            log.info("🔍 공개 포트폴리오 조회 API 호출: portfolio_id = {}", portfolioId);
             
             OfficialPotfolioResponse portfolio = publicPortfolioService.getPublicPortfolio(portfolioId);
             
-            log.info("공개 포트폴리오 조회 API 성공: portfolio_id = {}, nickname = {}", 
+            log.info("✅ 공개 포트폴리오 조회 API 성공: portfolio_id = {}, nickname = {}", 
                     portfolioId, portfolio.nickname());
             
-            return ResponseEntity.ok(portfolio);
+            // 캐시 방지 헤더 추가 (프론트엔드 캐싱 문제 해결)
+            return ResponseEntity.ok()
+                    .header("Cache-Control", "no-cache, no-store, must-revalidate")
+                    .header("Pragma", "no-cache")
+                    .header("Expires", "0")
+                    .body(portfolio);
             
         } catch (IllegalArgumentException e) {
-            log.warn("공개 포트폴리오 조회 실패: portfolio_id = {}, error = {}", portfolioId, e.getMessage());
+            log.warn("⚠️ 공개 포트폴리오 조회 실패: portfolio_id = {}, error = {}", portfolioId, e.getMessage());
             return ResponseEntity.notFound().build();
             
         } catch (Exception e) {
-            log.error("공개 포트폴리오 조회 중 서버 오류: portfolio_id = {}", portfolioId, e);
+            log.error("❌ 공개 포트폴리오 조회 중 서버 오류: portfolio_id = {}", portfolioId, e);
             return ResponseEntity.internalServerError()
                     .body("포트폴리오 조회 중 오류가 발생했습니다.");
         }

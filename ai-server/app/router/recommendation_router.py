@@ -86,11 +86,15 @@ def get_recommended_projects(
     
     logger.info(f"🔍 사용자 기술스택: {user_names}")
     
-    # 🆕 피드백 영향 분석 로그
+    # 🆕 피드백 통계 조회 (설명 개인화용)
+    user_feedback_stats = None
     try:
         feedback_service.log_feedback_impact(request.user_id)
+        user_feedback_stats = feedback_service.get_user_feedback_stats(request.user_id)
+        logger.info(f"📊 설명 개인화용 피드백 통계 조회 완료: {user_feedback_stats.get('totalFeedbacks', 0)}개")
     except Exception as e:
-        logger.warning(f"⚠️ 피드백 영향 분석 실패: {e}")
+        logger.warning(f"⚠️ 피드백 통계 조회 실패: {e}")
+        user_feedback_stats = None
     
     # 디버깅: DB에서 로드된 기술스택 확인
     from app.utils.preprocess import get_allowed_tech
@@ -231,7 +235,9 @@ def get_recommended_projects(
                 project_techs=proj_names,
                 project_norm=proj_norm,
                 project_title=p.title,
-                match_score=score
+                match_score=score,
+                view_count=None,  # TODO: 조회수 데이터 추가 시 활용
+                user_feedback_stats=user_feedback_stats  # 🆕 피드백 기반 개인화
             )
             
             logger.debug(f"설명 데이터 생성됨: {explanation_data}")

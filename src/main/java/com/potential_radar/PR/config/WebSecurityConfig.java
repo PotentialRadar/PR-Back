@@ -63,9 +63,12 @@ public class WebSecurityConfig {
                                 "/api/login/**",
                                 "/api/user/**",
                                 "/api/recommend/**",
-                                "/api/recommend/**",
                                 "/test/**",
-                                "/api/search/**"
+                                "/api/search/**",
+                                "/api/portfolios/**",
+                                "/api/portfolio/**",
+                                "/api/reviews/**",
+                                "/api/likes/count"
                         )
                         .permitAll()
                         .requestMatchers("/api/projects/**").permitAll()

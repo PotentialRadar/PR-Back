@@ -1,5 +1,7 @@
 package com.potential_radar.PR.user.service.impl;
 
+import com.potential_radar.PR.like.service.LikeService;
+import com.potential_radar.PR.like.domain.TargetType;
 import com.potential_radar.PR.project.repository.ProjectMemberRepository;
 import com.potential_radar.PR.user.domain.UserProfile;
 import com.potential_radar.PR.user.dto.portfolios.PortfolioListResponse;
@@ -11,9 +13,12 @@ import com.potential_radar.PR.user.service.PortfolioListService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +31,7 @@ public class PortfolioListServiceImpl implements PortfolioListService {
     private final UserProfileRepository userProfileRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final UserTechStackRepository userTechStackRepository;
+    private final LikeService likeService;
     
     @Override
     public PortfolioListResponse getPublicPortfolios(PortfolioSearchRequest searchRequest) {
@@ -42,6 +48,14 @@ public class PortfolioListServiceImpl implements PortfolioListService {
         
         // UserProfile을 PortfolioSummaryResponse로 변환
         Page<PortfolioSummaryResponse> portfolioPage = userProfiles.map(this::convertToSummaryResponse);
+        
+        // likeCount 정렬인 경우 추가 정렬 적용
+        if ("likeCount".equals(request.sortBy())) {
+            List<PortfolioSummaryResponse> sortedList = portfolioPage.getContent().stream()
+                    .sorted((a, b) -> Long.compare(b.likeCount(), a.likeCount()))
+                    .toList();
+            portfolioPage = new PageImpl<>(sortedList, portfolioPage.getPageable(), portfolioPage.getTotalElements());
+        }
         
         log.info("공개 포트폴리오 목록 조회 완료: 총 {}개, 현재 페이지 {}/{}", 
                 portfolioPage.getTotalElements(), 
@@ -80,6 +94,7 @@ public class PortfolioListServiceImpl implements PortfolioListService {
             case "reviewCount" -> Sort.by(Sort.Direction.DESC, "reviewCount")
                     .and(Sort.by(Sort.Direction.DESC, "reputationScore"));
             case "recent" -> Sort.by(Sort.Direction.DESC, "user.createdAt");
+            case "likeCount" -> Sort.by(Sort.Direction.DESC, "reputationScore"); // likeCount는 애플리케이션에서 정렬
             default -> Sort.by(Sort.Direction.DESC, "reputationScore")
                     .and(Sort.by(Sort.Direction.DESC, "reviewCount"));
         };
@@ -89,9 +104,16 @@ public class PortfolioListServiceImpl implements PortfolioListService {
         // 프로젝트 개수 조회 (사용자가 참여한 프로젝트 수)
         int projectCount = projectMemberRepository.findAllByUser_UserId(userProfile.getUserId()).size();
         
-        // 기술 스택 개수 조회
-        int techStackCount = userTechStackRepository.findByUserWithTechStack(userProfile.getUser()).size();
+        // 기술 스택 리스트 조회
+        List<String> techStacks = userTechStackRepository.findByUserWithTechStack(userProfile.getUser())
+                .stream()
+                .map(userTechStack -> userTechStack.getStack().getName())
+                .toList();
+        int techStackCount = techStacks.size();
         
-        return PortfolioSummaryResponse.from(userProfile, projectCount, techStackCount);
+        // 좋아요 개수 조회
+        long likeCount = likeService.getLikeCount(TargetType.PORTFOLIO, userProfile.getUserId());
+        
+        return PortfolioSummaryResponse.from(userProfile, projectCount, techStackCount, techStacks, likeCount);
     }
 }

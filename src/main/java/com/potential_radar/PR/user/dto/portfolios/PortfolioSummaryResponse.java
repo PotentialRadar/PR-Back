@@ -5,6 +5,7 @@ import com.potential_radar.PR.user.domain.UserProfile;
 import lombok.Builder;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * 포트폴리오 목록 조회시 사용하는 요약 정보 DTO
@@ -21,9 +22,11 @@ public record PortfolioSummaryResponse(
         int reviewCount,
         ExperienceRange experienceRange,
         int projectCount,
-        int techStackCount
+        int techStackCount,
+        List<String> techStacks,
+        long likeCount
 ) {
-    public static PortfolioSummaryResponse from(UserProfile userProfile, int projectCount, int techStackCount) {
+    public static PortfolioSummaryResponse from(UserProfile userProfile, int projectCount, int techStackCount, List<String> techStacks, long likeCount) {
         return PortfolioSummaryResponse.builder()
                 .userId(userProfile.getUser().getUserId())
                 .nickname(userProfile.getUser().getNickname())
@@ -36,6 +39,8 @@ public record PortfolioSummaryResponse(
                 .experienceRange(userProfile.getExperienceRange())
                 .projectCount(projectCount)
                 .techStackCount(techStackCount)
+                .techStacks(techStacks)
+                .likeCount(likeCount)
                 .build();
     }
 }

@@ -314,7 +314,7 @@ public class TestDataInitializer implements CommandLineRunner {
     private void initializeUsers() {
         List<TechPart> techParts = techPartRepository.findAll();
         Random random = new Random();
-        String hashedPassword = passwordEncoder.encode("password123"); // 공통 비밀번호
+        String hashedPassword = passwordEncoder.encode("1234"); // 공통 비밀번호
 
         String[] nicknames = {
             "코딩마스터001", "개발자김철수", "프론트엔드박영희", "백엔드이민수", "풀스택홍길동",

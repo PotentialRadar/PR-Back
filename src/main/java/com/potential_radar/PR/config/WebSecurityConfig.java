@@ -97,7 +97,7 @@ public class WebSecurityConfig {
                                 "/oauth2/**",        // OAuth2 관련 모든 엔드포인트
                                 "/login/oauth2/**",  // OAuth2 로그인 콜백 엔드포인트
                                 "/api/login/**",     // 로그인 관련 모든 엔드포인트
-                                "/api/user/**",      // 사용자 관련 엔드포인트 (공개 프로필 조회 등)
+                                "/api/user/*/likes/projects", // 특정 사용자의 좋아요 목록 공개 조회
                                 "/api/recommend/**", // AI 추천 시스템 엔드포인트
                                 "/test/**",          // 테스트용 엔드포인트
                                 "/api/search/**"     // 검색 엔드포인트 (공개 검색 허용)

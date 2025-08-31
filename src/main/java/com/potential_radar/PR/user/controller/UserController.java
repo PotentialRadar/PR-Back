@@ -32,6 +32,7 @@ import lombok.extern.slf4j.Slf4j; // 로깅 기능 제공 (@Slf4j로 log 객체 
 // === Spring Framework Import ===
 import org.springframework.beans.factory.annotation.Value; // 설정 파일의 값을 주입받기 위한 어노테이션
 import org.springframework.http.HttpStatus; // HTTP 상태 코드 열거형
+import org.springframework.http.ResponseCookie; // SameSite 등 확장 속성 지원 쿠키 빌더
 import org.springframework.http.ResponseEntity; // HTTP 응답 엔티티 (상태 코드 + 바디)
 import org.springframework.web.bind.annotation.*; // REST API 어노테이션들 (@RestController, @PostMapping 등)
 
@@ -82,23 +83,25 @@ public class UserController {
         // 1. 사용자 인증 및 토큰 생성
         LoginResponse tokens = userService.login(loginRequest); // 이메일/비밀번호 검증 후 토큰 생성
         
-        // 2. Access Token을 HttpOnly 쿠키로 설정
-        Cookie accessTokenCookie = new Cookie("access_token", tokens.accessToken()); // 쿠키 이름과 값 설정
-        accessTokenCookie.setHttpOnly(true); // JavaScript로 접근 불가 (XSS 공격 방지)
-        accessTokenCookie.setSecure(cookieSecure); // HTTPS에서만 전송 (개발: false, 운영: true)
-        accessTokenCookie.setPath("/"); // 모든 경로에서 쿠키 전송
-        accessTokenCookie.setMaxAge((int) (tokenProvider.getJwtProperties().getAccessTokenExpiration() / 1000)); // 만료시간 설정 (초 단위)
-        // accessTokenCookie.setDomain("localhost"); // 도메인 설정 제거 - 브라우저가 자동으로 현재 도메인:포트 사용
-        response.addCookie(accessTokenCookie); // 응답에 쿠키 추가
+        // 2. Access Token을 HttpOnly + SameSite 쿠키로 설정
+        ResponseCookie accessTokenCookie = ResponseCookie.from("access_token", tokens.accessToken())
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .path("/")
+                .sameSite("Lax")
+                .maxAge(java.time.Duration.ofMillis(tokenProvider.getJwtProperties().getAccessTokenExpiration()))
+                .build();
+        response.addHeader("Set-Cookie", accessTokenCookie.toString());
         
-        // 3. Refresh Token을 HttpOnly 쿠키로 설정
-        Cookie refreshTokenCookie = new Cookie("refresh_token", tokens.refreshToken()); // Refresh Token 쿠키 생성
-        refreshTokenCookie.setHttpOnly(true); // JavaScript로 접근 불가
-        refreshTokenCookie.setSecure(cookieSecure); // HTTPS에서만 전송
-        refreshTokenCookie.setPath("/"); // 모든 경로에서 쿠키 전송
-        refreshTokenCookie.setMaxAge((int) (tokenProvider.getJwtProperties().getRefreshTokenExpiration() / 1000)); // Refresh Token 만료시간 설정
-        // refreshTokenCookie.setDomain("localhost"); // 도메인 설정 제거
-        response.addCookie(refreshTokenCookie); // 응답에 쿠키 추가
+        // 3. Refresh Token을 HttpOnly + SameSite 쿠키로 설정
+        ResponseCookie refreshTokenCookie = ResponseCookie.from("refresh_token", tokens.refreshToken())
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .path("/")
+                .sameSite("Lax")
+                .maxAge(java.time.Duration.ofMillis(tokenProvider.getJwtProperties().getRefreshTokenExpiration()))
+                .build();
+        response.addHeader("Set-Cookie", refreshTokenCookie.toString());
         
         // 4. 성공 응답 반환 (토큰은 쿠키로 전달되므로 응답 본문에는 메시지만 포함)
         return ResponseEntity.status(HttpStatus.OK).body(Map.of("message", "로그인 성공"));
@@ -284,6 +287,9 @@ public class UserController {
     public ResponseEntity<Object> updateUserProfile(
             @Valid @RequestBody UserProfileUpdateRequest request, // 유효성 검증된 수정 요청 데이터
             Principal principal) { // 인증된 사용자 정보
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "인증이 필요합니다."));
+        }
         String email = principal.getName();
         userService.updateUserProfile(email, request); // 프로필 업데이트 실행
         return ResponseEntity.ok(Map.of("message", "프로필이 수정되었습니다"));
@@ -299,6 +305,9 @@ public class UserController {
      */
     @DeleteMapping("/user") // DELETE /api/user 엔드포인트 매핑
     public ResponseEntity<Object> deleteUser(Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "인증이 필요합니다."));
+        }
         String email = principal.getName();
         userService.deleteUser(email); // 사용자 계정 삭제 비즈니스 로직 실행
         return ResponseEntity.ok(Map.of("message", "회원 탈퇴가 완료되었습니다"));

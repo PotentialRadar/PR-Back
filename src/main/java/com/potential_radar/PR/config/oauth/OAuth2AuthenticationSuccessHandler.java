@@ -16,6 +16,7 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
+import org.springframework.http.ResponseCookie;
 
 import java.io.IOException;
 import java.util.Map;
@@ -67,29 +68,31 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         // 로컬 로그인과 동일하게 Access Token과 Refresh Token을 모두 생성
         String accessToken = tokenProvider.generateAccessToken(user);
         String refreshToken = refreshTokenService.createAndSaveRefreshToken(user);
-        
-        log.info("🔑 생성된 AccessToken: {}", accessToken.substring(0, Math.min(50, accessToken.length())) + "...");
-        log.info("🔑 토큰 검증 결과: {}", tokenProvider.validToken(accessToken));
 
-        // Access Token을 HttpOnly 쿠키로 전달
-        Cookie accessTokenCookie = new Cookie("access_token", accessToken);
-        accessTokenCookie.setHttpOnly(true);
-        accessTokenCookie.setSecure(cookieSecure); // 환경에 따라 설정
-        accessTokenCookie.setPath("/"); // 모든 경로에서 쿠키 사용
-        accessTokenCookie.setMaxAge((int) (tokenProvider.getJwtProperties().getAccessTokenExpiration() / 1000)); // 만료시간 설정 (초 단위)
-        // 도메인 설정 제거 - 브라우저가 자동으로 현재 도메인:포트를 사용하도록
-        // accessTokenCookie.setDomain("localhost");
-        response.addCookie(accessTokenCookie);
+        // 민감 정보 로깅 최소화
+        if (log.isDebugEnabled()) {
+            log.debug("🔑 토큰 검증 결과: {}", tokenProvider.validToken(accessToken));
+        }
 
-        // Refresh Token은 보안을 위해 HttpOnly 쿠키로 전달
-        Cookie refreshTokenCookie = new Cookie("refresh_token", refreshToken);
-        refreshTokenCookie.setHttpOnly(true);
-        refreshTokenCookie.setSecure(cookieSecure); // 환경에 따라 설정
-        refreshTokenCookie.setPath("/"); // 모든 경로에서 쿠키 사용
-        refreshTokenCookie.setMaxAge((int) (tokenProvider.getJwtProperties().getRefreshTokenExpiration() / 1000)); // 만료시간 설정 (초 단위)
-        // 도메인 설정 제거 - 브라우저가 자동으로 현재 도메인:포트를 사용하도록
-        // refreshTokenCookie.setDomain("localhost");
-        response.addCookie(refreshTokenCookie);
+        // Access Token을 HttpOnly + SameSite 쿠키로 전달
+        ResponseCookie accessTokenCookie = ResponseCookie.from("access_token", accessToken)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .path("/")
+                .sameSite("Lax")
+                .maxAge(java.time.Duration.ofMillis(tokenProvider.getJwtProperties().getAccessTokenExpiration()))
+                .build();
+        response.addHeader("Set-Cookie", accessTokenCookie.toString());
+
+        // Refresh Token을 HttpOnly + SameSite 쿠키로 전달
+        ResponseCookie refreshTokenCookie = ResponseCookie.from("refresh_token", refreshToken)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .path("/")
+                .sameSite("Lax")
+                .maxAge(java.time.Duration.ofMillis(tokenProvider.getJwtProperties().getRefreshTokenExpiration()))
+                .build();
+        response.addHeader("Set-Cookie", refreshTokenCookie.toString());
 
         // 프론트엔드로 리다이렉트 (토큰은 쿠키로 전달됨)
         response.sendRedirect(frontendCallbackUrl);

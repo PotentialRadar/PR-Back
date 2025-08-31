@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -89,15 +90,15 @@ public class TokenApiController {
         // 예외 발생 시 GlobalExceptionHandler에서 401 Unauthorized로 처리됨
         String newAccessToken = tokenService.createNewAccessToken(refreshToken);
         
-        // 🍪 새 Access Token을 HttpOnly 쿠키로 설정
-        Cookie accessTokenCookie = new Cookie("access_token", newAccessToken);
-        accessTokenCookie.setHttpOnly(true);
-        accessTokenCookie.setSecure(cookieSecure); // 환경에 따라 설정
-        accessTokenCookie.setPath("/");
-        accessTokenCookie.setMaxAge((int) (tokenProvider.getJwtProperties().getAccessTokenExpiration() / 1000));
-        // 도메인 설정 제거 - 브라우저가 자동으로 현재 도메인:포트를 사용하도록
-        // accessTokenCookie.setDomain("localhost");
-        response.addCookie(accessTokenCookie);
+        // 🍪 새 Access Token을 HttpOnly + SameSite 쿠키로 설정
+        ResponseCookie accessTokenCookie = ResponseCookie.from("access_token", newAccessToken)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .path("/")
+                .sameSite("Lax")
+                .maxAge(java.time.Duration.ofMillis(tokenProvider.getJwtProperties().getAccessTokenExpiration()))
+                .build();
+        response.addHeader("Set-Cookie", accessTokenCookie.toString());
         
         // 🎆 201 Created 상태코드와 함께 성공 메시지 반환
         return ResponseEntity.status(HttpStatus.CREATED)

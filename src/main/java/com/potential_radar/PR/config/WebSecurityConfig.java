@@ -25,7 +25,7 @@ import java.util.List;
 
 /**
  * 🔐 Spring Security 중앙 설정 클래스
- * 
+ *
  * 이 클래스는 애플리케이션의 보안 정책을 정의하고 구성합니다.
  * - JWT 토큰 기반 인증 설정
  * - OAuth2 소셜 로그인 설정 (Google, Kakao)
@@ -57,7 +57,7 @@ public class WebSecurityConfig {
 
     /**
      * 🔍 JWT 토큰 인증 필터 빈 등록
-     * 
+     *
      * 매 요청마다 Authorization 헤더나 쿠키에서 JWT 토큰을 추출하고 검증하여
      * SecurityContext에 인증 정보를 설정하는 필터입니다.
      */
@@ -68,7 +68,7 @@ public class WebSecurityConfig {
 
     /**
      * 🛡️ Spring Security 필터 체인 구성
-     * 
+     *
      * HTTP 보안 설정의 핵심 메소드로, 다음과 같은 보안 정책을 설정합니다:
      * 1. CSRF 비활성화 (JWT 사용으로 인해 불필요)
      * 2. CORS 설정
@@ -90,17 +90,21 @@ public class WebSecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // ✅ 인증 없이 접근 가능한 공개 엔드포인트들
                         .requestMatchers(
-                                "/api/login",        // 로그인 엔드포인트
+                                "/api/login/**",     // 로그인 관련 모든 엔드포인트
                                 "/api/signup",       // 회원가입 엔드포인트
                                 "/api/token",        // 토큰 갱신 엔드포인트
                                 "/api/auth/status",  // 인증 상태 확인 엔드포인트
                                 "/oauth2/**",        // OAuth2 관련 모든 엔드포인트
                                 "/login/oauth2/**",  // OAuth2 로그인 콜백 엔드포인트
-                                "/api/login/**",     // 로그인 관련 모든 엔드포인트
                                 "/api/user/*/likes/projects", // 특정 사용자의 좋아요 목록 공개 조회
                                 "/api/recommend/**", // AI 추천 시스템 엔드포인트
                                 "/test/**",          // 테스트용 엔드포인트
-                                "/api/search/**"     // 검색 엔드포인트 (공개 검색 허용)
+                                "/api/search/**",     // 검색 엔드포인트 (공개 검색 허용)
+                                "/api/user/**",
+                                "/api/portfolios/**",
+                                "/api/portfolio/**",
+                                "/api/reviews/**",
+                                "/api/likes/count"
                         )
                         .permitAll()  // 위 경로들은 인증 없이 접근 허용
                         .requestMatchers("/api/projects/**").permitAll()  // 프로젝트 관련 엔드포인트도 공개 접근 허용
@@ -125,10 +129,10 @@ public class WebSecurityConfig {
 
     /**
      * 🔑 인증 관리자(AuthenticationManager) 빈 등록
-     * 
+     *
      * Spring Security에서 인증을 처리하는 핵심 컴포넌트입니다.
      * DaoAuthenticationProvider를 사용하여 데이터베이스 기반 인증을 구현합니다.
-     * 
+     *
      * @param encoder BCrypt 패스워드 인코더
      * @return 구성된 AuthenticationManager
      */
@@ -146,7 +150,7 @@ public class WebSecurityConfig {
 
     /**
      * 🔒 BCrypt 패스워드 인코더 빈 등록
-     * 
+     *
      * 사용자 패스워드를 안전하게 해시화하기 위한 인코더입니다.
      * BCrypt는 솔트(salt)를 자동으로 생성하여 레인보우 테이블 공격을 방지합니다.
      */
@@ -157,7 +161,7 @@ public class WebSecurityConfig {
 
     /**
      * 🌐 CORS(Cross-Origin Resource Sharing) 설정
-     * 
+     *
      * 프론트엔드 애플리케이션에서 백엔드 API에 접근할 수 있도록
      * 교차 출처 리소스 공유 정책을 설정합니다.
      */

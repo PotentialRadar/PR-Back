@@ -6,7 +6,6 @@ import com.potential_radar.PR.tech.repository.TechPartRepository;
 import com.potential_radar.PR.tech.repository.TechStackRepository;
 import com.potential_radar.PR.user.domain.*;
 import com.potential_radar.PR.user.repository.*;
-
 import com.potential_radar.PR.project.domain.*;
 import com.potential_radar.PR.project.repository.*;
 import com.potential_radar.PR.recommendation.repository.RecommendationHistoryRepository;
@@ -15,7 +14,6 @@ import com.potential_radar.PR.like.domain.Like;
 import com.potential_radar.PR.like.domain.TargetType;
 import com.potential_radar.PR.like.repository.LikeRepository;
 import com.potential_radar.PR.project.repository.TeamMemberReviewRepository;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;

@@ -21,4 +21,12 @@ public interface ProjectTechStackRepository extends JpaRepository<ProjectTechSta
     // 프로젝트 ID로 기술스택 목록 조회 (대안 메서드)
     @Query("SELECT pts FROM ProjectTechStack pts WHERE pts.project.projectId = :projectId")
     List<ProjectTechStack> findByProject_ProjectId(@Param("projectId") Long projectId);
+    
+    // 프로젝트에서 많이 사용하는 기술스택 TOP N 조회 (사용 빈도 기반)
+    @Query("SELECT ts.name, COUNT(*) as usageCount " +
+           "FROM ProjectTechStack pts " +
+           "JOIN pts.techStack ts " +
+           "GROUP BY ts.name " +
+           "ORDER BY usageCount DESC")
+    List<Object[]> findMostUsedTechStacks();
 }

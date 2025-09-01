@@ -173,64 +173,64 @@ public class SearchController {
         return ResponseEntity.ok(techTags);
     }
 
-    // 프로젝트 필터별 결과 수 미리보기 엔드포인트
-    @GetMapping("/projects/count-preview")
-    public ResponseEntity<Map<String, Object>> getProjectCountPreview(
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) List<String> techParts,
-            @RequestParam(required = false) List<String> techStacks,
-            @RequestParam(required = false) List<String> statuses) {
+    // 프로젝트 필터별 결과 수 미리보기 엔드포인트 (사용 중단)
+    // @GetMapping("/projects/count-preview")
+    // public ResponseEntity<Map<String, Object>> getProjectCountPreview(
+    //         @RequestParam(required = false) String keyword,
+    //         @RequestParam(required = false) List<String> techParts,
+    //         @RequestParam(required = false) List<String> techStacks,
+    //         @RequestParam(required = false) List<String> statuses) {
 
-        ProjectSearchReq request = ProjectSearchReq.builder()
-                .keyword(keyword)
-                .techParts(techParts)
-                .techStacks(techStacks)
-                .statuses(statuses)
-                .page(0)
-                .size(1) // 결과 수만 필요하므로 최소 size
-                .build();
+    //     ProjectSearchReq request = ProjectSearchReq.builder()
+    //             .keyword(keyword)
+    //             .techParts(techParts)
+    //             .techStacks(techStacks)
+    //             .statuses(statuses)
+    //             .page(0)
+    //             .size(1) // 결과 수만 필요하므로 최소 size
+    //             .build();
 
-        SearchResult<ProjectSearchRes> result = searchService.searchProjects(request);
+    //     SearchResult<ProjectSearchRes> result = searchService.searchProjects(request);
         
-        return ResponseEntity.ok(Map.of(
-                "totalCount", result.getTotalElements(),
-                "searchTime", result.getSearchTimeMs()
-        ));
-    }
+    //     return ResponseEntity.ok(Map.of(
+    //             "totalCount", result.getTotalElements(),
+    //             "searchTime", result.getSearchTimeMs()
+    //     ));
+    // }
    
 
 
-    // 사용자(포트폴리오) 필터별 결과 수 미리보기 엔드포인트
-    @GetMapping("/users/count-preview")
-    public ResponseEntity<Map<String, Object>> getUserCountPreview(
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String nickname,
-            @RequestParam(required = false) List<String> techParts,
-            @RequestParam(required = false) List<String> techStacks,
-            @RequestParam(required = false) List<String> experienceRanges) {
+    // 사용자(포트폴리오) 필터별 결과 수 미리보기 엔드포인트 (사용 중단)
+    // @GetMapping("/users/count-preview")
+    // public ResponseEntity<Map<String, Object>> getUserCountPreview(
+    //         @RequestParam(required = false) String keyword,
+    //         @RequestParam(required = false) String nickname,
+    //         @RequestParam(required = false) List<String> techParts,
+    //         @RequestParam(required = false) List<String> techStacks,
+    //         @RequestParam(required = false) List<String> experienceRanges) {
 
-        // nickname 파라미터가 있으면 keyword로 사용
-        String searchKeyword = (nickname != null && !nickname.trim().isEmpty()) ? nickname : keyword;
+    //     // nickname 파라미터가 있으면 keyword로 사용
+    //     String searchKeyword = (nickname != null && !nickname.trim().isEmpty()) ? nickname : keyword;
         
-        // String을 ExperienceRange로 안전하게 변환
-        List<ExperienceRange> experienceEnums = parseExperienceRanges(experienceRanges);
+    //     // String을 ExperienceRange로 안전하게 변환
+    //     List<ExperienceRange> experienceEnums = parseExperienceRanges(experienceRanges);
 
-        UserSearchReq request = UserSearchReq.builder()
-                .keyword(searchKeyword)
-                .techParts(techParts)
-                .techStacks(techStacks)
-                .experienceRanges(experienceEnums)
-                .page(0)
-                .size(1) // 결과 수만 필요하므로 최소 size
-                .build();
+    //     UserSearchReq request = UserSearchReq.builder()
+    //             .keyword(searchKeyword)
+    //             .techParts(techParts)
+    //             .techStacks(techStacks)
+    //             .experienceRanges(experienceEnums)
+    //             .page(0)
+    //             .size(1) // 결과 수만 필요하므로 최소 size
+    //             .build();
 
-        SearchResult<UserSearchRes> result = searchService.searchUsers(request);
+    //     SearchResult<UserSearchRes> result = searchService.searchUsers(request);
         
-        return ResponseEntity.ok(Map.of(
-                "totalCount", result.getTotalElements(),
-                "searchTime", result.getSearchTimeMs()
-        ));
-    }
+    //     return ResponseEntity.ok(Map.of(
+    //             "totalCount", result.getTotalElements(),
+    //             "searchTime", result.getSearchTimeMs()
+    //     ));
+    // }
 
     // 포트폴리오 전용 인기 키워드 조회 엔드포인트
     @GetMapping("/popular/user-keywords")

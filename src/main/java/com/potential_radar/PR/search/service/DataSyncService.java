@@ -57,6 +57,20 @@ public class DataSyncService {
         syncAllUsersToElasticsearch();
         syncAllProjectsToElasticsearch();
     }
+    
+    public void clearAllData() {
+        log.info("Clearing all Elasticsearch data...");
+        try {
+            userSearchRepository.deleteAll();
+            log.info("Cleared all user search documents");
+            
+            projectSearchRepository.deleteAll();
+            log.info("Cleared all project search documents");
+        } catch (Exception e) {
+            log.error("Failed to clear Elasticsearch data: {}", e.getMessage());
+            throw e;
+        }
+    }
 
 
     @Transactional

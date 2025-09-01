@@ -496,12 +496,12 @@ public class SearchService {
         long startTime = System.currentTimeMillis();
         log.info("Starting project search with request: {}", request);
 
-        // 1. 인기 검색어 캐시 확인
-        boolean isPopularSearch = isPopularSearch(request);
+        // 1. 인기 검색어 판단 및 캐시 확인
+        boolean isPopularSearch = searchCacheService.shouldCacheProjectSearch(request);
         if (isPopularSearch) {
             log.info("Popular search detected, checking Redis cache");
 
-            SearchResult<ProjectSearchRes> cachedResult = searchCacheService.getCachedSearchResult(request);
+            SearchResult<ProjectSearchRes> cachedResult = searchCacheService.getCachedProjectSearchResult(request);
             if (cachedResult != null) {
                 long cacheHitTime = System.currentTimeMillis() - startTime;
                 log.info("Cache HIT: returning cached result for popular search (actual response time: {}ms vs original search time: {}ms)",
@@ -617,7 +617,7 @@ public class SearchService {
 
         // 3. 인기 검색어는 Redis에 캐싱
         if (isPopularSearch) {
-            searchCacheService.cacheSearchResult(request, result);
+            searchCacheService.cacheProjectSearchResult(request, result);
             log.info("Cached popular search result in Redis");
         }
 
@@ -661,17 +661,20 @@ public class SearchService {
         // 기술 파트 목록 (캐시된 데이터 사용)
         List<String> techParts = techPartService.getAllTechPartNames();
 
-        // 인기 기술 스택 조회 (프로젝트 기반)
-        List<TechTagsRes.PopularTechStack> popularTechStacks = getPopularTechStacks();
-
-        // 기술 스택 이름만 추출
-        List<String> techStacks = popularTechStacks.stream()
-                .map(TechTagsRes.PopularTechStack::getName)
+        // 인기 기술 스택 조회 (사용 빈도 기반 - PopularSearchService에서 조회)
+        List<String> popularTechStackNames = popularSearchService.getPopularTechStacks();
+        
+        // TechTagsRes.PopularTechStack 객체로 변환
+        List<TechTagsRes.PopularTechStack> popularTechStacks = popularTechStackNames.stream()
+                .map(name -> TechTagsRes.PopularTechStack.builder()
+                        .name(name)
+                        .count(0L) // 사용 빈도는 표시하지 않으므로 0으로 설정
+                        .build())
                 .collect(Collectors.toList());
 
         return TechTagsRes.builder()
                 .techParts(techParts)
-                .techStacks(techStacks) // 기술 스택 이름 리스트 추가
+                .techStacks(popularTechStackNames) // 기술 스택 이름 리스트
                 .popularTechStacks(popularTechStacks)
                 .build();
     }
@@ -682,17 +685,20 @@ public class SearchService {
         // 기술 파트 목록 (캐시된 데이터 사용)
         List<String> techParts = techPartService.getAllTechPartNames();
 
-        // 유저 기반 인기 기술 스택 조회
-        List<TechTagsRes.PopularTechStack> popularTechStacks = getPopularTechStacksFromUsers();
-
-        // 기술 스택 이름만 추출
-        List<String> techStacks = popularTechStacks.stream()
-                .map(TechTagsRes.PopularTechStack::getName)
+        // 유저 기반 인기 기술 스택 조회 (사용 빈도 기반 - PopularSearchService에서 조회)
+        List<String> popularTechStackNames = popularSearchService.getPopularUserTechStacks();
+        
+        // TechTagsRes.PopularTechStack 객체로 변환
+        List<TechTagsRes.PopularTechStack> popularTechStacks = popularTechStackNames.stream()
+                .map(name -> TechTagsRes.PopularTechStack.builder()
+                        .name(name)
+                        .count(0L) // 사용 빈도는 표시하지 않으므로 0으로 설정
+                        .build())
                 .collect(Collectors.toList());
 
         return TechTagsRes.builder()
                 .techParts(techParts)
-                .techStacks(techStacks) // 기술 스택 이름 리스트 추가
+                .techStacks(popularTechStackNames) // 기술 스택 이름 리스트
                 .popularTechStacks(popularTechStacks)
                 .build();
     }
@@ -784,29 +790,6 @@ public class SearchService {
         }
     }
 
-    // 인기 검색어 체크
-    private boolean isPopularSearch(ProjectSearchReq request) {
-        // 인기 키워드 체크
-        if (request.getKeyword() != null && !request.getKeyword().trim().isEmpty()) {
-            String searchKeyword = request.getKeyword().trim();
-            return popularSearchService.getPopularKeywords().stream()
-                    .anyMatch(keyword -> keyword.equalsIgnoreCase(searchKeyword));
-        }
-
-        // 단일 인기 기술스택 체크
-        if (request.getTechStacks() != null && request.getTechStacks().size() == 1) {
-            String techStack = request.getTechStacks().get(0);
-            return popularSearchService.getPopularTechStacks().contains(techStack);
-        }
-
-        // 단일 인기 기술파트 체크
-        if (request.getTechParts() != null && request.getTechParts().size() == 1) {
-            String techPart = request.getTechParts().get(0);
-            return popularSearchService.getPopularTechParts().contains(techPart);
-        }
-
-        return false;
-    }
 
 
 

@@ -210,9 +210,10 @@ public class PortfolioServiceImpl implements PortfolioService {
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + email));
         
         List<Long> selectedProjectIds = portfolioProjectRepository.findProjectIdsByUserId(user.getUserId());
+        
         List<ProjectMember> projectMembers = projectMemberRepository.findAllByUser_UserId(user.getUserId());
         
-        return projectMembers.stream()
+        List<UserAvailableProjectsResponse> result = projectMembers.stream()
                 .map(member -> {
                     List<String> techStacks = projectTechStackRepository
                             .findByProject_ProjectId(member.getProject().getProjectId())
@@ -234,6 +235,7 @@ public class PortfolioServiceImpl implements PortfolioService {
                             .build();
                 })
                 .toList();
+        return result;
     }
 
     @Override

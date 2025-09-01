@@ -22,17 +22,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 @Component
 @RequiredArgsConstructor
@@ -40,6 +36,7 @@ import java.util.Random;
 @Profile("!test")
 public class TestDataInitializer implements CommandLineRunner {
 
+    // Repositories & Encoder
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
     private final TechPartRepository techPartRepository;
@@ -51,18 +48,15 @@ public class TestDataInitializer implements CommandLineRunner {
     private final ProjectMemberRepository projectMemberRepository;
     private final RecommendationHistoryRepository recommendationHistoryRepository;
     private final UserTechStackRepository userTechStackRepository;
-    private final TeamInvitationRepository teamInvitationRepository;
-    private final LikeRepository likeRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final JdbcTemplate jdbcTemplate;
-
     private final UserExperienceRepository userExperienceRepository;
     private final UserEducationRepository userEducationRepository;
-    private final PortfolioProjectRepository portfolioProjectRepository; // 현재 사용 X, 차이만 반영
+    private final PortfolioProjectRepository portfolioProjectRepository;
     private final TeamMemberReviewRepository teamMemberReviewRepository;
     private final DataSyncService dataSyncService;
     private final SearchCacheService searchCacheService;
     private final PopularSearchService popularSearchService;
+    private final PasswordEncoder passwordEncoder;
+
 
     @Override
     @Transactional
@@ -72,37 +66,17 @@ public class TestDataInitializer implements CommandLineRunner {
         boolean hasProjectData = projectRecruitmentRepository.count() > 0;
 
         log.info("=== Initializing seed data (idempotent for ddl-auto:update) ===");
-        log.info("Data check results - Users: {}, TechStacks: {}, Projects: {}", hasUserData, hasTechStackData, hasProjectData);
 
-        // recommendation_history 구조 업데이트 (밑 파일 로직 유지)
-        updateRecommendationHistoryTable();
-
-        // 1) TechPart
         initializeTechParts();
+        initializeTechStacks();
+        initializeUsers(); // 이 부분이 수정되었습니다.
 
-        // 2) TechStack (밑 파일 정책 유지: 충분하면 skip)
-        if (!hasTechStackData) {
-            initializeTechStacks();
-        } else {
-            log.info("TechStack data already exists, skipping TechStack initialization");
-        }
-
-        // 3) Users (밑 파일 정책 유지)
-        if (!hasUserData) {
-            initializeUsers();
-        } else {
-            log.info("User data already exists, skipping user initialization");
-        }
-
-        // 4) UserTechStacks (밑 파일 정책 유지)
-        boolean hasUserTechStackData = userTechStackRepository.count() > 0;
-        if (!hasUserTechStackData) {
+        if (userTechStackRepository.count() == 0) {
             initializeUserTechStacks();
         } else {
-            log.info("User tech stack data already exists, skipping user tech stack initialization");
+            log.info("Skip user tech stacks (already present)");
         }
 
-        // ✅ 위 파일 차이 통합: User Experiences/Educations (한 번만)
         if (userExperienceRepository.count() == 0) {
             initializeUserExperiences();
         } else {
@@ -115,39 +89,11 @@ public class TestDataInitializer implements CommandLineRunner {
             log.info("Skip user educations (already present)");
         }
 
-        // 5) 프로젝트 데이터 (밑 파일 정책: 기존 있으면 깨끗이 지우고 재생성)
-        if (hasProjectData) {
-            log.info("Clearing existing project data for tech stack improvement...");
-            try {
-                jdbcTemplate.execute("DELETE FROM recommendation_feedback");
-                log.info("Deleted recommendation feedbacks");
-
-                likeRepository.deleteAll();
-                log.info("Deleted likes");
-
-                recommendationHistoryRepository.deleteAll();
-                log.info("Deleted recommendation histories");
-
-                teamInvitationRepository.deleteAll();
-                log.info("Deleted team invitations");
-
-                projectMemberRepository.deleteAll();
-                log.info("Deleted project members");
-
-                projectApplicationRepository.deleteAll();
-                log.info("Deleted project applications");
-
-                projectTechStackRepository.deleteAll();
-                projectTechPartRepository.deleteAll();
-                log.info("Deleted project relations");
-
-                projectRecruitmentRepository.deleteAll();
-                log.info("Deleted projects");
-            } catch (Exception e) {
-                log.error("Failed to delete existing project data: {}", e.getMessage());
-            }
+        if (projectRecruitmentRepository.count() == 0) {
+            initializeProjects();
+        } else {
+            log.info("Skip projects (already present)");
         }
-        initializeProjects();
 
         // Elasticsearch & Redis 완전 초기화 후 동기화 (프로젝트 생성 후)
         log.info("Clearing and synchronizing Elasticsearch and Redis after project initialization...");
@@ -178,16 +124,12 @@ public class TestDataInitializer implements CommandLineRunner {
             log.info("Skip team member reviews (already present)");
         }
 
-        // 6) 스마트 Like 생성 (밑 파일 정책 유지)
-        boolean hasLikeData = likeRepository.count() > 0;
-        if (!hasLikeData) {
-            initializeLikeData();
-        } else {
-            log.info("Like data already exists, skipping like initialization");
-        }
-
-        log.info("Test data initialization completed successfully!");
+        log.info("=== Seed data initialization completed ===");
     }
+
+    // --------------------------
+    // Seed helpers
+    // --------------------------
 
     private void initializeTechParts() {
         List<String> techPartNames = Arrays.asList(
@@ -196,17 +138,18 @@ public class TestDataInitializer implements CommandLineRunner {
                 "UI/UX디자인", "PM/기획"
         );
 
+        int created = 0;
         for (String name : techPartNames) {
             if (techPartRepository.findByNameIgnoreCase(name).isEmpty()) {
-                TechPart techPart = TechPart.builder().name(name).build();
-                techPartRepository.save(techPart);
+                techPartRepository.save(TechPart.builder().name(name).build());
+                created++;
             }
         }
+        log.info("TechPart upsert done. created={}", created);
     }
 
     private void initializeTechStacks() {
         List<String> techStackNames = Arrays.asList(
-                // (밑 파일과 동일: 생략 없이 유지)
                 "React","Vue.js","Angular","Next.js","Nuxt.js","Svelte","SvelteKit",
                 "JavaScript","TypeScript","HTML5","CSS3","SCSS","Sass","Less",
                 "Styled Components","Emotion","Tailwind CSS","Bootstrap","Material-UI",
@@ -285,21 +228,25 @@ public class TestDataInitializer implements CommandLineRunner {
                 "Azure Service Bus","NATS","ZeroMQ","Pulsar"
         );
 
-        log.info("Initializing TechStack data...");
-        List<TechStack> newTechStacks = new java.util.ArrayList<>();
+        int created = 0;
         for (String name : techStackNames) {
             if (techStackRepository.findByNameIgnoreCase(name).isEmpty()) {
-                newTechStacks.add(TechStack.builder().name(name).build());
+                techStackRepository.save(TechStack.builder().name(name).build());
+                created++;
             }
         }
-        if (!newTechStacks.isEmpty()) techStackRepository.saveAll(newTechStacks);
-        log.info("Created {} new TechStack entries", newTechStacks.size());
+        log.info("TechStack upsert done. created={}", created);
     }
 
     private void initializeUsers() {
         List<TechPart> techParts = techPartRepository.findAll();
+        if (techParts.isEmpty()) {
+            log.error("TechPart is empty. initializeTechParts()가 먼저 호출되어야 합니다.");
+            return;
+        }
+
         Random random = new Random();
-        String hashedPassword = passwordEncoder.encode("1234"); // 밑 파일 유지
+        String hashedPassword = passwordEncoder.encode("1234");
 
         String[] nicknames = {
                 "코딩마스터001","개발자김철수","프론트엔드박영희","백엔드이민수","풀스택홍길동",
@@ -326,40 +273,31 @@ public class TestDataInitializer implements CommandLineRunner {
 
         ExperienceRange[] experienceRanges = ExperienceRange.values();
 
-        List<User> newUsers = new java.util.ArrayList<>();
-        List<UserProfile> userProfiles = new java.util.ArrayList<>();
-
         for (int i = 0; i < 100; i++) {
             int userNum = i + 1;
             String email = String.format("user%03d@naver.com", userNum);
             Provider provider = (i % 5 < 3) ? Provider.EMAIL : (i % 5 == 3 ? Provider.GOOGLE : Provider.KAKAO);
 
-            if (userRepository.findByEmail(email).isPresent()) continue;
+            int finalI = i;
+            User user = userRepository.findByEmail(email).orElseGet(() -> {
+                // 1부터 12 사이의 랜덤 이미지 번호 생성
+                int randomImageNum = random.nextInt(12) + 1;
+                String profileImageUrl = String.format("https://example.com/profile/%03d.jpg", randomImageNum);
 
-            String baseNickname = nicknames[i];
-            String uniqueNickname = baseNickname;
-            int suffix = 1;
-            while (userRepository.findByNickname(uniqueNickname).isPresent()) {
-                uniqueNickname = baseNickname + "_" + suffix++;
-            }
+                User u = User.builder()
+                        .email(email)
+                        .password(provider == Provider.EMAIL ? hashedPassword : null)
+                        .nickname(nicknames[finalI])
+                        .provider(provider)
+                        .providerUserId(provider != Provider.EMAIL
+                                ? provider.name().toLowerCase() + "_" + (random.nextInt(900000000) + 100000000)
+                                : null)
+                        .profileImage(profileImageUrl) // 랜덤 이미지 URL로 설정
+                        .build();
+                return userRepository.save(u);
+            });
 
-            User user = User.builder()
-                    .email(email)
-                    .password(hashedPassword)
-                    .nickname(uniqueNickname)
-                    .provider(provider)
-                    .providerUserId(provider != Provider.EMAIL
-                            ? provider.name().toLowerCase() + "_" + (random.nextInt(900000000) + 100000000)
-                            : null)
-                    .profileImage(null)
-                    .build();
-            newUsers.add(user);
-        }
-
-        if (!newUsers.isEmpty()) {
-            List<User> saved = userRepository.saveAll(newUsers);
-            for (int i = 0; i < saved.size(); i++) {
-                User user = saved.get(i);
+            if (userProfileRepository.findById(user.getUserId()).isEmpty()) {
                 TechPart techPart = techParts.get(i % techParts.size());
 
                 UserProfile profile = UserProfile.builder()
@@ -371,7 +309,7 @@ public class TestDataInitializer implements CommandLineRunner {
                                         : "열정적인 개발자 " + nicknames[i] + "입니다. 새로운 기술 학습과 협업을 좋아합니다. 함께 멋진 프로젝트를 만들어봅시다!"))
                         .jobTitle(i % 4 == 0 ? null : getJobTitleByTechPart(techPart.getName()))
                         .phone(i % 5 == 0 ? null :
-                                String.format("010-%04d-%04d", ((i + 1) * 37) % 10000, ((i + 1) * 73) % 10000))
+                                String.format("010-%04d-%04d", (userNum * 37) % 10000, (userNum * 73) % 10000))
                         .githubUrl(i % 3 == 0 ? null :
                                 "https://github.com/" + nicknames[i].toLowerCase().replaceAll("[^a-z0-9]", ""))
                         .linkedinUrl(i % 4 == 0 ? null :
@@ -386,11 +324,10 @@ public class TestDataInitializer implements CommandLineRunner {
                         .experienceRange(experienceRanges[i % experienceRanges.length])
                         .build();
 
-                userProfiles.add(profile);
+                userProfileRepository.save(profile);
             }
-            userProfileRepository.saveAll(userProfiles);
-            log.info("Created {} users with profiles", saved.size());
         }
+        log.info("Users & Profiles upserted to 100");
     }
 
     private String getJobTitleByTechPart(String techPartName) {
@@ -412,7 +349,7 @@ public class TestDataInitializer implements CommandLineRunner {
     }
 
     private void initializeProjects() {
-        log.info("Initializing project data...");
+        log.info("Creating projects ...");
 
         List<User> users = userRepository.findAll();
         List<TechPart> techParts = techPartRepository.findAll();
@@ -420,37 +357,61 @@ public class TestDataInitializer implements CommandLineRunner {
         Random random = new Random();
 
         if (users.isEmpty() || techParts.isEmpty() || techStacks.isEmpty()) {
-            log.warn("Required data not found. Users: {}, TechParts: {}, TechStacks: {}",
-                    users.size(), techParts.size(), techStacks.size());
+            log.error("필수 데이터(사용자, 기술 파트, 기술 스택)가 존재하지 않아 프로젝트를 생성할 수 없습니다.");
             return;
         }
 
         String[] projectTitles = {
-                "AI 기반 개인 맞춤형 학습 플랫폼 개발","실시간 협업 화이트보드 웹 애플리케이션",
-                "블록체인 기반 탈중앙화 소셜 미디어","IoT 스마트 홈 자동화 시스템",
-                "머신러닝을 활용한 주식 투자 분석 도구","모바일 AR 쇼핑 경험 애플리케이션",
-                "클라우드 기반 팀 프로젝트 관리 도구","실시간 언어 번역 화상 회의 서비스",
-                "게임화된 온라인 코딩 교육 플랫폼","환경 데이터 모니터링 및 분석 시스템",
-                "NFT 기반 디지털 아트 마켓플레이스","음성 인식 기반 AI 비서 앱",
-                "실시간 건강 모니터링 웨어러블 연동 앱","지속가능한 에너지 관리 스마트 그리드",
-                "VR 가상 여행 체험 플랫폼","자율주행차 시뮬레이션 및 테스트 환경",
-                "개인화된 뉴스 큐레이션 AI 서비스","온라인 멘토링 매칭 플랫폼",
-                "실시간 재난 알림 및 대피 안내 시스템","크라우드펀딩 기반 스타트업 지원 플랫폼",
-                "AI 기반 개인 영양사 및 식단 관리 앱","실시간 주차 공간 찾기 및 예약 서비스",
-                "블록체인 기반 투명한 기부 추적 시스템","음악 AI 작곡 및 편집 도구",
-                "스마트 시티 교통 최적화 솔루션","온라인 의료 상담 및 처방 플랫폼",
-                "게임 스트리밍 및 커뮤니티 플랫폼","AI 기반 법률 자문 챗봇 서비스",
-                "실시간 농작물 모니터링 스마트팜","가상현실 기반 원격 교육 시스템",
-                "React 기반 소셜 네트워킹 플랫폼","Spring Boot 마이크로서비스 아키텍처",
-                "Flutter 크로스플랫폼 모바일 앱","Vue.js 기반 전자상거래 사이트",
-                "Django REST API 백엔드 서버","Angular 기반 대시보드 시스템",
-                "Node.js 실시간 채팅 애플리케이션","Python 데이터 분석 플랫폼",
-                "Java 기반 엔터프라이즈 솔루션","TypeScript 기반 프로젝트 관리 도구",
-                "Go 언어 기반 고성능 API 서버","Rust 기반 시스템 프로그래밍 도구",
-                "Unity 3D 인디 게임 개발","React Native 모바일 커머스 앱",
-                "Kotlin Android 네이티브 앱","Swift iOS 소셜 미디어 앱",
-                "Docker 컨테이너 기반 DevOps 플랫폼","Kubernetes 클러스터 관리 시스템",
-                "PostgreSQL 기반 데이터베이스 설계","MongoDB NoSQL 문서 관리 시스템"
+                "AI 기반 개인 맞춤형 학습 플랫폼 개발",
+                "실시간 협업 화이트보드 웹 애플리케이션",
+                "블록체인 기반 탈중앙화 소셜 미디어",
+                "IoT 스마트 홈 자동화 시스템",
+                "머신러닝을 활용한 주식 투자 분석 도구",
+                "모바일 AR 쇼핑 경험 애플리케이션",
+                "클라우드 기반 팀 프로젝트 관리 도구",
+                "실시간 언어 번역 화상 회의 서비스",
+                "게임화된 온라인 코딩 교육 플랫폼",
+                "환경 데이터 모니터링 및 분석 시스템",
+                "NFT 기반 디지털 아트 마켓플레이스",
+                "음성 인식 기반 AI 비서 앱",
+                "실시간 건강 모니터링 웨어러블 연동 앱",
+                "지속가능한 에너지 관리 스마트 그리드",
+                "VR 가상 여행 체험 플랫폼",
+                "자율주행차 시뮬레이션 및 테스트 환경",
+                "개인화된 뉴스 큐레이션 AI 서비스",
+                "온라인 멘토링 매칭 플랫폼",
+                "실시간 재난 알림 및 대피 안내 시스템",
+                "크라우드펀딩 기반 스타트업 지원 플랫폼",
+                "AI 기반 개인 영양사 및 식단 관리 앱",
+                "실시간 주차 공간 찾기 및 예약 서비스",
+                "블록체인 기반 투명한 기부 추적 시스템",
+                "음악 AI 작곡 및 편집 도구",
+                "스마트 시티 교통 최적화 솔루션",
+                "온라인 의료 상담 및 처방 플랫폼",
+                "게임 스트리밍 및 커뮤니티 플랫폼",
+                "AI 기반 법률 자문 챗봇 서비스",
+                "실시간 농작물 모니터링 스마트팜",
+                "가상현실 기반 원격 교육 시스템",
+                "React 기반 소셜 네트워킹 플랫폼",
+                "Spring Boot 마이크로서비스 아키텍처",
+                "Flutter 크로스플랫폼 모바일 앱",
+                "Vue.js 기반 전자상거래 사이트",
+                "Django REST API 백엔드 서버",
+                "Angular 기반 대시보드 시스템",
+                "Node.js 실시간 채팅 애플리케이션",
+                "Python 데이터 분석 플랫폼",
+                "Java 기반 엔터프라이즈 솔루션",
+                "TypeScript 기반 프로젝트 관리 도구",
+                "Go 언어 기반 고성능 API 서버",
+                "Rust 기반 시스템 프로그래밍 도구",
+                "Unity 3D 인디 게임 개발",
+                "React Native 모바일 커머스 앱",
+                "Kotlin Android 네이티브 앱",
+                "Swift iOS 소셜 미디어 앱",
+                "Docker 컨테이너 기반 DevOps 플랫폼",
+                "Kubernetes 클러스터 관리 시스템",
+                "PostgreSQL 기반 데이터베이스 설계",
+                "MongoDB NoSQL 문서 관리 시스템"
         };
 
         String[] projectDescriptions = {
@@ -485,7 +446,7 @@ public class TestDataInitializer implements CommandLineRunner {
                 "센서와 AI를 활용하여 농작물의 생육 상태를 실시간으로 모니터링합니다.",
                 "VR 기술을 활용하여 몰입감 있는 원격 교육 환경을 제공하는 시스템입니다.",
                 "React와 Node.js를 활용한 현대적인 소셜 네트워킹 플랫폼을 구축합니다.",
-                "Spring Boot 기반의 확장 가능한 마이크로서비스 아키텍처를 설계합니다.",
+                "Spring Boot 마이크로서비스 아키텍처를 설계합니다.",
                 "Flutter를 사용하여 iOS와 Android에서 동시에 작동하는 모바일 앱을 개발합니다.",
                 "Vue.js와 최신 프론트엔드 기술을 활용한 전자상거래 웹사이트를 구현합니다.",
                 "Django REST Framework로 확장성 있는 백엔드 API 서버를 구축합니다.",
@@ -494,22 +455,20 @@ public class TestDataInitializer implements CommandLineRunner {
                 "Python과 Pandas, NumPy를 활용한 빅데이터 분석 플랫폼을 구축합니다.",
                 "Java와 Spring 생태계를 활용한 대규모 엔터프라이즈 솔루션을 개발합니다.",
                 "TypeScript의 타입 안정성을 활용한 프로젝트 관리 도구를 구현합니다.",
-                "Go 언어의 동시성을 활용한 고성능 REST API 서버를 개발합니다.",
-                "Rust의 메모리 안전성을 활용한 시스템 레벨 프로그래밍 도구를 구축합니다.",
-                "Unity 3D 엔진을 활용한 3D 인디 게임을 개발하고 스팀에 출시합니다.",
-                "React Native로 크로스플랫폼 모바일 커머스 애플리케이션을 구현합니다.",
-                "Kotlin을 사용한 Android 네이티브 앱으로 최적화된 사용자 경험을 제공합니다.",
-                "Swift와 SwiftUI를 활용한 iOS 전용 소셜 미디어 앱을 개발합니다.",
-                "Docker 컨테이너 기술을 활용한 CI/CD 파이프라인과 DevOps 플랫폼을 구축합니다.",
-                "Kubernetes를 활용한 컨테이너 오케스트레이션 및 클러스터 관리 시스템을 구현합니다.",
-                "PostgreSQL의 고급 기능을 활용한 확장성 있는 데이터베이스 아키텍처를 설계합니다.",
-                "MongoDB의 유연성을 활용한 NoSQL 기반 문서 관리 및 검색 시스템을 구축합니다."
+                "Go 언어 기반 고성능 API 서버를 개발합니다.",
+                "Rust 기반 시스템 프로그래밍 도구를 구축합니다.",
+                "Unity 3D 인디 게임 개발",
+                "React Native 모바일 커머스 앱",
+                "Kotlin Android 네이티브 앱",
+                "Swift iOS 소셜 미디어 앱",
+                "Docker 컨테이너 기반 DevOps 플랫폼",
+                "Kubernetes 클러스터 관리 시스템",
+                "PostgreSQL 기반 데이터베이스 설계",
+                "MongoDB NoSQL 문서 관리 시스템"
         };
 
         for (int i = 0; i < 50; i++) {
-            // 밑 파일 로직: user001~005가 각각 10개씩 리더
-            int teamLeaderIndex = i / 10;
-            User teamLeader = users.get(teamLeaderIndex);
+            User teamLeader = users.get(random.nextInt(users.size()));
 
             LocalDate today = LocalDate.now();
             LocalDate recruitDeadline = today.plusDays(random.nextInt(30) + 10);
@@ -528,169 +487,149 @@ public class TestDataInitializer implements CommandLineRunner {
                     .recruitCount(random.nextInt(5) + 3)
                     .build();
 
-            // 밑 파일: createdAt 무작위 과거로
-            project.setCreatedAt(LocalDateTime.now().minusDays(random.nextInt(365)));
+            ProjectRecruitment saved = projectRecruitmentRepository.save(project);
 
-            final ProjectRecruitment savedProject = projectRecruitmentRepository.save(project);
-
-            // TechPart (1~3)
+            // Tech Parts (1~3)
             int techPartCount = random.nextInt(3) + 1;
-            List<TechPart> selectedTechParts = new java.util.ArrayList<>();
+            List<TechPart> selectedParts = new ArrayList<>();
             for (int j = 0; j < techPartCount; j++) {
-                TechPart techPart;
+                TechPart tp;
                 do {
-                    techPart = techParts.get(random.nextInt(techParts.size()));
-                } while (selectedTechParts.contains(techPart));
-                selectedTechParts.add(techPart);
+                    tp = techParts.get(random.nextInt(techParts.size()));
+                } while (selectedParts.contains(tp));
+                selectedParts.add(tp);
 
                 projectTechPartRepository.save(ProjectTechPart.builder()
-                        .project(savedProject)
-                        .techPart(techPart)
+                        .project(saved)
+                        .techPart(tp)
                         .recruitCount(random.nextInt(3) + 1)
                         .build());
             }
 
-            // TechStacks (밑 파일의 getProjectTechStacks 사용)
-            List<String> projectTechStackNames = getProjectTechStacks(i, projectTitles[i % projectTitles.length]);
-            for (String name : projectTechStackNames) {
-                techStackRepository.findByNameIgnoreCase(name).ifPresent(techStack ->
-                        projectTechStackRepository.save(
-                                ProjectTechStack.builder()
-                                        .project(savedProject)
-                                        .techStack(techStack)
-                                        .recruitCount(random.nextInt(2) + 1)
-                                        .build()
-                        )
-                );
+            // Tech Stacks
+            for (String techName : getProjectTechStacks(i)) {
+                techStackRepository.findByNameIgnoreCase(techName).ifPresent(ts -> {
+                    projectTechStackRepository.save(ProjectTechStack.builder()
+                            .project(saved)
+                            .techStack(ts)
+                            .recruitCount(new Random().nextInt(2) + 1)
+                            .build());
+                });
             }
 
-            if ((i + 1) % 10 == 0) log.info("Created {} projects...", i + 1);
+            // Members (leader + 2~5)
+            projectMemberRepository.save(ProjectMember.builder()
+                    .project(saved)
+                    .user(teamLeader)
+                    .role(ProjectMember.Role.LEADER)
+                    .techPart(selectedParts.get(0).getName())
+                    .build());
+
+            int additional = random.nextInt(4) + 2;
+            Set<Long> usedUserIds = new HashSet<>();
+            usedUserIds.add(teamLeader.getUserId());
+
+            for (int j = 0; j < additional; j++) {
+                User member;
+                do {
+                    member = users.get(random.nextInt(users.size()));
+                } while (!usedUserIds.add(member.getUserId()));
+
+                String memberPart = selectedParts.get(random.nextInt(selectedParts.size())).getName();
+
+                projectMemberRepository.save(ProjectMember.builder()
+                        .project(saved)
+                        .user(member)
+                        .role(ProjectMember.Role.MEMBER)
+                        .techPart(memberPart)
+                        .build());
+            }
         }
 
-        log.info("Successfully created 50 projects with related tech parts and tech stacks");
+        log.info("Projects created: {}", 50);
     }
 
-    // 밑 파일 버전 유지
-    private List<String> getProjectTechStacks(int projectIndex, String projectTitle) {
+    private List<String> getProjectTechStacks(int projectIndex) {
         return switch (projectIndex % 50) {
-            case 0 -> Arrays.asList("React","TypeScript","Node.js","Python","PostgreSQL","Docker");
-            case 1 -> Arrays.asList("React","JavaScript","Node.js","Express.js","Socket.io","MongoDB");
-            case 2 -> Arrays.asList("Vue.js","JavaScript","Python","Django","PostgreSQL","Redis");
-            case 3 -> Arrays.asList("Java","Spring Boot","Python","PostgreSQL","Docker","AWS");
-            case 4 -> Arrays.asList("Python","Django","React","TypeScript","PostgreSQL","TensorFlow");
-            case 5 -> Arrays.asList("React Native","TypeScript","Node.js","MongoDB","AWS");
-            case 6 -> Arrays.asList("Angular","TypeScript","Java","Spring Boot","PostgreSQL","Docker");
-            case 7 -> Arrays.asList("React","TypeScript","Python","FastAPI","PostgreSQL","Docker");
-            case 8 -> Arrays.asList("Flutter","Dart","Firebase","Node.js","MongoDB");
-            case 9 -> Arrays.asList("Python","NumPy","Pandas","Scikit-learn","PostgreSQL","Docker");
-            case 10 -> Arrays.asList("React","TypeScript","Solidity","Web3.js","MongoDB");
-            case 11 -> Arrays.asList("Python","TensorFlow","React","Node.js","PostgreSQL");
-            case 12 -> Arrays.asList("React Native","TypeScript","Firebase","AWS");
-            case 13 -> Arrays.asList("Java","Spring Boot","React","PostgreSQL","Docker","Kubernetes");
-            case 14 -> Arrays.asList("Unity","C#","Blender","Firebase");
-            case 15 -> Arrays.asList("Python","Selenium","React","Node.js","PostgreSQL");
-            case 16 -> Arrays.asList("React","TypeScript","Python","TensorFlow","PostgreSQL");
-            case 17 -> Arrays.asList("Angular","TypeScript","Java","Spring Boot","PostgreSQL");
-            case 18 -> Arrays.asList("Python","Django","React","PostgreSQL","AWS");
-            case 19 -> Arrays.asList("React","JavaScript","Node.js","MongoDB","AWS");
-            case 20 -> Arrays.asList("Python","TensorFlow","React","Node.js","MongoDB");
-            case 21 -> Arrays.asList("React","TypeScript","Node.js","PostgreSQL","Redis");
-            case 22 -> Arrays.asList("Solidity","Web3.js","React","Node.js","MongoDB");
-            case 23 -> Arrays.asList("Python","TensorFlow","React","Node.js","PostgreSQL");
-            case 24 -> Arrays.asList("Java","Spring Boot","React","PostgreSQL","AWS");
-            case 25 -> Arrays.asList("React","TypeScript","Node.js","PostgreSQL","Docker");
-            case 26 -> Arrays.asList("Unity","C#","React","Node.js","MongoDB");
-            case 27 -> Arrays.asList("Python","TensorFlow","React","PostgreSQL","Docker");
-            case 28 -> Arrays.asList("Java","Spring Boot","Python","PostgreSQL","Docker");
-            case 29 -> Arrays.asList("Unity","C#","Blender","Node.js","MongoDB");
-            case 30 -> Arrays.asList("React","TypeScript","Node.js","MongoDB","Docker");
-            case 31 -> Arrays.asList("Java","Spring Boot","PostgreSQL","Docker","Kubernetes");
-            case 32 -> Arrays.asList("Flutter","Dart","Firebase","MongoDB");
-            case 33 -> Arrays.asList("Vue.js","JavaScript","Node.js","PostgreSQL","Docker");
-            case 34 -> Arrays.asList("Python","Django","PostgreSQL","Redis","Docker");
-            case 35 -> Arrays.asList("Angular","TypeScript","Java","PostgreSQL","Docker");
-            case 36 -> Arrays.asList("Node.js","JavaScript","Socket.io","MongoDB","Redis");
-            case 37 -> Arrays.asList("Python","Pandas","NumPy","PostgreSQL","Docker");
-            case 38 -> Arrays.asList("Java","Spring Boot","PostgreSQL","Docker","AWS");
-            case 39 -> Arrays.asList("TypeScript","React","Node.js","PostgreSQL","Docker");
-            case 40 -> Arrays.asList("Go","PostgreSQL","Redis","Docker","Kubernetes");
-            case 41 -> Arrays.asList("Rust","PostgreSQL","Docker","Linux");
-            case 42 -> Arrays.asList("Unity","C#","Blender","Firebase");
-            case 43 -> Arrays.asList("React Native","TypeScript","Firebase","MongoDB");
-            case 44 -> Arrays.asList("Kotlin","Android","Firebase","SQLite");
-            case 45 -> Arrays.asList("Swift","iOS","Firebase","CoreData");
-            case 46 -> Arrays.asList("Docker","Kubernetes","Jenkins","AWS","Linux");
-            case 47 -> Arrays.asList("Kubernetes","Docker","Helm","AWS","Linux");
-            case 48 -> Arrays.asList("PostgreSQL","Docker","pgAdmin","AWS");
-            case 49 -> Arrays.asList("MongoDB","Node.js","Express.js","Docker");
-            default -> Arrays.asList("JavaScript","Node.js","MongoDB");
+            case 0 -> Arrays.asList("React", "TypeScript", "Node.js", "Python", "PostgreSQL", "Docker");
+            case 1 -> Arrays.asList("React", "JavaScript", "Node.js", "Express.js", "Socket.io", "MongoDB");
+            case 2 -> Arrays.asList("Vue.js", "JavaScript", "Python", "Django", "PostgreSQL", "Redis");
+            case 3 -> Arrays.asList("Java", "Spring Boot", "Python", "PostgreSQL", "Docker", "AWS");
+            case 4 -> Arrays.asList("Python", "Django", "React", "TypeScript", "PostgreSQL", "TensorFlow");
+            case 5 -> Arrays.asList("React Native", "TypeScript", "Node.js", "MongoDB", "AWS");
+            case 6 -> Arrays.asList("Angular", "TypeScript", "Java", "Spring Boot", "PostgreSQL", "Docker");
+            case 7 -> Arrays.asList("React", "TypeScript", "Python", "FastAPI", "PostgreSQL", "Docker");
+            case 8 -> Arrays.asList("Flutter", "Dart", "Firebase", "Node.js", "MongoDB");
+            case 9 -> Arrays.asList("Python", "NumPy", "Pandas", "Scikit-learn", "PostgreSQL", "Docker");
+            case 10 -> Arrays.asList("React", "TypeScript", "Solidity", "Web3.js", "MongoDB");
+            case 11 -> Arrays.asList("Python", "TensorFlow", "React", "Node.js", "PostgreSQL");
+            case 12 -> Arrays.asList("React Native", "TypeScript", "Firebase", "AWS");
+            case 13 -> Arrays.asList("Java", "Spring Boot", "React", "PostgreSQL", "Docker", "Kubernetes");
+            case 14 -> Arrays.asList("Unity", "C#", "Blender", "Firebase");
+            case 15 -> Arrays.asList("Python", "Selenium", "React", "Node.js", "PostgreSQL");
+            case 16 -> Arrays.asList("React", "TypeScript", "Python", "TensorFlow", "PostgreSQL");
+            case 17 -> Arrays.asList("Angular", "TypeScript", "Java", "Spring Boot", "PostgreSQL");
+            case 18 -> Arrays.asList("Python", "Django", "React", "PostgreSQL", "AWS");
+            case 19 -> Arrays.asList("React", "JavaScript", "Node.js", "MongoDB", "AWS");
+            case 20 -> Arrays.asList("Python", "TensorFlow", "React", "Node.js", "MongoDB");
+            case 21 -> Arrays.asList("React", "TypeScript", "Node.js", "PostgreSQL", "Redis");
+            case 22 -> Arrays.asList("Solidity", "Web3.js", "React", "Node.js", "MongoDB");
+            case 23 -> Arrays.asList("Python", "TensorFlow", "React", "Node.js", "PostgreSQL");
+            case 24 -> Arrays.asList("Java", "Spring Boot", "React", "PostgreSQL", "AWS");
+            case 25 -> Arrays.asList("React", "TypeScript", "Node.js", "PostgreSQL", "Docker");
+            case 26 -> Arrays.asList("Unity", "C#", "React", "Node.js", "MongoDB");
+            case 27 -> Arrays.asList("Python", "TensorFlow", "React", "PostgreSQL", "Docker");
+            case 28 -> Arrays.asList("Java", "Spring Boot", "Python", "PostgreSQL", "Docker");
+            case 29 -> Arrays.asList("Unity", "C#", "Blender", "Node.js", "MongoDB");
+            case 30 -> Arrays.asList("React", "TypeScript", "Node.js", "MongoDB", "Docker");
+            case 31 -> Arrays.asList("Java", "Spring Boot", "PostgreSQL", "Docker", "Kubernetes");
+            case 32 -> Arrays.asList("Flutter", "Dart", "Firebase", "MongoDB");
+            case 33 -> Arrays.asList("Vue.js", "JavaScript", "Node.js", "PostgreSQL", "Docker");
+            case 34 -> Arrays.asList("Python", "Django", "PostgreSQL", "Redis", "Docker");
+            case 35 -> Arrays.asList("Angular", "TypeScript", "Java", "PostgreSQL", "Docker");
+            case 36 -> Arrays.asList("Node.js", "JavaScript", "Socket.io", "MongoDB", "Redis");
+            case 37 -> Arrays.asList("Python", "Pandas", "NumPy", "PostgreSQL", "Docker");
+            case 38 -> Arrays.asList("Java", "Spring Boot", "PostgreSQL", "Docker", "AWS");
+            case 39 -> Arrays.asList("TypeScript", "React", "Node.js", "PostgreSQL", "Docker");
+            case 40 -> Arrays.asList("Go", "PostgreSQL", "Redis", "Docker", "Kubernetes");
+            case 41 -> Arrays.asList("Rust", "PostgreSQL", "Docker", "Linux");
+            case 42 -> Arrays.asList("Unity", "C#", "Blender", "Firebase");
+            case 43 -> Arrays.asList("React Native", "TypeScript", "Firebase", "MongoDB");
+            case 44 -> Arrays.asList("Kotlin", "Android", "Firebase", "SQLite");
+            case 45 -> Arrays.asList("Swift", "iOS", "Firebase", "CoreData");
+            case 46 -> Arrays.asList("Docker", "Kubernetes", "Jenkins", "AWS", "Linux");
+            case 47 -> Arrays.asList("Kubernetes", "Docker", "Helm", "AWS", "Linux");
+            case 48 -> Arrays.asList("PostgreSQL", "Docker", "pgAdmin", "AWS");
+            case 49 -> Arrays.asList("MongoDB", "Node.js", "Express.js", "Docker");
+            default -> Arrays.asList("JavaScript", "Node.js", "MongoDB");
         };
     }
 
-    /**
-     * 사용자 기술스택 초기화 (밑 파일 로직 유지)
-     */
     private void initializeUserTechStacks() {
-        log.info("Initializing user tech stack data...");
+        log.info("Assigning user tech stacks ...");
         List<User> users = userRepository.findAll();
         List<TechStack> techStacks = techStackRepository.findAll();
         Random random = new Random();
 
-        if (users.isEmpty() || techStacks.isEmpty()) {
-            log.warn("Required data not found. Users: {}, TechStacks: {}", users.size(), techStacks.size());
-            return;
-        }
-
-        String[] commonTechNames = {
-                "React","TypeScript","JavaScript","Node.js","Python","Java","Spring Boot",
-                "PostgreSQL","MongoDB","Docker","AWS","Vue.js","Angular","Django",
-                "FastAPI","Express.js","MySQL","Redis","Flutter","React Native",
-                "Kubernetes","TensorFlow","Unity 3D","HTML","CSS","Git","Linux"
-        };
-
-        List<TechStack> commonTechStacks = new java.util.ArrayList<>();
-        List<TechStack> otherTechStacks = new java.util.ArrayList<>();
-        for (TechStack s : techStacks) {
-            boolean isCommon = false;
-            for (String cn : commonTechNames) {
-                if (s.getName().equalsIgnoreCase(cn)) { isCommon = true; break; }
-            }
-            if (isCommon) commonTechStacks.add(s); else otherTechStacks.add(s);
-        }
-
-        List<UserTechStack> all = new java.util.ArrayList<>();
         for (User user : users) {
-            int techStackCount = new Random().nextInt(4) + 3; // 3-6
-            List<TechStack> picked = new java.util.ArrayList<>();
-            for (int i = 0; i < techStackCount; i++) {
-                TechStack pick;
-                int attempts = 0;
+            int count = random.nextInt(5) + 3;
+            Set<Long> used = new HashSet<>();
+            for (int i = 0; i < count; i++) {
+                TechStack ts;
                 do {
-                    attempts++;
-                    if (new Random().nextDouble() < 0.8 && !commonTechStacks.isEmpty()) {
-                        pick = commonTechStacks.get(new Random().nextInt(commonTechStacks.size()));
-                    } else if (!otherTechStacks.isEmpty()) {
-                        pick = otherTechStacks.get(new Random().nextInt(otherTechStacks.size()));
-                    } else {
-                        pick = techStacks.get(new Random().nextInt(techStacks.size()));
-                    }
-                } while (picked.contains(pick) && attempts < 10);
+                    ts = techStacks.get(random.nextInt(techStacks.size()));
+                } while (!used.add(ts.getTechStackId()));
 
-                if (!picked.contains(pick)) {
-                    picked.add(pick);
-                    int level = commonTechStacks.contains(pick) ? (new Random().nextInt(3) + 3) : (new Random().nextInt(4) + 1);
-                    all.add(UserTechStack.builder().user(user).stack(pick).skillLevel(level).build());
-                }
+                userTechStackRepository.save(UserTechStack.builder()
+                        .user(user)
+                        .stack(ts)
+                        .skillLevel(random.nextInt(5) + 1)
+                        .build());
             }
         }
-
-        if (!all.isEmpty()) userTechStackRepository.saveAll(all);
-        log.info("Successfully created {} user tech stack relationships for {} users", all.size(), users.size());
+        log.info("User tech stacks assigned to {} users", users.size());
     }
 
-    /**
-     * ⬇️ 위 파일에서 가져온: 사용자 경력 시드
-     */
     private void initializeUserExperiences() {
         log.info("Creating user experiences ...");
         List<User> users = userRepository.findAll();
@@ -762,9 +701,6 @@ public class TestDataInitializer implements CommandLineRunner {
         log.info("User experiences created: {}", total);
     }
 
-    /**
-     * ⬇️ 위 파일에서 가져온: 사용자 학력 시드
-     */
     private void initializeUserEducations() {
         log.info("Creating user educations ...");
         List<User> users = userRepository.findAll();
@@ -812,9 +748,6 @@ public class TestDataInitializer implements CommandLineRunner {
         log.info("User educations created: {}", total);
     }
 
-    /**
-     * ⬇️ 위 파일에서 가져온: 팀원 리뷰 시드 (프로젝트 생성 후)
-     */
     private void initializeTeamMemberReviews() {
         log.info("Creating team member reviews ...");
 
@@ -850,7 +783,7 @@ public class TestDataInitializer implements CommandLineRunner {
                     if (reviewer.getUser().getUserId().equals(reviewee.getUser().getUserId())) continue;
                     if (!random.nextBoolean()) continue;
 
-                    int rating = random.nextInt(3) + 3; // 3~5
+                    int rating = random.nextInt(3) + 3;
                     String comment = (rating >= 4)
                             ? positive[random.nextInt(positive.length)]
                             : neutral[random.nextInt(neutral.length)];
@@ -867,181 +800,5 @@ public class TestDataInitializer implements CommandLineRunner {
             }
         }
         log.info("Team member reviews created: {}", total);
-    }
-
-    // ─────────────────────────────────────────────────────
-    // 밑 파일 고유 로직 유지: recommendation_history 테이블 업데이트, Like 생성 등
-    // ─────────────────────────────────────────────────────
-
-    private void updateRecommendationHistoryTable() {
-        try {
-            log.info("Updating recommendation_history table structure...");
-            jdbcTemplate.execute("ALTER TABLE recommendation_history ADD COLUMN IF NOT EXISTS recommendation_type VARCHAR(10) DEFAULT 'PROJECT'");
-            jdbcTemplate.execute("ALTER TABLE recommendation_history ADD COLUMN IF NOT EXISTS project_context_id BIGINT");
-            jdbcTemplate.update("UPDATE recommendation_history SET recommendation_type = 'PROJECT' WHERE recommended_project_id IS NOT NULL AND recommendation_type IS NULL");
-            jdbcTemplate.update("UPDATE recommendation_history SET recommendation_type = 'MEMBER' WHERE recommended_user_id IS NOT NULL AND recommendation_type IS NULL");
-            log.info("✅ recommendation_history 테이블 업데이트 완료");
-        } catch (Exception e) {
-            log.warn("⚠️ recommendation_history 테이블 업데이트 실패: {}", e.getMessage());
-        }
-    }
-
-    private void initializeLikeData() {
-        log.info("Initializing smart like data based on tech stack similarity...");
-
-        List<User> users = userRepository.findAll();
-        List<ProjectRecruitment> projects = projectRecruitmentRepository.findAll();
-        Random random = new Random();
-
-        if (users.isEmpty() || projects.isEmpty()) {
-            log.warn("Required data not found. Users: {}, Projects: {}", users.size(), projects.size());
-            return;
-        }
-
-        List<User> likeUsers = users.size() > 20 ? users.subList(0, 20) : users;
-        log.info("Using {} users (out of {}) for like generation", likeUsers.size(), users.size());
-
-        List<Like> allLikes = new java.util.ArrayList<>();
-
-        for (User user : likeUsers) {
-            int likesPerUser = random.nextInt(8) + 1;
-            List<ProjectRecruitment> likedProjects = new java.util.ArrayList<>();
-
-            List<UserTechStack> userTechStacks = userTechStackRepository.findByUser(user);
-            List<String> userTechNames = userTechStacks.stream()
-                    .map(uts -> uts.getStack().getName().toLowerCase())
-                    .toList();
-
-            if (userTechNames.isEmpty()) continue;
-
-            List<ProjectSimilarity> projectSimilarities = new java.util.ArrayList<>();
-
-            for (ProjectRecruitment project : projects) {
-                if (project.getTeamLeader().getUserId().equals(user.getUserId())) continue;
-
-                List<ProjectTechStack> projectTechStacks = projectTechStackRepository.findByProject(project);
-                List<String> projectTechNames = projectTechStacks.stream()
-                        .map(pts -> pts.getTechStack().getName().toLowerCase())
-                        .toList();
-
-                if (projectTechNames.isEmpty()) continue;
-
-                double similarity = calculateJaccardSimilarity(userTechNames, projectTechNames);
-                double baseProbability = calculateLikeProbability(similarity);
-
-                List<ProjectTechPart> projectTechParts = projectTechPartRepository.findByProject(project);
-                UserProfile userProfile = userProfileRepository.findByUser(user).orElse(null);
-
-                boolean techPartMatches = false;
-                if (userProfile != null && userProfile.getTechPart() != null) {
-                    techPartMatches = projectTechParts.stream()
-                            .anyMatch(ptp -> ptp.getTechPart().getTechPartId()
-                                    .equals(userProfile.getTechPart().getTechPartId()));
-                }
-                if (techPartMatches) baseProbability *= 1.5;
-
-                long daysAgo = java.time.Duration.between(project.getCreatedAt(), LocalDateTime.now()).toDays();
-                if (daysAgo < 30) baseProbability *= 1.3;
-                else if (daysAgo < 90) baseProbability *= 1.1;
-
-                baseProbability = Math.min(baseProbability, 0.8);
-
-                projectSimilarities.add(new ProjectSimilarity(project, similarity, baseProbability));
-            }
-
-            projectSimilarities.sort((a, b) -> Double.compare(b.probability, a.probability));
-
-            for (ProjectSimilarity ps : projectSimilarities) {
-                if (likedProjects.size() >= likesPerUser) break;
-                if (random.nextDouble() < ps.probability) {
-                    likedProjects.add(ps.project);
-
-                    Like like = Like.builder()
-                            .user(user)
-                            .targetId(ps.project.getProjectId())
-                            .targetType(TargetType.PROJECT)
-                            .build();
-
-                    LocalDateTime likeCreatedAt = generateRandomDateBetween(ps.project.getCreatedAt(), LocalDateTime.now());
-                    like.setCreatedAt(likeCreatedAt);
-
-                    allLikes.add(like);
-                }
-            }
-
-            if ((likeUsers.indexOf(user) + 1) % 10 == 0) {
-                log.info("Processed {} users, generated {} likes so far...",
-                        likeUsers.indexOf(user) + 1, allLikes.size());
-            }
-        }
-
-        if (!allLikes.isEmpty()) {
-            try {
-                likeRepository.saveAll(allLikes);
-            } catch (Exception e) {
-                log.error("⚠️ 좋아요 배치 저장 실패: {}", e.getMessage());
-                int success = 0;
-                for (Like like : allLikes) {
-                    try { likeRepository.save(like); success++; }
-                    catch (Exception ex) { log.warn("개별 좋아요 저장 실패: {}", ex.getMessage()); }
-                }
-                log.info("개별 저장으로 {} 개의 좋아요 저장됨", success);
-            }
-        }
-
-        log.info("✅ Successfully generated {} smart likes for {} users based on tech stack similarity",
-                allLikes.size(), likeUsers.size());
-
-        logLikeStatistics(allLikes.size(), likeUsers.size());
-    }
-
-    private double calculateJaccardSimilarity(List<String> userTechs, List<String> projectTechs) {
-        if (userTechs.isEmpty() || projectTechs.isEmpty()) return 0.0;
-        java.util.Set<String> userSet = new java.util.HashSet<>(userTechs);
-        java.util.Set<String> projectSet = new java.util.HashSet<>(projectTechs);
-        java.util.Set<String> intersection = new java.util.HashSet<>(userSet);
-        intersection.retainAll(projectSet);
-        java.util.Set<String> union = new java.util.HashSet<>(userSet);
-        union.addAll(projectSet);
-        return union.isEmpty() ? 0.0 : (double) intersection.size() / union.size();
-    }
-
-    private double calculateLikeProbability(double jaccardSimilarity) {
-        if (jaccardSimilarity >= 0.5) return 0.7;
-        else if (jaccardSimilarity >= 0.3) return 0.5;
-        else if (jaccardSimilarity >= 0.1) return 0.25;
-        else if (jaccardSimilarity > 0) return 0.1;
-        else return 0.02;
-    }
-
-    private LocalDateTime generateRandomDateBetween(LocalDateTime start, LocalDateTime end) {
-        long startSeconds = start.toEpochSecond(java.time.ZoneOffset.UTC);
-        long endSeconds = end.toEpochSecond(java.time.ZoneOffset.UTC);
-        long randomSeconds = startSeconds + (long) (Math.random() * (endSeconds - startSeconds));
-        return LocalDateTime.ofEpochSecond(randomSeconds, 0, java.time.ZoneOffset.UTC);
-    }
-
-    private void logLikeStatistics(int totalLikes, int totalUsers) {
-        double avgLikesPerUser = (double) totalLikes / totalUsers;
-        long totalProjects = projectRecruitmentRepository.count();
-        double likeRatio = (double) totalLikes / (totalUsers * totalProjects) * 100;
-
-        log.info("📊 Like Statistics:");
-        log.info("  - Total Likes: {}", totalLikes);
-        log.info("  - Average Likes per User: {:.1f}", avgLikesPerUser);
-        log.info("  - Overall Like Ratio: {:.2f}% ({}개 중 {}개)",
-                likeRatio, totalUsers * totalProjects, totalLikes);
-    }
-
-    private static class ProjectSimilarity {
-        final ProjectRecruitment project;
-        final double similarity;
-        final double probability;
-
-        ProjectSimilarity(ProjectRecruitment project, double similarity, double probability) {
-            this.project = project;
-            this.similarity = similarity;
-            this.probability = probability;
-        }
     }
 }

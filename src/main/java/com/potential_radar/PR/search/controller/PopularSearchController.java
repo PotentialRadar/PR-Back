@@ -85,7 +85,7 @@ public class PopularSearchController {
     @PostMapping("/cache/evict/{pattern}")
     public ResponseEntity<Map<String, String>> evictCache(@PathVariable String pattern) {
         try {
-            searchCacheService.evictSearchCache(pattern);
+            searchCacheService.evictProjectSearchCache(pattern);
             return ResponseEntity.ok(Map.of(
                 "message", "Cache evicted for pattern: " + pattern
             ));

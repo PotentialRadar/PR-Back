@@ -9,8 +9,17 @@ import com.potential_radar.PR.user.repository.*;
 import com.potential_radar.PR.project.domain.*;
 import com.potential_radar.PR.project.repository.*;
 import com.potential_radar.PR.recommendation.repository.RecommendationHistoryRepository;
+import com.potential_radar.PR.invitation.repository.TeamInvitationRepository;
+import com.potential_radar.PR.like.domain.Like;
+import com.potential_radar.PR.like.domain.TargetType;
+import com.potential_radar.PR.like.repository.LikeRepository;
+import com.potential_radar.PR.project.repository.TeamMemberReviewRepository;
+import com.potential_radar.PR.search.service.DataSyncService;
+import com.potential_radar.PR.search.service.SearchCacheService;
+import com.potential_radar.PR.search.service.PopularSearchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -43,7 +52,11 @@ public class TestDataInitializer implements CommandLineRunner {
     private final UserEducationRepository userEducationRepository;
     private final PortfolioProjectRepository portfolioProjectRepository;
     private final TeamMemberReviewRepository teamMemberReviewRepository;
+    private final DataSyncService dataSyncService;
+    private final SearchCacheService searchCacheService;
+    private final PopularSearchService popularSearchService;
     private final PasswordEncoder passwordEncoder;
+
 
     @Override
     @Transactional
@@ -82,6 +95,29 @@ public class TestDataInitializer implements CommandLineRunner {
             log.info("Skip projects (already present)");
         }
 
+        // Elasticsearch & Redis 완전 초기화 후 동기화 (프로젝트 생성 후)
+        log.info("Clearing and synchronizing Elasticsearch and Redis after project initialization...");
+        try {
+            // Redis 모든 데이터 완전 삭제
+            searchCacheService.clearAllRedisData();
+            log.info("Redis data completely cleared");
+            
+            // Elasticsearch 기존 데이터 완전 삭제
+            dataSyncService.clearAllData();
+            log.info("Elasticsearch data completely cleared");
+            
+            // Elasticsearch 새 데이터로 동기화
+            dataSyncService.syncAllData();
+            log.info("Elasticsearch sync completed");
+            
+            // 사용 빈도 기반 인기 기술스택 업데이트
+            popularSearchService.updatePopularItems();
+            log.info("Popular tech stacks updated based on usage frequency");
+        } catch (Exception e) {
+            log.warn("Failed to initialize external stores: {}", e.getMessage());
+        }
+
+        // ✅ 위 파일 차이 통합: 팀원 리뷰 (프로젝트 생성 후 1회)
         if (teamMemberReviewRepository.count() == 0) {
             initializeTeamMemberReviews();
         } else {

@@ -1,6 +1,8 @@
 package com.potential_radar.PR.search.service;
 
 import com.potential_radar.PR.search.repository.SearchEventRepository;
+import com.potential_radar.PR.project.repository.ProjectTechStackRepository;
+import com.potential_radar.PR.user.repository.UserTechStackRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,6 +23,8 @@ public class PopularSearchService {
     
     private final SearchEventRepository searchEventRepository;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final ProjectTechStackRepository projectTechStackRepository;
+    private final UserTechStackRepository userTechStackRepository;
     
     // 설정 값들
     @Value("${app.popular-search.days:30}")
@@ -93,26 +97,22 @@ public class PopularSearchService {
     
     private void updatePopularTechStacks() {
         try {
-            LocalDateTime since = LocalDateTime.now().minusDays(popularSearchDays);
-            PageRequest pageRequest = PageRequest.of(0, maxTechStacks);
+            // 프로젝트에서 많이 사용하는 기술스택 조회 (사용 빈도 기반)
+            List<Object[]> results = projectTechStackRepository.findMostUsedTechStacks();
             
-            List<Object[]> results = searchEventRepository.findPopularTechStacks(since, pageRequest);
-            
-            // 최소 검색 횟수 필터링 추가
             List<String> popularTechStacks = results.stream()
-                .filter(row -> ((Long) row[1]) >= minSearchCount) // 최소 검색 횟수 체크
+                .limit(maxTechStacks) // 최대 개수 제한
                 .map(row -> {
                     String techStack = (String) row[0];
                     Long count = (Long) row[1];
-                    log.debug("Popular tech stack: {} ({}회)", techStack, count);
+                    log.debug("Most used project tech stack: {} ({}회 사용)", techStack, count);
                     return techStack;
                 })
                 .collect(Collectors.toList());
                 
             Duration cacheDuration = Duration.ofHours(cacheDurationHours);
             redisTemplate.opsForValue().set(POPULAR_TECH_STACKS_KEY, popularTechStacks, cacheDuration);
-            log.info("Updated {} popular tech stacks ({}+ searches in {} days)", 
-                    popularTechStacks.size(), minSearchCount, popularSearchDays);
+            log.info("Updated {} most used project tech stacks", popularTechStacks.size());
         } catch (Exception e) {
             log.error("Failed to update popular tech stacks: {}", e.getMessage());
         }
@@ -207,25 +207,22 @@ public class PopularSearchService {
     
     private void updatePopularUserTechStacks() {
         try {
-            LocalDateTime since = LocalDateTime.now().minusDays(popularSearchDays);
-            PageRequest pageRequest = PageRequest.of(0, maxTechStacks);
-            
-            List<Object[]> results = searchEventRepository.findPopularUserTechStacks(since, pageRequest);
+            // 사용자들이 많이 사용하는 기술스택 조회 (사용 빈도 기반)
+            List<Object[]> results = userTechStackRepository.findMostUsedTechStacks();
             
             List<String> popularUserTechStacks = results.stream()
-                .filter(row -> ((Long) row[1]) >= minSearchCount)
+                .limit(maxTechStacks) // 최대 개수 제한
                 .map(row -> {
                     String techStack = (String) row[0];
                     Long count = (Long) row[1];
-                    log.debug("Popular user tech stack: {} ({}회)", techStack, count);
+                    log.debug("Most used user tech stack: {} ({}명 사용)", techStack, count);
                     return techStack;
                 })
                 .collect(Collectors.toList());
                 
             Duration cacheDuration = Duration.ofHours(cacheDurationHours);
             redisTemplate.opsForValue().set(POPULAR_USER_TECH_STACKS_KEY, popularUserTechStacks, cacheDuration);
-            log.info("Updated {} popular user tech stacks ({}+ searches in {} days)", 
-                    popularUserTechStacks.size(), minSearchCount, popularSearchDays);
+            log.info("Updated {} most used user tech stacks", popularUserTechStacks.size());
         } catch (Exception e) {
             log.error("Failed to update popular user tech stacks: {}", e.getMessage());
         }

@@ -19,12 +19,30 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Set;
 
+/**
+ * 🎫 JWT 토큰 제공자 서비스
+ * 
+ * JWT 토큰의 생성, 검증, 파싱을 담당하는 핵심 서비스입니다.
+ * 
+ * 주요 기능:
+ * - Access Token 생성 (1시간 유효)
+ * - JWT 토큰 서명 검증
+ * - 토큰에서 사용자 정보 추출
+ * - Spring Security 인증 객체 생성
+ * 
+ * 보안 고려사항:
+ * - HMAC-SHA256 알고리즘 사용
+ * - 256비트 이상의 비밀 키 사용
+ * - 토큰 만료 시간 검증
+ */
 @RequiredArgsConstructor
 @Service
 @Slf4j
 @Getter
 public class TokenProvider {
+    // 📄 JWT 설정 정보를 담는 설정 클래스
     private final JwtProperties jwtProperties;
+    // 🔑 JWT 서명에 사용될 비밀 키 (애플리케이션 시작 시 초기화)
     private Key secretKey;
 
     @PostConstruct
@@ -48,18 +66,39 @@ public class TokenProvider {
         return generateToken(user, Duration.ofMillis(jwtProperties.getAccessTokenExpiration()));
     }
 
-    // JWT 토큰 생성 메서드
+    /**
+     * 🏭 JWT 토큰 실제 생성 내부 메소드
+     * 
+     * JWT 토큰의 헤더, 페이로드, 서명을 생성하여 완전한 토큰을 만듭니다.
+     * 
+     * 토큰 구성:
+     * - Header: 토큰 타입(JWT), 알고리즘(HS256)
+     * - Payload: 사용자 정보(email, userId), 만료시간, 발급자 등
+     * - Signature: HMAC-SHA256 알고리즘으로 생성된 서명
+     * 
+     * @param expiredAt 토큰 만료 시점
+     * @param user 토큰에 포함될 사용자 정보
+     * @return 생성된 JWT 토큰 문자열
+     */
     private String makeToken(Date expiredAt, User user) {
         Date now = new Date();
 
         return Jwts.builder()
+                // 🏷️ 헤더 설정: 토큰 타입을 JWT로 지정
                 .setHeaderParam(Header.TYPE, Header.JWT_TYPE)
+                // 🏢 발급자 정보 설정
                 .setIssuer(jwtProperties.getIssuer())
+                // 📅 토큰 발급 시각
                 .setIssuedAt(now)
+                // ⏰ 토큰 만료 시각
                 .setExpiration(expiredAt)
+                // 👤 토큰 주체(사용자 이메일)
                 .setSubject(user.getEmail())
+                // 🏷️ 커스텀 클레임: 사용자 ID
                 .claim("id", user.getUserId())
+                // 🔐 HMAC-SHA256 알고리즘으로 서명
                 .signWith(secretKey, SignatureAlgorithm.HS256)
+                // 📎 최종 토큰 문자열로 압축
                 .compact();
     }
 

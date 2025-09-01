@@ -16,6 +16,7 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
+import org.springframework.http.ResponseCookie;
 
 import java.io.IOException;
 import java.util.Map;
@@ -31,6 +32,9 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
 
     @Value("${app.frontend-redirect-url}")
     private String frontendCallbackUrl;
+    
+    @Value("${app.cookie.secure:true}")
+    private boolean cookieSecure;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -64,21 +68,34 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         // 로컬 로그인과 동일하게 Access Token과 Refresh Token을 모두 생성
         String accessToken = tokenProvider.generateAccessToken(user);
         String refreshToken = refreshTokenService.createAndSaveRefreshToken(user);
-        
-        log.info("🔑 생성된 AccessToken: {}", accessToken.substring(0, Math.min(50, accessToken.length())) + "...");
-        log.info("🔑 토큰 검증 결과: {}", tokenProvider.validToken(accessToken));
 
-        // Refresh Token은 보안을 위해 HttpOnly 쿠키로 전달
-        Cookie refreshTokenCookie = new Cookie("refresh_token", refreshToken);
-        refreshTokenCookie.setHttpOnly(true);
-        refreshTokenCookie.setSecure(true); // HTTPS 환경에서만 전송되도록 설정
-        refreshTokenCookie.setPath("/"); // 모든 경로에서 쿠키 사용
-        refreshTokenCookie.setMaxAge((int) (tokenProvider.getJwtProperties().getRefreshTokenExpiration() / 1000)); // 만료시간 설정 (초 단위)
-        response.addCookie(refreshTokenCookie);
+        // 민감 정보 로깅 최소화
+        if (log.isDebugEnabled()) {
+            log.debug("🔑 토큰 검증 결과: {}", tokenProvider.validToken(accessToken));
+        }
 
-        // Access Token은 프론트엔드가 바로 사용할 수 있도록 리다이렉트 URL의 쿼리 파라미터로 전달
-        String redirectWithToken = frontendCallbackUrl + "?accessToken=" + accessToken;
-        response.sendRedirect(redirectWithToken);
+        // Access Token을 HttpOnly + SameSite 쿠키로 전달
+        ResponseCookie accessTokenCookie = ResponseCookie.from("access_token", accessToken)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .path("/")
+                .sameSite("Lax")
+                .maxAge(java.time.Duration.ofMillis(tokenProvider.getJwtProperties().getAccessTokenExpiration()))
+                .build();
+        response.addHeader("Set-Cookie", accessTokenCookie.toString());
+
+        // Refresh Token을 HttpOnly + SameSite 쿠키로 전달
+        ResponseCookie refreshTokenCookie = ResponseCookie.from("refresh_token", refreshToken)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .path("/")
+                .sameSite("Lax")
+                .maxAge(java.time.Duration.ofMillis(tokenProvider.getJwtProperties().getRefreshTokenExpiration()))
+                .build();
+        response.addHeader("Set-Cookie", refreshTokenCookie.toString());
+
+        // 프론트엔드로 리다이렉트 (토큰은 쿠키로 전달됨)
+        response.sendRedirect(frontendCallbackUrl);
 
         log.info("✅ OAuth2 로그인 성공. JWT 발급 완료: {}", email);
     }

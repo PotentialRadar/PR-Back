@@ -86,18 +86,19 @@ public class PortfolioServiceImpl implements PortfolioService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + email));
         
-        // 1. 프로필 자기소개 업데이트
+        // 1. 프로필 자기소개 업데이트 (null이 아닌 경우에만)
         UserProfile profile = user.getUserProfile();
         if (profile != null && request.bio() != null) {
             profile.setBio(request.bio());
             userProfileRepository.save(profile);
         }
         
-        // 2. 기존 교육 정보 삭제 후 새로 추가
-        educationRepository.deleteAll(user.getEducations());
-        user.getEducations().clear();
-        
+        // 2. 교육 정보 업데이트 (null이 아니고 비어있지 않은 경우에만 교체)
         if (request.educations() != null) {
+            // 기존 교육 정보 삭제 후 새로 추가
+            educationRepository.deleteAll(user.getEducations());
+            user.getEducations().clear();
+            
             for (UserEducationRequest eduReq : request.educations()) {
                 UserEducation education = UserEducation.builder()
                         .user(user)
@@ -111,11 +112,12 @@ public class PortfolioServiceImpl implements PortfolioService {
             }
         }
         
-        // 3. 기존 경력 정보 삭제 후 새로 추가
-        experienceRepository.deleteAll(user.getExperiences());
-        user.getExperiences().clear();
-        
+        // 3. 경력 정보 업데이트 (null이 아니고 비어있지 않은 경우에만 교체)
         if (request.experiences() != null) {
+            // 기존 경력 정보 삭제 후 새로 추가
+            experienceRepository.deleteAll(user.getExperiences());
+            user.getExperiences().clear();
+            
             for (UserExperienceRequest expReq : request.experiences()) {
                 UserExperience experience = UserExperience.builder()
                         .user(user)
@@ -130,11 +132,12 @@ public class PortfolioServiceImpl implements PortfolioService {
             }
         }
         
-        // 4. 기존 기술 스택 정보 삭제 후 새로 추가
-        techStackRepository.deleteAll(user.getUserTechStacks());
-        user.getUserTechStacks().clear();
-        
+        // 4. 기술 스택 정보 업데이트 (null이 아니고 비어있지 않은 경우에만 교체)
         if (request.techStacks() != null) {
+            // 기존 기술 스택 정보 삭제 후 새로 추가
+            techStackRepository.deleteAll(user.getUserTechStacks());
+            user.getUserTechStacks().clear();
+            
             for (UserTechStackRequest techReq : request.techStacks()) {
                 TechStack techStack = stackRepository.findById(techReq.getStackId())
                         .orElseThrow(() -> new IllegalArgumentException("기술 스택을 찾을 수 없습니다: " + techReq.getStackId()));
@@ -148,7 +151,7 @@ public class PortfolioServiceImpl implements PortfolioService {
             }
         }
         
-        // 5. 프로젝트 선택 업데이트
+        // 5. 프로젝트 선택 업데이트 (null이 아닌 경우에만)
         if (request.selectedProjectIds() != null) {
             updateProjectSelection(email, request.selectedProjectIds());
         }

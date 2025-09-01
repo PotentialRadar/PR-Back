@@ -53,22 +53,24 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * 요청에서 JWT 토큰 추출 (헤더 우선 → 쿠키 보조)
+     * 요청에서 JWT 토큰 추출 (쿠키 우선 → 헤더 보조)
      */
     private String resolveToken(HttpServletRequest request) {
-        // 1. Authorization 헤더
+        // 1. HttpOnly Cookie (우선순위 높음)
+        if (request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if ("access_token".equals(cookie.getName())) {
+                    String value = cookie.getValue();
+                    // 빈 문자열이나 null인 경우 토큰이 없는 것으로 처리
+                    return (value != null && !value.trim().isEmpty()) ? value : null;
+                }
+            }
+        }
+
+        // 2. Authorization 헤더 (하위 호환성을 위해 유지)
         String authorizationHeader = request.getHeader(HEADER_AUTHORIZATION);
         if (authorizationHeader != null && authorizationHeader.startsWith(TOKEN_PREFIX)) {
             return authorizationHeader.substring(TOKEN_PREFIX.length());
-        }
-
-        // 2. Cookie
-        if (request.getCookies() != null) {
-            for (Cookie cookie : request.getCookies()) {
-                if ("auth-token".equals(cookie.getName())) {
-                    return cookie.getValue();
-                }
-            }
         }
 
         return null;

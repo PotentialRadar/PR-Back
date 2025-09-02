@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -22,6 +23,7 @@ public class SearchEventService {
     private final SearchEventRepository searchEventRepository;
     
     @Async
+    @Transactional
     public void saveSearchLog(ProjectSearchReq request, long resultCount) {
         try {
             // 키워드 검색 로그
@@ -48,6 +50,7 @@ public class SearchEventService {
     }
     
     @Async
+    @Transactional
     public void saveUserSearchLog(UserSearchReq request, long resultCount) {
         try {
             // 키워드 검색 로그

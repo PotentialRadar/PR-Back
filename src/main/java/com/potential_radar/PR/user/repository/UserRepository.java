@@ -44,5 +44,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // 증분 동기화용 - 사용자 프로필과 기술스택까지 함께 로딩
     @Query("SELECT DISTINCT u FROM User u LEFT JOIN FETCH u.userProfile LEFT JOIN FETCH u.userTechStacks uts LEFT JOIN FETCH uts.stack WHERE u.updatedAt >= :since ORDER BY u.updatedAt ASC")
     List<User> findUsersModifiedAfter(@Param("since") LocalDateTime since);
+    
+    // 개별 사용자 조회용 - 프로필과 기술스택 함께 로딩
+    @Query("SELECT u FROM User u LEFT JOIN FETCH u.userProfile up LEFT JOIN FETCH up.techPart LEFT JOIN FETCH u.userTechStacks uts LEFT JOIN FETCH uts.stack WHERE u.userId = :userId")
+    Optional<User> findByIdWithProfileAndTechStacks(@Param("userId") Long userId);
 
 }

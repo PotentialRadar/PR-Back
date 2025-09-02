@@ -73,7 +73,7 @@ public class DataSyncService {
     }
 
 
-    @Transactional
+    @Transactional(timeout = 300)
     public void incrementalSyncUsers() {
         String syncType = "USER_INCREMENTAL";
         log.info("Starting incremental user synchronization...");
@@ -118,7 +118,6 @@ public class DataSyncService {
         }
     }
 
-    @Transactional
     public void incrementalSyncProjects() {
         String syncType = "PROJECT_INCREMENTAL";
         log.info("Starting incremental project synchronization...");
@@ -128,51 +127,13 @@ public class DataSyncService {
         
         try {
             LocalDateTime lastSyncTime = syncStatus.getLastSyncTime();
-            LocalDateTime queryStartTime = LocalDateTime.now();
             log.info("Looking for projects modified since(inclusive): {}", lastSyncTime);
             
-            // 1단계: 기본 프로젝트와 팀리더 정보 로딩
-            List<ProjectRecruitment> modifiedProjects = projectRecruitmentRepository.findProjectsModifiedAfter(lastSyncTime);
-            log.info("Found {} modified projects to sync", modifiedProjects.size());
+            List<ProjectSearchDocument> projectDocs = processProjectsInBatches(lastSyncTime);
             
-            if (!modifiedProjects.isEmpty()) {
-                // 2단계: 프로젝트 ID 목록 추출
-                List<Long> projectIds = modifiedProjects.stream()
-                        .map(ProjectRecruitment::getProjectId)
-                        .collect(Collectors.toList());
-                
-                // 3단계: 기술스택 정보 로딩 (별도 쿼리)
-                List<ProjectRecruitment> projectsWithTechStacks = projectRecruitmentRepository.findProjectsWithTechStacks(projectIds);
-                Map<Long, List<String>> techStacksMap = projectsWithTechStacks.stream()
-                        .collect(Collectors.toMap(
-                                ProjectRecruitment::getProjectId,
-                                this::getProjectTechStacks
-                        ));
-                
-                // 4단계: 기술파트 정보 로딩 (별도 쿼리)
-                List<ProjectRecruitment> projectsWithTechParts = projectRecruitmentRepository.findProjectsWithTechParts(projectIds);
-                Map<Long, List<String>> techPartsMap = projectsWithTechParts.stream()
-                        .collect(Collectors.toMap(
-                                ProjectRecruitment::getProjectId,
-                                this::getProjectTechParts
-                        ));
-                
-                // 5단계: 검색 문서 생성 (캐시된 기술스택/기술파트 정보 사용)
-                List<ProjectSearchDocument> projectDocs = modifiedProjects.stream()
-                        .map(project -> convertProjectToDocumentWithCache(project, techStacksMap, techPartsMap))
-                        .collect(Collectors.toList());
-                
-                projectSearchRepository.saveAll(projectDocs);
-                log.info("Synchronized {} modified projects to Elasticsearch", projectDocs.size());
-                
-                // 동기화 상태 업데이트: 워터마크(최대 updatedAt) 저장
-                LocalDateTime nextCheckpoint = modifiedProjects.stream()
-                        .map(ProjectRecruitment::getUpdatedAt)
-                        .max(LocalDateTime::compareTo)
-                        .orElse(lastSyncTime);
-                syncStatus.setLastSyncTime(nextCheckpoint);
-                syncStatus.setSyncedCount((long) projectDocs.size());
-                updateSyncStatus(syncStatus, "SUCCESS", null);
+            if (!projectDocs.isEmpty()) {
+                saveProjectDocuments(projectDocs);
+                updateSyncStatusWithProjects(syncStatus, projectDocs, lastSyncTime);
             } else {
                 log.info("No modified projects found since last sync");
                 updateSyncStatus(syncStatus, "SUCCESS", "No changes detected");
@@ -185,16 +146,16 @@ public class DataSyncService {
         }
     }
 
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     private SyncStatus getSyncStatus(String syncType) {
         Optional<SyncStatus> optionalStatus = syncStatusRepository.findById(syncType);
         
         if (optionalStatus.isPresent()) {
             return optionalStatus.get();
         } else {
-            // 처음 실행하는 경우 새로운 상태 생성
             SyncStatus newStatus = SyncStatus.builder()
                     .syncType(syncType)
-                    .lastSyncTime(LocalDateTime.now().minusDays(1)) // 1일 전부터 동기화
+                    .lastSyncTime(LocalDateTime.now().minusDays(1))
                     .status("PENDING")
                     .syncedCount(0L)
                     .totalCount(0L)
@@ -204,6 +165,7 @@ public class DataSyncService {
         }
     }
 
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     private void updateSyncStatus(SyncStatus syncStatus, String status, String errorMessage) {
         syncStatus.setStatus(status);
         syncStatus.setErrorMessage(errorMessage);
@@ -380,5 +342,149 @@ public class DataSyncService {
             log.warn("Failed to load tech stacks for project {}: {}", project.getProjectId(), e.getMessage());
         }
         return new ArrayList<>(); // 빈 리스트 반환
+    }
+    
+    @Transactional(readOnly = true, timeout = 120)
+    private List<ProjectSearchDocument> processProjectsInBatches(LocalDateTime lastSyncTime) {
+        List<ProjectRecruitment> modifiedProjects = projectRecruitmentRepository.findProjectsModifiedAfter(lastSyncTime);
+        log.info("Found {} modified projects to sync", modifiedProjects.size());
+        
+        if (modifiedProjects.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        List<Long> projectIds = modifiedProjects.stream()
+                .map(ProjectRecruitment::getProjectId)
+                .collect(Collectors.toList());
+        
+        final int BATCH_SIZE = 50;
+        List<ProjectSearchDocument> allProjectDocs = new ArrayList<>();
+        
+        for (int i = 0; i < projectIds.size(); i += BATCH_SIZE) {
+            int endIndex = Math.min(i + BATCH_SIZE, projectIds.size());
+            List<Long> batchIds = projectIds.subList(i, endIndex);
+            
+            Map<Long, List<String>> techStacksMap = loadTechStacksForProjects(batchIds);
+            Map<Long, List<String>> techPartsMap = loadTechPartsForProjects(batchIds);
+            
+            List<ProjectSearchDocument> batchDocs = modifiedProjects.stream()
+                    .filter(p -> batchIds.contains(p.getProjectId()))
+                    .map(project -> convertProjectToDocumentWithCache(project, techStacksMap, techPartsMap))
+                    .collect(Collectors.toList());
+            
+            allProjectDocs.addAll(batchDocs);
+            log.debug("Processed batch {}-{}: {} projects", i, endIndex-1, batchDocs.size());
+        }
+        
+        return allProjectDocs;
+    }
+    
+    @Transactional(readOnly = true)
+    private Map<Long, List<String>> loadTechStacksForProjects(List<Long> projectIds) {
+        try {
+            List<ProjectRecruitment> projectsWithTechStacks = projectRecruitmentRepository.findProjectsWithTechStacks(projectIds);
+            return projectsWithTechStacks.stream()
+                    .collect(Collectors.toMap(
+                            ProjectRecruitment::getProjectId,
+                            this::getProjectTechStacks
+                    ));
+        } catch (Exception e) {
+            log.warn("Failed to load tech stacks for batch: {}", e.getMessage());
+            return new java.util.HashMap<>();
+        }
+    }
+    
+    @Transactional(readOnly = true)
+    private Map<Long, List<String>> loadTechPartsForProjects(List<Long> projectIds) {
+        try {
+            List<ProjectRecruitment> projectsWithTechParts = projectRecruitmentRepository.findProjectsWithTechParts(projectIds);
+            return projectsWithTechParts.stream()
+                    .collect(Collectors.toMap(
+                            ProjectRecruitment::getProjectId,
+                            this::getProjectTechParts
+                    ));
+        } catch (Exception e) {
+            log.warn("Failed to load tech parts for batch: {}", e.getMessage());
+            return new java.util.HashMap<>();
+        }
+    }
+    
+    @Transactional(timeout = 60)
+    private void saveProjectDocuments(List<ProjectSearchDocument> projectDocs) {
+        final int BATCH_SIZE = 100;
+        for (int i = 0; i < projectDocs.size(); i += BATCH_SIZE) {
+            int endIndex = Math.min(i + BATCH_SIZE, projectDocs.size());
+            List<ProjectSearchDocument> batch = projectDocs.subList(i, endIndex);
+            projectSearchRepository.saveAll(batch);
+            log.debug("Saved batch {}-{} to Elasticsearch", i, endIndex-1);
+        }
+        log.info("Synchronized {} modified projects to Elasticsearch", projectDocs.size());
+    }
+    
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    private void updateSyncStatusWithProjects(SyncStatus syncStatus, List<ProjectSearchDocument> projectDocs, LocalDateTime lastSyncTime) {
+        syncStatus.setLastSyncTime(LocalDateTime.now());
+        syncStatus.setSyncedCount((long) projectDocs.size());
+        updateSyncStatus(syncStatus, "SUCCESS", null);
+    }
+    
+    // 개별 프로젝트 동기화
+    @Transactional
+    public void syncSingleProject(Long projectId) {
+        try {
+            Optional<ProjectRecruitment> projectOpt = projectRecruitmentRepository.findById(projectId);
+            if (projectOpt.isPresent()) {
+                ProjectRecruitment project = projectOpt.get();
+                ProjectSearchDocument document = convertProjectToDocument(project);
+                projectSearchRepository.save(document);
+                log.info("Successfully synced project {} to Elasticsearch", projectId);
+            } else {
+                log.warn("Project {} not found for sync", projectId);
+            }
+        } catch (Exception e) {
+            log.error("Failed to sync project {} to Elasticsearch: {}", projectId, e.getMessage(), e);
+            // 비동기 호출에서는 예외를 던지지 않음 - 커넥션 리크 방지
+        }
+    }
+    
+    // 개별 사용자 동기화
+    @Transactional
+    public void syncSingleUser(Long userId) {
+        try {
+            Optional<User> userOpt = userRepository.findByIdWithProfileAndTechStacks(userId);
+            if (userOpt.isPresent()) {
+                User user = userOpt.get();
+                UserSearchDocument document = convertUserToDocument(user);
+                userSearchRepository.save(document);
+                log.info("Successfully synced user {} to Elasticsearch", userId);
+            } else {
+                log.warn("User {} not found for sync", userId);
+            }
+        } catch (Exception e) {
+            log.error("Failed to sync user {} to Elasticsearch: {}", userId, e.getMessage(), e);
+            // 비동기 호출에서는 예외를 던지지 않음 - 커넥션 리크 방지
+        }
+    }
+    
+    // Elasticsearch에서 프로젝트 삭제
+    public void deleteProjectFromElasticsearch(Long projectId) {
+        try {
+            projectSearchRepository.deleteByProjectId(projectId);
+            log.info("Successfully deleted project {} from Elasticsearch", projectId);
+        } catch (Exception e) {
+            log.error("Failed to delete project {} from Elasticsearch: {}", projectId, e.getMessage(), e);
+            // 비동기 호출에서는 예외를 던지지 않음 - 커넥션 리크 방지
+        }
+    }
+    
+    // Elasticsearch에서 사용자 삭제
+    public void deleteUserFromElasticsearch(Long userId) {
+        try {
+            userSearchRepository.deleteByUserId(userId);
+            log.info("Successfully deleted user {} from Elasticsearch", userId);
+        } catch (Exception e) {
+            log.error("Failed to delete user {} from Elasticsearch: {}", userId, e.getMessage(), e);
+            // 비동기 호출에서는 예외를 던지지 않음 - 커넥션 리크 방지
+        }
     }
 }

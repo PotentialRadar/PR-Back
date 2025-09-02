@@ -18,9 +18,13 @@ import com.potential_radar.PR.user.dto.techStack.UserTechStackRequest;
 import com.potential_radar.PR.user.dto.techStack.UserTechStackResponse;
 import com.potential_radar.PR.user.repository.*;
 import com.potential_radar.PR.user.service.PortfolioService;
+import com.potential_radar.PR.search.event.UserUpdatedEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 
@@ -38,6 +42,7 @@ public class PortfolioServiceImpl implements PortfolioService {
     private final ProjectMemberRepository projectMemberRepository;
     private final ProjectTechStackRepository projectTechStackRepository;
     private final PortfolioProjectRepository portfolioProjectRepository;
+    private final ApplicationEventPublisher eventPublisher;
     
     @Override
     public UpdatedUserPortfolioResponse getPortfolio(String email) {
@@ -157,6 +162,14 @@ public class PortfolioServiceImpl implements PortfolioService {
         }
         
         userRepository.save(user);
+        
+        // 트랜잭션 커밋 후 Elasticsearch 동기화 이벤트 발생
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                eventPublisher.publishEvent(new UserUpdatedEvent(user));
+            }
+        });
         
         // 업데이트된 정보 반환
         return getPortfolio(email);

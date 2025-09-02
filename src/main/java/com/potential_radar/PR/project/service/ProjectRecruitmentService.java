@@ -16,9 +16,13 @@ import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.repository.UserRepository;
 import com.potential_radar.PR.notification.service.NotificationService;
 import com.potential_radar.PR.notification.domain.NotificationType;
+import com.potential_radar.PR.search.event.ProjectCreatedEvent;
+import com.potential_radar.PR.search.event.ProjectUpdatedEvent;
+import com.potential_radar.PR.search.event.ProjectDeletedEvent;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -46,6 +50,7 @@ public class ProjectRecruitmentService {
     private final LikeRepository likeRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public ProjectRecruitmentResponse convertToResponseDto(ProjectRecruitment pr, String userEmail) {
         logger.debug("Entering convertToResponseDto for Project ID: {}", pr.getProjectId());
@@ -196,6 +201,14 @@ public class ProjectRecruitmentService {
                     .build());
         }
 
+        // 트랜잭션 커밋 후 Elasticsearch 동기화 이벤트 발생
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                eventPublisher.publishEvent(new ProjectCreatedEvent(project));
+            }
+        });
+        
         return project.getProjectId();
     }
 
@@ -337,6 +350,14 @@ public class ProjectRecruitmentService {
                 projectAttachmentRepository.save(attachment);
             }
         }
+        
+        // 트랜잭션 커밋 후 Elasticsearch 동기화 이벤트 발생
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                eventPublisher.publishEvent(new ProjectUpdatedEvent(project));
+            }
+        });
     }
 
     // 구인글 상태 수정
@@ -379,6 +400,14 @@ public class ProjectRecruitmentService {
 
         // 2) 부모 삭제
         projectRecruitmentRepository.delete(project);
+        
+        // 트랜잭션 커밋 후 Elasticsearch에서 삭제 이벤트 발생
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                eventPublisher.publishEvent(new ProjectDeletedEvent(project.getProjectId(), project.getTitle()));
+            }
+        });
     }
     
     // 트랜잭션 커밋 후 리뷰 요청 알림 전송하는 메서드

@@ -19,6 +19,9 @@ public class IncrementalSyncScheduler {
     private final DataSyncService dataSyncService;
     private final SyncStatusRepository syncStatusRepository;
     
+    private volatile boolean userSyncRunning = false;
+    private volatile boolean projectSyncRunning = false;
+    
     @Value("${app.sync.incremental.user.interval:600000}")  // 기본 10분
     private long userSyncIntervalMs;
     
@@ -31,7 +34,6 @@ public class IncrementalSyncScheduler {
     @Value("${app.sync.stuck-job-timeout-minutes:30}")
     private int stuckJobTimeoutMinutes;
     
-    // 사용자 증분 동기화 - 매 10분마다 실행 (기본값)
     @Scheduled(fixedRateString = "${app.sync.incremental.user.interval:600000}")
     public void scheduleUserIncrementalSync() {
         if (!incrementalSyncEnabled) {
@@ -39,16 +41,23 @@ public class IncrementalSyncScheduler {
             return;
         }
         
+        if (userSyncRunning) {
+            log.warn("User sync already running, skipping this execution");
+            return;
+        }
+        
+        userSyncRunning = true;
         try {
             log.info("Starting scheduled user incremental synchronization...");
             dataSyncService.incrementalSyncUsers();
             log.info("Scheduled user incremental synchronization completed");
         } catch (Exception e) {
             log.error("Scheduled user incremental synchronization failed: {}", e.getMessage(), e);
+        } finally {
+            userSyncRunning = false;
         }
     }
     
-    // 프로젝트 증분 동기화 - 매 10분마다 실행 (기본값)  
     @Scheduled(fixedRateString = "${app.sync.incremental.project.interval:600000}")
     public void scheduleProjectIncrementalSync() {
         if (!incrementalSyncEnabled) {
@@ -56,12 +65,20 @@ public class IncrementalSyncScheduler {
             return;
         }
         
+        if (projectSyncRunning) {
+            log.warn("Project sync already running, skipping this execution");
+            return;
+        }
+        
+        projectSyncRunning = true;
         try {
             log.info("Starting scheduled project incremental synchronization...");
             dataSyncService.incrementalSyncProjects();
             log.info("Scheduled project incremental synchronization completed");
         } catch (Exception e) {
             log.error("Scheduled project incremental synchronization failed: {}", e.getMessage(), e);
+        } finally {
+            projectSyncRunning = false;
         }
     }
     

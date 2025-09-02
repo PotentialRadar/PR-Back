@@ -11,4 +11,5 @@ public interface UserSearchRepository extends ElasticsearchRepository<UserSearch
     Iterable<UserSearchDocument> findByTechPart(String techPart);
     Iterable<UserSearchDocument> findByTechStacksContaining(String techStack);
     Iterable<UserSearchDocument> findByExperienceRange(String experienceRange);
+    void deleteByUserId(Long userId);
 }

@@ -10,4 +10,5 @@ public interface ProjectSearchRepository extends ElasticsearchRepository<Project
     List<ProjectSearchDocument> findByTechStacksIn(List<String> techStacks);
     List<ProjectSearchDocument> findByTechStacksContaining(String techStack);
     List<ProjectSearchDocument> findByTechPartsIn(List<String> techParts);
+    void deleteByProjectId(Long projectId);
 }

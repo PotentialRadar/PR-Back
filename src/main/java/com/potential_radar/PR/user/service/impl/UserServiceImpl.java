@@ -14,8 +14,10 @@ import com.potential_radar.PR.user.dto.editInfo.UserProfileUpdateRequest;
 import com.potential_radar.PR.user.repository.*;
 import com.potential_radar.PR.user.service.RefreshTokenService;
 import com.potential_radar.PR.user.service.UserService;
+import com.potential_radar.PR.search.event.UserUpdatedEvent;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -31,6 +33,7 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final TokenProvider tokenProvider;
     private final RefreshTokenService refreshTokenService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public User register(UserSignupRequest request) {
@@ -142,6 +145,11 @@ public class UserServiceImpl implements UserService {
 
         userRepository.save(user);
         userProfileRepository.save(userProfile);
+        
+        // 검색 가시성 설정이 변경된 경우 Elasticsearch 동기화
+        if (request.isPortfolioOpen() != null || request.isSearchOpen() != null) {
+            eventPublisher.publishEvent(new UserUpdatedEvent(user));
+        }
     }
 
     @Override

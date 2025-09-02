@@ -5,6 +5,7 @@ import com.potential_radar.PR.like.dto.LikeRequestDto;
 import com.potential_radar.PR.like.dto.LikeResponseDto;
 import com.potential_radar.PR.like.dto.LikeStatusResponseDto;
 import com.potential_radar.PR.like.service.LikeService;
+import com.potential_radar.PR.user.dto.portfolios.PortfolioSummaryResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -12,6 +13,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/likes")
@@ -29,6 +31,12 @@ public class LikeController {
         LikeResponseDto responseDto = likeService.toggleLike(requestDto, username);
 
         return ResponseEntity.ok(responseDto);
+    }
+
+    @GetMapping("/portfolios")
+    public ResponseEntity<List<PortfolioSummaryResponse>> getLikedPortfolios(@RequestParam Long userId) {
+        List<PortfolioSummaryResponse> likedPortfolios = likeService.getLikedPortfolios(userId);
+        return ResponseEntity.ok(likedPortfolios);
     }
 
     @GetMapping("/count")

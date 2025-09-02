@@ -5,9 +5,12 @@ import com.potential_radar.PR.user.dto.editPortfolio.UserPortfolioUpdateRequest;
 import com.potential_radar.PR.user.dto.project.UserAvailableProjectsResponse;
 import com.potential_radar.PR.user.dto.project.UserProjectResponse;
 
+import com.potential_radar.PR.user.dto.portfolios.PortfolioSummaryResponse;
+
 import java.util.List;
 
 public interface PortfolioService {
+    PortfolioSummaryResponse getPortfolioSummary(Long userId);
     
     UpdatedUserPortfolioResponse getPortfolio(String email);
     

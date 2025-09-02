@@ -47,6 +47,7 @@ public class LikeService {
     private final ProjectRecruitmentService projectRecruitmentService; // ProjectRecruitmentService 주입
     private final RedisTemplate<String, Object> redisTemplate;
     private final NotificationService notificationService;
+    private final com.potential_radar.PR.user.service.PortfolioService portfolioService;
 
     private static final String LIKE_COUNT_KEY_PREFIX = "likeCount::";
 
@@ -122,6 +123,27 @@ public class LikeService {
         }
         return responses;
     }
+
+    //포트폴리오 좋아요 조회
+    @Transactional(readOnly = true)
+    public List<com.potential_radar.PR.user.dto.portfolios.PortfolioSummaryResponse> getLikedPortfolios(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("유저를 찾을 수 없습니다."));
+
+        List<Like> likes = likeRepository.findByUserAndTargetType(user, TargetType.PORTFOLIO);
+        if (likes.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> portfolioOwnerIds = likes.stream()
+                .map(Like::getTargetId)
+                .collect(Collectors.toList());
+
+        return portfolioOwnerIds.stream()
+                .map(portfolioService::getPortfolioSummary)
+                .collect(Collectors.toList());
+    }
+
      private String generateLikeCountKey(TargetType targetType, Long targetId) {
         return LIKE_COUNT_KEY_PREFIX + targetType.name() + "::" + targetId;
     }

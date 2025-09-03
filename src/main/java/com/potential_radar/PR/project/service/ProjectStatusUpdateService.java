@@ -29,7 +29,7 @@ public class ProjectStatusUpdateService {
     private final NotificationService notificationService;
 
     // 매일 자정에 실행
-    @Scheduled(cron = "0 * * * * ?")
+    @Scheduled(cron = "0 0 0 * * ?")
     @Transactional
     public void updateProjectStatuses() {
         log.info("프로젝트 상태 업데이트 스케줄러 실행");

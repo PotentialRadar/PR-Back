@@ -1,5 +1,6 @@
 package com.potential_radar.PR.user.service.impl;
 
+import com.potential_radar.PR.like.repository.LikeRepository;
 import com.potential_radar.PR.project.domain.ProjectMember;
 import com.potential_radar.PR.project.repository.ProjectMemberRepository;
 import com.potential_radar.PR.project.repository.ProjectTechStackRepository;
@@ -12,6 +13,7 @@ import com.potential_radar.PR.user.dto.education.UserEducationRequest;
 import com.potential_radar.PR.user.dto.education.UserEducationResponse;
 import com.potential_radar.PR.user.dto.experience.UserExperienceRequest;
 import com.potential_radar.PR.user.dto.experience.UserExperienceResponse;
+import com.potential_radar.PR.user.dto.portfolios.PortfolioSummaryResponse;
 import com.potential_radar.PR.user.dto.project.UserAvailableProjectsResponse;
 import com.potential_radar.PR.user.dto.project.UserProjectResponse;
 import com.potential_radar.PR.user.dto.techStack.UserTechStackRequest;
@@ -43,6 +45,25 @@ public class PortfolioServiceImpl implements PortfolioService {
     private final ProjectTechStackRepository projectTechStackRepository;
     private final PortfolioProjectRepository portfolioProjectRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final LikeRepository likeRepository;
+
+    @Override
+    public PortfolioSummaryResponse getPortfolioSummary(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userId));
+        UserProfile userProfile = user.getUserProfile();
+
+        List<UserTechStack> userTechStacks = techStackRepository.findByUserWithTechStack(user);
+        List<String> techStackNames = userTechStacks.stream()
+                .map(uts -> uts.getStack().getName())
+                .toList();
+        int techStackCount = userTechStacks.size();
+
+        int projectCount = portfolioProjectRepository.findProjectIdsByUserId(userId).size();
+        long likeCount = likeRepository.countByTargetTypeAndTargetId(com.potential_radar.PR.like.domain.TargetType.PORTFOLIO, userId);
+
+        return PortfolioSummaryResponse.from(userProfile, projectCount, techStackCount, techStackNames, likeCount);
+    }
     
     @Override
     public UpdatedUserPortfolioResponse getPortfolio(String email) {

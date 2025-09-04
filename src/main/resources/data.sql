@@ -454,3 +454,15 @@ JOIN project_member pm2
   AND pm1.user_id <> pm2.user_id
 WHERE random() < 0.8
 ON CONFLICT (project_id, reviewer_id, reviewee_id) DO NOTHING;
+
+-- ---------------------------------------------
+-- Portfolio Projects (사용자가 참여한 프로젝트 중 랜덤하게 포트폴리오 등록)
+-- ---------------------------------------------
+INSERT INTO portfolio_project (user_id, project_id, created_at)
+SELECT 
+  pm.user_id,
+  pm.project_id,
+  current_timestamp
+FROM project_member pm
+WHERE random() < 0.4  -- 40% 확률로 포트폴리오에 등록
+ON CONFLICT (user_id, project_id) DO NOTHING;

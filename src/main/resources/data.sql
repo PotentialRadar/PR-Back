@@ -139,7 +139,7 @@ SELECT
        ELSE 'https://linkedin.com/in/'||regexp_replace(lower(aur.nickname),'[^a-z0-9]','-','g') END AS linkedin_url,
   CASE WHEN (aur.rn-1) % 6 = 0 THEN NULL
        ELSE 'https://'||regexp_replace(lower(aur.nickname),'[^a-z0-9]','','g')||'.dev' END AS website_url,
-  CASE WHEN (aur.rn-1) % 3 = 1 THEN TRUE ELSE FALSE END AS is_portfolio_open,
+  CASE WHEN (aur.rn-1) % 10 < 7 THEN TRUE ELSE FALSE END AS is_portfolio_open,
   CASE WHEN (aur.rn-1) % 4 = 1 THEN TRUE ELSE FALSE END AS is_contact_open,
   CASE WHEN (aur.rn-1) % 2 = 1 THEN TRUE ELSE FALSE END AS is_search_open,
   ROUND(((random()*4.5 + 0.5))::numeric, 2) AS reputation_score,
@@ -373,12 +373,12 @@ JOIN LATERAL (
 ) tp ON TRUE
 ON CONFLICT DO NOTHING;
 
--- Project Tech Stacks: 5..6 random entries per project
+-- Project Tech Stacks: 4..6 random entries per project
 INSERT INTO project_tech_stack (project_id, tech_stack_id, recruit_count)
 SELECT p.project_id, ts.tech_stack_id, (1 + floor(random()*2))::int
 FROM project_recruitment p
 JOIN LATERAL (
-  SELECT tech_stack_id FROM tech_stack ORDER BY random() LIMIT (5 + floor(random()*2))::int
+  SELECT tech_stack_id FROM tech_stack ORDER BY random() LIMIT (4 + floor(random()*3))::int
 ) ts ON TRUE
 ON CONFLICT ON CONSTRAINT uq_project_tech_stack DO NOTHING;
 
@@ -456,6 +456,45 @@ WHERE random() < 0.8
 ON CONFLICT (project_id, reviewer_id, reviewee_id) DO NOTHING;
 
 -- ---------------------------------------------
+-- Project Applications (프로젝트 지원 데이터)
+-- ---------------------------------------------
+INSERT INTO project_application (project_id, user_id, tech_part, application_message, status)
+SELECT 
+  pr.project_id,
+  u.user_id,
+  (ARRAY['프론트엔드', '백엔드', '풀스택', '모바일', '데브옵스', 'AI/ML', '게임개발', '보안', 'QA/테스터', 'UI/UX디자인', 'PM/기획', '데이터사이언스'])[(u.user_id % 12) + 1],
+  (ARRAY[
+    '안녕하세요! 이 프로젝트에 많은 관심이 있어 지원하게 되었습니다.',
+    '해당 기술스택에 대한 경험이 있어 도움이 될 것 같습니다.',
+    '팀 프로젝트 경험이 풍부하며 적극적으로 참여하고 싶습니다.',
+    '프로젝트 아이디어가 정말 흥미로워서 꼭 함께하고 싶습니다.',
+    '관련 포트폴리오를 보유하고 있어 기여할 수 있을 것 같습니다.',
+    '새로운 기술을 배우고 싶어서 지원합니다. 열심히 하겠습니다!',
+    '비슷한 프로젝트를 진행해본 경험이 있어 도움이 될 것 같습니다.',
+    '팀워크를 중시하며 책임감 있게 임하겠습니다.',
+    '이 분야에 대한 열정이 있어 지원하게 되었습니다.',
+    '프로젝트 성공을 위해 최선을 다하겠습니다.'
+  ])[(floor(random()*10)+1)::int],
+  CASE 
+    WHEN random() < 0.3 THEN 'ACCEPTED'::varchar  -- 30% 승인
+    WHEN random() < 0.6 THEN 'PENDING'::varchar   -- 30% 대기중  
+    ELSE 'REJECTED'::varchar                       -- 40% 거절
+  END
+FROM project_recruitment pr
+CROSS JOIN users u
+WHERE 
+  -- 프로젝트 리더는 자신의 프로젝트에 지원하지 않음
+  pr.team_leader_id != u.user_id
+  -- 이미 프로젝트 멤버인 경우도 지원하지 않음
+  AND NOT EXISTS (
+    SELECT 1 FROM project_member pm 
+    WHERE pm.project_id = pr.project_id AND pm.user_id = u.user_id
+  )
+  -- 랜덤하게 15% 확률로 지원 (너무 많으면 비현실적)
+  AND random() < 0.15
+ON CONFLICT (project_id, user_id) DO NOTHING;
+
+-- ---------------------------------------------
 -- Portfolio Projects (사용자가 참여한 프로젝트 중 랜덤하게 포트폴리오 등록)
 -- ---------------------------------------------
 INSERT INTO portfolio_project (user_id, project_id, created_at)
@@ -466,3 +505,62 @@ SELECT
 FROM project_member pm
 WHERE random() < 0.4  -- 40% 확률로 포트폴리오에 등록
 ON CONFLICT (user_id, project_id) DO NOTHING;
+
+-- ---------------------------------------------
+-- Project Likes (프로젝트 좋아요 데이터)
+-- ---------------------------------------------
+INSERT INTO likes (user_id, target_type, target_id, created_at)
+SELECT 
+  u.user_id,
+  'PROJECT'::varchar,
+  pr.project_id,
+  current_timestamp - ((floor(random() * 30) || ' days')::interval) - ((floor(random() * 24) || ' hours')::interval)
+FROM users u
+CROSS JOIN project_recruitment pr
+WHERE 
+  -- 자신의 프로젝트는 좋아요하지 않음
+  pr.team_leader_id != u.user_id
+  -- 프로젝트 멤버는 자신의 프로젝트를 좋아요할 확률 높임 (80%)
+  AND (
+    (EXISTS (SELECT 1 FROM project_member pm WHERE pm.project_id = pr.project_id AND pm.user_id = u.user_id) AND random() < 0.8)
+    OR
+    -- 일반 유저는 15% 확률로 랜덤 좋아요
+    (NOT EXISTS (SELECT 1 FROM project_member pm WHERE pm.project_id = pr.project_id AND pm.user_id = u.user_id) AND random() < 0.15)
+  )
+ON CONFLICT (user_id, target_type, target_id) DO NOTHING;
+
+-- ---------------------------------------------
+-- Portfolio Likes (포트폴리오 좋아요 데이터)
+-- ---------------------------------------------
+INSERT INTO likes (user_id, target_type, target_id, created_at)
+SELECT 
+  u1.user_id,
+  'PORTFOLIO'::varchar,
+  u2.user_id,
+  current_timestamp - ((floor(random() * 60) || ' days')::interval) - ((floor(random() * 24) || ' hours')::interval)
+FROM users u1
+CROSS JOIN users u2
+WHERE 
+  -- 자기 자신은 좋아요하지 않음
+  u1.user_id != u2.user_id
+  -- 포트폴리오가 공개된 경우만
+  AND EXISTS (SELECT 1 FROM user_profile up WHERE up.user_id = u2.user_id AND up.is_portfolio_open = true)
+  -- 같은 프로젝트에 참여한 적이 있으면 좋아요할 확률 높임 (60%)
+  AND (
+    (EXISTS (
+      SELECT 1 FROM project_member pm1 
+      JOIN project_member pm2 ON pm1.project_id = pm2.project_id 
+      WHERE pm1.user_id = u1.user_id AND pm2.user_id = u2.user_id
+    ) AND random() < 0.6)
+    OR
+    -- 같은 기술 파트면 좋아요할 확률 중간 (25%)
+    (EXISTS (
+      SELECT 1 FROM user_profile up1 
+      JOIN user_profile up2 ON up1.tech_part_id = up2.tech_part_id
+      WHERE up1.user_id = u1.user_id AND up2.user_id = u2.user_id
+    ) AND random() < 0.25)
+    OR
+    -- 일반적으로는 10% 확률로 랜덤 좋아요
+    (random() < 0.1)
+  )
+ON CONFLICT (user_id, target_type, target_id) DO NOTHING;

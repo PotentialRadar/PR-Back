@@ -16,8 +16,8 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-def calculate_match_score(user_skills: List[dict], required_skills: List[str]) -> float:
-    """기술 스택 매칭 점수 계산"""
+def calculate_match_score(user_skills: List[dict], required_skills: List[str], user_rating: float = 4.0) -> float:
+    """기술 스택 매칭 점수 계산 (평점 포함)"""
     if not required_skills:
         return 0.5
     
@@ -38,8 +38,11 @@ def calculate_match_score(user_skills: List[dict], required_skills: List[str]) -
     match_ratio = len(matched_skills) / len(required_skills)
     avg_skill_level = total_score / len(matched_skills) if matched_skills else 0
     
-    # 최종 점수 계산 (매칭 비율 70% + 기술 수준 30%)
-    final_score = (match_ratio * 0.7) + (avg_skill_level * 0.3)
+    # 평점을 0-1 범위로 정규화 (5점 만점 → 1점 만점)
+    normalized_rating = min(user_rating / 5.0, 1.0) if user_rating > 0 else 0.8  # 기본값 0.8 (4점/5점)
+    
+    # 최종 점수 계산 (매칭 비율 50% + 기술 수준 30% + 평점 20%)
+    final_score = (match_ratio * 0.5) + (avg_skill_level * 0.3) + (normalized_rating * 0.2)
     return min(final_score, 1.0)
 
 def generate_explanation(user: dict, required_skills: List[str], match_score: float) -> MemberExplanation:
@@ -200,8 +203,8 @@ async def recommend_team_members(request: RecommendMemberRequest, db: Session = 
             user_skills = [skill["name"] for skill in user["userTechStacks"]]
             logger.info(f"👤 {user['name']}의 기술스택: {user_skills}")
                 
-            match_score = calculate_match_score(user["userTechStacks"], request.requiredSkills)
-            logger.info(f"📊 {user['name']} 매칭 점수: {match_score}")
+            match_score = calculate_match_score(user["userTechStacks"], request.requiredSkills, user["averageRating"])
+            logger.info(f"📊 {user['name']} 매칭 점수: {match_score} (평점: {user['averageRating']})")
             
             explanation = generate_explanation(user, request.requiredSkills, match_score)
             

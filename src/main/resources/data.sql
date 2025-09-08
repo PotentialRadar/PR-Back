@@ -74,7 +74,7 @@ WITH u(i, email, provider) AS (
                 ])[i] AS nickname
 FROM u
     ), ins_users AS (
-INSERT INTO users (email, password, nickname, provider, provider_user_id, profile_image)
+INSERT INTO users (email, password, nickname, provider, provider_user_id, profile_image, created_at, updated_at)
 SELECT
     u.email,
     CASE WHEN u.provider = 'EMAIL' THEN crypt('1234', gen_salt('bf', 10)) ELSE NULL END,
@@ -85,7 +85,9 @@ SELECT
     WHEN u.provider = 'GOOGLE' THEN 'google_' || (floor(random()*900000000)+100000000)::bigint
     ELSE 'kakao_'  || (floor(random()*900000000)+100000000)::bigint
     END,
-    format('https://example.com/profile/%03s.jpg', to_char(ceil(random()*12)::int,'FM000'))
+    format('https://example.com/profile/%03s.jpg', to_char(ceil(random()*12)::int,'FM000')),
+    current_timestamp - ((floor(random() * 365) || ' days')::interval) - ((floor(random() * 24) || ' hours')::interval),
+    current_timestamp - ((floor(random() * 30) || ' days')::interval) - ((floor(random() * 24) || ' hours')::interval)
 FROM u
     JOIN nick n USING (i)
 ON CONFLICT (email) DO NOTHING
@@ -262,7 +264,7 @@ SELECT i, team_leader_id, recruit_deadline, start_date,
 FROM dd
     ), ins_proj AS (
 INSERT INTO project_recruitment (
-    team_leader_id, title, description, recruit_deadline, start_date, end_date, status, view_count, recruit_count
+    team_leader_id, title, description, recruit_deadline, start_date, end_date, status, view_count, recruit_count, created_at, updated_at
 )
 SELECT
     d.team_leader_id,
@@ -375,24 +377,79 @@ SELECT
     d.end_date,
     (ARRAY['RECRUITING','IN_PROGRESS','COMPLETED'])[(floor(random()*3)+1)::int],
     (floor(random()*500))::int,
-    (3 + floor(random()*5))::int
+    (3 + floor(random()*5))::int,
+    current_timestamp - ((floor(random() * 180) || ' days')::interval) - ((floor(random() * 24) || ' hours')::interval),
+    current_timestamp - ((floor(random() * 30) || ' days')::interval) - ((floor(random() * 24) || ' hours')::interval)
 FROM ddd d
     RETURNING project_id, team_leader_id
     )
 -- Project leader member row
 INSERT INTO project_member (project_id, user_id, role, tech_part)
+WITH project_leader_parts AS (
+  SELECT 
+    ptp.project_id,
+    array_agg(tp.name) as available_parts
+  FROM project_tech_part ptp
+  JOIN tech_part tp ON ptp.tech_part_id = tp.tech_part_id
+  GROUP BY ptp.project_id
+)
 SELECT p.project_id, p.team_leader_id, 'LEADER',
-       (ARRAY['프론트엔드', '백엔드', '풀스택', '모바일', '데브옵스', 'AI/ML', 'UI/UX디자인', 'PM/기획'])[(p.project_id % 8) + 1]
-FROM ins_proj p;
+       plp.available_parts[((p.project_id + p.team_leader_id) % array_length(plp.available_parts, 1)) + 1]
+FROM ins_proj p
+JOIN project_leader_parts plp ON p.project_id = plp.project_id;
 
--- Project Tech Parts (1..3 random per project)
+-- Project Tech Parts (프로젝트 유형별 적합한 기술파트 조합)
+WITH project_type_mapping AS (
+  SELECT 
+    pr.project_id,
+    pr.title,
+    CASE 
+      -- 웹/쇼핑몰 프로젝트
+      WHEN pr.title LIKE '%쇼핑몰%' OR pr.title LIKE '%이커머스%' OR pr.title LIKE '%웹%' THEN 
+        ARRAY['프론트엔드', '백엔드', 'UI/UX디자인']
+      -- 모바일 앱 프로젝트
+      WHEN pr.title LIKE '%모바일%' OR pr.title LIKE '%앱%' THEN 
+        ARRAY['모바일', '백엔드', 'UI/UX디자인']
+      -- AI/ML 프로젝트
+      WHEN pr.title LIKE '%AI%' OR pr.title LIKE '%챗봇%' OR pr.title LIKE '%추천%' OR pr.title LIKE '%분석%' THEN 
+        ARRAY['AI/ML', '백엔드', '데이터사이언스']
+      -- 게임 프로젝트
+      WHEN pr.title LIKE '%게임%' THEN 
+        ARRAY['게임개발', 'UI/UX디자인', '백엔드']
+      -- IoT/스마트 프로젝트
+      WHEN pr.title LIKE '%IoT%' OR pr.title LIKE '%스마트%' THEN 
+        ARRAY['백엔드', '데브옵스', '모바일']
+      -- 스트리밍/실시간 프로젝트
+      WHEN pr.title LIKE '%스트리밍%' OR pr.title LIKE '%실시간%' THEN 
+        ARRAY['백엔드', '프론트엔드', '데브옵스']
+      -- 블록체인 프로젝트
+      WHEN pr.title LIKE '%블록체인%' OR pr.title LIKE '%NFT%' THEN 
+        ARRAY['백엔드', '프론트엔드', '보안']
+      -- 관리 시스템 프로젝트
+      WHEN pr.title LIKE '%관리%' OR pr.title LIKE '%시스템%' THEN 
+        ARRAY['풀스택', 'UI/UX디자인', 'PM/기획']
+      -- VR/AR 프로젝트
+      WHEN pr.title LIKE '%AR%' OR pr.title LIKE '%VR%' THEN 
+        ARRAY['게임개발', 'UI/UX디자인', '백엔드']
+      -- 보안 관련 프로젝트
+      WHEN pr.title LIKE '%보안%' OR pr.title LIKE '%투표%' THEN 
+        ARRAY['보안', '백엔드', '프론트엔드']
+      -- 기본값: 일반적인 웹 프로젝트
+      ELSE 
+        ARRAY['프론트엔드', '백엔드', 'UI/UX디자인']
+    END as required_parts
+  FROM project_recruitment pr
+  WHERE pr.team_leader_id IN (SELECT user_id FROM users WHERE email LIKE 'user%@naver.com')
+)
 INSERT INTO project_tech_part (project_id, tech_part_id, recruit_count)
-SELECT p.project_id, tp.tech_part_id, (1 + floor(random()*3))::int
-FROM project_recruitment p
-         JOIN LATERAL (
-    SELECT tech_part_id FROM tech_part ORDER BY random() LIMIT (1 + floor(random()*3))::int
-) tp ON TRUE
-    ON CONFLICT DO NOTHING;
+SELECT 
+  ptm.project_id, 
+  tp.tech_part_id, 
+  (1 + floor(random()*2))::int
+FROM project_type_mapping ptm
+CROSS JOIN LATERAL unnest(ptm.required_parts) AS required_part_name
+JOIN tech_part tp ON tp.name = required_part_name
+ON CONFLICT DO NOTHING;
 
 -- Project Tech Stacks: 프로젝트별로 다양한 기술스택 (4~6개씩 다르게)
 INSERT INTO project_tech_stack (project_id, tech_stack_id, recruit_count)
@@ -416,19 +473,31 @@ FROM project_recruitment p
 WHERE p.team_leader_id IN (SELECT user_id FROM users WHERE email LIKE 'user%@naver.com')  -- 더미 프로젝트만
 ON CONFLICT ON CONSTRAINT uq_project_tech_stack DO NOTHING;
 
--- Additional project members: 2..5 per project, unique per project, not leader
+-- Additional project members: 해당 프로젝트에 필요한 기술파트에서 선택
+WITH project_required_parts AS (
+  SELECT 
+    ptp.project_id,
+    array_agg(tp.name) as available_parts
+  FROM project_tech_part ptp
+  JOIN tech_part tp ON ptp.tech_part_id = tp.tech_part_id
+  GROUP BY ptp.project_id
+)
 INSERT INTO project_member (project_id, user_id, role, tech_part)
-SELECT p.project_id, m.user_id, 'MEMBER',
-       (ARRAY['프론트엔드', '백엔드', '풀스택', '모바일', '데브옵스', 'AI/ML', '게임개발', '보안', 'QA/테스터', 'UI/UX디자인', 'PM/기획', '데이터사이언스'])[(m.user_id % 12) + 1]
+SELECT 
+  p.project_id, 
+  m.user_id, 
+  'MEMBER',
+  prp.available_parts[((m.user_id * 31 + p.project_id * 17) % array_length(prp.available_parts, 1)) + 1]
 FROM project_recruitment p
-    JOIN LATERAL (
+JOIN project_required_parts prp ON p.project_id = prp.project_id
+JOIN LATERAL (
     SELECT u.user_id, row_number() OVER (ORDER BY random()) as rn
     FROM users u
     WHERE u.user_id <> p.team_leader_id
     ORDER BY random()
     LIMIT (2 + floor(random()*4))::int
-    ) m ON TRUE
-    ON CONFLICT DO NOTHING;
+) m ON TRUE
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------
 -- Team Member Reviews (80% probability for each pair)
@@ -502,7 +571,20 @@ INSERT INTO project_application (project_id, user_id, tech_part, application_mes
 SELECT
     pr.project_id,
     u.user_id,
-    (ARRAY['프론트엔드', '백엔드', '풀스택', '모바일', '데브옵스', 'AI/ML', '게임개발', '보안', 'QA/테스터', 'UI/UX디자인', 'PM/기획', '데이터사이언스'])[(u.user_id % 12) + 1],
+    CASE ((pr.project_id * 19 + u.user_id * 23) % 12) + 1
+        WHEN 1 THEN '프론트엔드'
+        WHEN 2 THEN '백엔드'
+        WHEN 3 THEN '풀스택'
+        WHEN 4 THEN '모바일'
+        WHEN 5 THEN '데브옵스'
+        WHEN 6 THEN '데이터사이언스'
+        WHEN 7 THEN 'AI/ML'
+        WHEN 8 THEN '게임개발'
+        WHEN 9 THEN '보안'
+        WHEN 10 THEN 'QA/테스터'
+        WHEN 11 THEN 'UI/UX디자인'
+        WHEN 12 THEN 'PM/기획'
+    END,
   (ARRAY[
     '안녕하세요! 이 프로젝트에 많은 관심이 있어 지원하게 되었습니다.',
     '해당 기술스택에 대한 경험이 있어 도움이 될 것 같습니다.',
@@ -522,6 +604,12 @@ SELECT
 END
 FROM project_recruitment pr
 CROSS JOIN users u
+CROSS JOIN LATERAL (
+    SELECT tp.name as tech_part_name
+    FROM tech_part tp
+    ORDER BY random()
+    LIMIT 1
+) random_tech
 WHERE
   -- 프로젝트 리더는 자신의 프로젝트에 지원하지 않음
   pr.team_leader_id != u.user_id

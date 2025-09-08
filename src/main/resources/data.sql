@@ -74,7 +74,7 @@ WITH u(i, email, provider) AS (
          ])[i] AS nickname
   FROM u
 ), ins_users AS (
-  INSERT INTO users (email, password, nickname, provider, provider_user_id, profile_image)
+  INSERT INTO users (email, password, nickname, provider, provider_user_id, profile_image, created_at, updated_at)
   SELECT
     u.email,
     CASE WHEN u.provider = 'EMAIL' THEN crypt('1234', gen_salt('bf', 10)) ELSE NULL END,
@@ -85,7 +85,11 @@ WITH u(i, email, provider) AS (
       WHEN u.provider = 'GOOGLE' THEN 'google_' || (floor(random()*900000000)+100000000)::bigint
       ELSE 'kakao_'  || (floor(random()*900000000)+100000000)::bigint
     END,
-    format('https://example.com/profile/%03s.jpg', to_char(ceil(random()*12)::int,'FM000'))
+    format('https://api.dicebear.com/7.x/avataaars/svg?seed=%s&backgroundColor=%s', 
+           regexp_replace(lower(n.nickname),'[^a-z0-9]','','g'), 
+           (ARRAY['b6e3f4','c6f6d5','fed7d7','feebc8','e9d8fd','fde68a'])[(u.i % 6) + 1]),
+    current_timestamp - ((floor(random() * 365) || ' days')::interval) - ((floor(random() * 24) || ' hours')::interval),
+    current_timestamp - ((floor(random() * 30) || ' days')::interval) - ((floor(random() * 24) || ' hours')::interval)
   FROM u
   JOIN nick n USING (i)
   ON CONFLICT (email) DO NOTHING
@@ -141,7 +145,7 @@ SELECT
        ELSE 'https://'||regexp_replace(lower(aur.nickname),'[^a-z0-9]','','g')||'.dev' END AS website_url,
   CASE WHEN (aur.rn-1) % 10 < 7 THEN TRUE ELSE FALSE END AS is_portfolio_open,
   CASE WHEN (aur.rn-1) % 4 = 1 THEN TRUE ELSE FALSE END AS is_contact_open,
-  CASE WHEN (aur.rn-1) % 2 = 1 THEN TRUE ELSE FALSE END AS is_search_open,
+  CASE WHEN (aur.rn-1) % 4 < 3 THEN TRUE ELSE FALSE END AS is_search_open,
   ROUND(((random()*4.5 + 0.5))::numeric, 2) AS reputation_score,
   (random()*50)::int AS review_count,
   (ARRAY['FRESHER','LT_1','Y1_3','Y3_5','Y5_10','GE_10','ETC'])[(aur.rn-1) % 7 + 1]
@@ -161,12 +165,12 @@ ON CONFLICT (user_id) DO NOTHING;
 INSERT INTO user_tech_stack (user_id, stack_id, skill_level)
 SELECT u.user_id, s.tech_stack_id, (floor(random()*5)+1)::int
 FROM users u
-JOIN LATERAL (
-  SELECT ts.tech_stack_id
+CROSS JOIN LATERAL (
+  SELECT ts.tech_stack_id, random() as r
   FROM tech_stack ts
-  ORDER BY random()
-  LIMIT (3 + (floor(random()*5))::int)  -- 3..7
-) s ON TRUE
+  ORDER BY random() + u.user_id * 0.0001  -- 각 유저마다 다른 시드 사용
+  LIMIT (3 + (abs(hashtext(u.email::text)) % 5))  -- 각 유저마다 다른 개수 (3..7)
+) s
 ON CONFLICT ON CONSTRAINT uk_user_tech_stack_user_stack DO NOTHING;
 
 -- ---------------------------------------------
@@ -241,7 +245,7 @@ WITH base AS (
   FROM dd
 ), ins_proj AS (
   INSERT INTO project_recruitment (
-    team_leader_id, title, description, recruit_deadline, start_date, end_date, status, view_count, recruit_count
+    team_leader_id, title, description, recruit_deadline, start_date, end_date, status, view_count, recruit_count, created_at, updated_at
   )
   SELECT
     d.team_leader_id,
@@ -354,7 +358,9 @@ WITH base AS (
     d.end_date,
     (ARRAY['RECRUITING','IN_PROGRESS','COMPLETED'])[(floor(random()*3)+1)::int],
     (floor(random()*500))::int,
-    (3 + floor(random()*5))::int
+    (3 + floor(random()*5))::int,
+    current_timestamp - ((floor(random() * 180) || ' days')::interval) - ((floor(random() * 24) || ' hours')::interval),
+    current_timestamp - ((floor(random() * 30) || ' days')::interval) - ((floor(random() * 24) || ' hours')::interval)
   FROM ddd d
   RETURNING project_id, team_leader_id
 )
@@ -368,18 +374,24 @@ FROM ins_proj p;
 INSERT INTO project_tech_part (project_id, tech_part_id, recruit_count)
 SELECT p.project_id, tp.tech_part_id, (1 + floor(random()*3))::int
 FROM project_recruitment p
-JOIN LATERAL (
-  SELECT tech_part_id FROM tech_part ORDER BY random() LIMIT (1 + floor(random()*3))::int
-) tp ON TRUE
+CROSS JOIN LATERAL (
+  SELECT tech_part_id
+  FROM tech_part 
+  ORDER BY random() + p.project_id * 0.0001  -- 각 프로젝트마다 다른 시드 사용
+  LIMIT (1 + (abs(hashtext(p.title)) % 3))  -- 각 프로젝트마다 다른 개수 (1..3)
+) tp
 ON CONFLICT DO NOTHING;
 
 -- Project Tech Stacks: 4..6 random entries per project
 INSERT INTO project_tech_stack (project_id, tech_stack_id, recruit_count)
 SELECT p.project_id, ts.tech_stack_id, (1 + floor(random()*2))::int
 FROM project_recruitment p
-JOIN LATERAL (
-  SELECT tech_stack_id FROM tech_stack ORDER BY random() LIMIT (4 + floor(random()*3))::int
-) ts ON TRUE
+CROSS JOIN LATERAL (
+  SELECT tech_stack_id, random() as r
+  FROM tech_stack 
+  ORDER BY random() + p.project_id * 0.0001  -- 각 프로젝트마다 다른 시드 사용
+  LIMIT (4 + (abs(hashtext(p.title)) % 3))  -- 각 프로젝트마다 다른 개수 (4..6)
+) ts
 ON CONFLICT ON CONSTRAINT uq_project_tech_stack DO NOTHING;
 
 -- Additional project members: 2..5 per project, unique per project, not leader

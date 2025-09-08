@@ -113,7 +113,19 @@ public class SearchService {
         // 기술 파트 필터 추가
         if (request.getTechParts() != null && !request.getTechParts().isEmpty()) {
             log.info("Adding tech parts filter: {}", request.getTechParts());
-            filterCriteriaList.add(new Criteria("techPart").in(request.getTechParts()));
+            // 기술파트가 여러 개인 경우 OR 조건으로 결합
+            Criteria techPartCriteria = null;
+            for (String techPart : request.getTechParts()) {
+                Criteria singlePartCriteria = new Criteria("techPart").matches(techPart);
+                if (techPartCriteria == null) {
+                    techPartCriteria = singlePartCriteria;
+                } else {
+                    techPartCriteria = techPartCriteria.or(singlePartCriteria);
+                }
+            }
+            if (techPartCriteria != null) {
+                filterCriteriaList.add(techPartCriteria);
+            }
         }
 
         // 기술 스택 필터 추가
@@ -366,7 +378,19 @@ public class SearchService {
         // 기술 파트 필터 추가
         if (request.getTechParts() != null && !request.getTechParts().isEmpty()) {
             log.info("Adding tech parts filter: {}", request.getTechParts());
-            filterCriteriaList.add(new Criteria("techPart").in(request.getTechParts()));
+            // 기술파트가 여러 개인 경우 OR 조건으로 결합
+            Criteria techPartCriteria = null;
+            for (String techPart : request.getTechParts()) {
+                Criteria singlePartCriteria = new Criteria("techPart").matches(techPart);
+                if (techPartCriteria == null) {
+                    techPartCriteria = singlePartCriteria;
+                } else {
+                    techPartCriteria = techPartCriteria.or(singlePartCriteria);
+                }
+            }
+            if (techPartCriteria != null) {
+                filterCriteriaList.add(techPartCriteria);
+            }
         }
 
         // 기술 스택 필터 추가

@@ -17,7 +17,13 @@
       }
     },
     "techPart": {
-      "type": "keyword"
+      "type": "text",
+      "analyzer": "tech_part_analyzer",
+      "fields": {
+        "keyword": {
+          "type": "keyword"
+        }
+      }
     },
     "jobTitle": {
       "type": "keyword",
@@ -29,6 +35,10 @@
       "fields": {
         "keyword": {
           "type": "keyword"
+        },
+        "phrase": {
+          "type": "text",
+          "analyzer": "tech_stack_phrase_analyzer"
         }
       }
     },
@@ -47,6 +57,9 @@
     "experienceRange": {
       "type": "keyword"
     },
+    "likeCount": {
+      "type": "integer"
+    },
     "isPortfolioOpen": {
       "type": "boolean"
     },
@@ -54,12 +67,12 @@
       "type": "boolean"
     },
     "createdAt": {
-      "type": "text",
-      "index": false
+      "type": "date",
+      "format": "yyyy-MM-dd'T'HH:mm:ss.SSS"
     },
     "updatedAt": {
-      "type": "text",
-      "index": false
+      "type": "date",
+      "format": "yyyy-MM-dd'T'HH:mm:ss.SSS"
     }
   }
 }

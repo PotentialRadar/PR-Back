@@ -11,6 +11,7 @@ import com.potential_radar.PR.project.domain.ProjectRecruitment;
 import com.potential_radar.PR.project.domain.ProjectTechPart;
 import com.potential_radar.PR.search.domain.SyncStatus;
 import com.potential_radar.PR.search.repository.SyncStatusRepository;
+import com.potential_radar.PR.like.domain.TargetType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -38,6 +39,7 @@ public class DataSyncService {
     private final ProjectRecruitmentRepository projectRecruitmentRepository;
     private final ProjectSearchRepository projectSearchRepository;
     private final SyncStatusRepository syncStatusRepository;
+    private final com.potential_radar.PR.like.repository.LikeRepository likeRepository;
     
     @Transactional(readOnly = true)
     public void syncAllUsersToElasticsearch() {
@@ -206,6 +208,7 @@ public class DataSyncService {
                 .githubUrl("https://github.com/" + user.getNickname().toLowerCase()) // 기본 GitHub URL
                 .jobTitle(user.getUserProfile() != null ? user.getUserProfile().getJobTitle() : null) // 사용자 직무
                 .experienceRange(user.getExperienceRange()) // 경력 정보
+                .likeCount((int) likeRepository.countByTargetTypeAndTargetId(TargetType.PORTFOLIO, user.getUserId()))
                 .isPortfolioOpen(user.isPortfolioOpen()) // 포트폴리오 공개 여부
                 .isSearchOpen(user.isSearchOpen()) // 실제 사용자 설정 반영
                 .createdAt(user.getCreatedAt().format(ELASTICSEARCH_DATE_FORMAT))
@@ -251,6 +254,7 @@ public class DataSyncService {
                 .teamLeaderNickname(project.getTeamLeader() != null ? project.getTeamLeader().getNickname() : "Unknown")
                 .recruitCount(project.getRecruitCount())
                 .viewCount(project.getViewCount())
+                .likeCount((int) likeRepository.countByTargetTypeAndTargetId(TargetType.PROJECT, project.getProjectId()))
                 .recruitDeadline(project.getRecruitDeadline() != null ? 
                     project.getRecruitDeadline().atStartOfDay().format(ELASTICSEARCH_DATE_FORMAT) : null)
                 .startDate(project.getStartDate() != null ? 
@@ -285,6 +289,7 @@ public class DataSyncService {
                 .teamLeaderNickname(project.getTeamLeader() != null ? project.getTeamLeader().getNickname() : "Unknown")
                 .recruitCount(project.getRecruitCount())
                 .viewCount(project.getViewCount())
+                .likeCount((int) likeRepository.countByTargetTypeAndTargetId(TargetType.PROJECT, project.getProjectId()))
                 .recruitDeadline(project.getRecruitDeadline() != null ? 
                     project.getRecruitDeadline().atStartOfDay().format(ELASTICSEARCH_DATE_FORMAT) : null)
                 .startDate(project.getStartDate() != null ? 

@@ -75,12 +75,12 @@ WITH u(i, email, provider) AS (
   FROM u
 ), ins_users AS (
   INSERT INTO users (email, password, nickname, provider, provider_user_id, profile_image)
-  SELECT 
+  SELECT
     u.email,
     CASE WHEN u.provider = 'EMAIL' THEN crypt('1234', gen_salt('bf', 10)) ELSE NULL END,
     n.nickname,
     u.provider,
-    CASE 
+    CASE
       WHEN u.provider = 'EMAIL' THEN NULL
       WHEN u.provider = 'GOOGLE' THEN 'google_' || (floor(random()*900000000)+100000000)::bigint
       ELSE 'kakao_'  || (floor(random()*900000000)+100000000)::bigint
@@ -107,7 +107,7 @@ INSERT INTO user_profile (
   user_id, tech_part_id, bio, job_title, phone, github_url, linkedin_url, website_url,
   is_portfolio_open, is_contact_open, is_search_open, reputation_score, review_count, experience_range
 )
-SELECT 
+SELECT
   aur.user_id,
   tp.tech_part_id,
   CASE WHEN (aur.rn-1) % 3 = 0 THEN NULL
@@ -184,7 +184,7 @@ WITH base AS (
   FROM base
 )
 INSERT INTO user_experience (user_id, company_name, department, start_date, end_date, is_current, summary)
-SELECT 
+SELECT
   s.user_id,
   (ARRAY['네이버','카카오','라인','쿠팡','배달의민족','토스','당근마켓','야놀자','NHN','넥슨','엔씨소프트','넷마블','크래프톤','스마일게이트','위메프','11번가','SK텔레콤','KT','LG유플러스','삼성SDS','LG CNS','포스코DX','현대오토에버','우아한형제들','마켓컬리','직방','집닥','29CM','무신사','브랜디','에이블리','Google','Microsoft','Amazon','Meta','Apple','Netflix','Uber','Airbnb'])
     [ (floor(random()*38)+1)::int ],
@@ -207,7 +207,7 @@ WITH base AS (
   JOIN LATERAL generate_series(1,2) g(n) ON TRUE
 )
 INSERT INTO user_education (user_id, institution, program, start_date, end_date, is_current)
-SELECT 
+SELECT
   b.user_id,
   (ARRAY['서울대학교','연세대학교','고려대학교','성균관대학교','한양대학교','중앙대학교','경희대학교','서강대학교','이화여자대학교','건국대학교','동국대학교','홍익대학교','숭실대학교','국민대학교','KAIST','포항공과대학교','부산대학교','경북대학교','전남대학교','충남대학교'])[(floor(random()*20)+1)::int],
   (ARRAY['컴퓨터공학과','소프트웨어학과','정보통신공학과','전자공학과','컴퓨터과학과','데이터사이언스학과','인공지능학과','게임학과','정보보호학과','산업공학과','시각디자인학과','경영학과','경영정보학과','멀티미디어학과','수학과'])[(floor(random()*15)+1)::int]
@@ -243,7 +243,7 @@ WITH base AS (
   INSERT INTO project_recruitment (
     team_leader_id, title, description, recruit_deadline, start_date, end_date, status, view_count, recruit_count
   )
-  SELECT 
+  SELECT
     d.team_leader_id,
     (ARRAY[
       'React 기반 쇼핑몰 플랫폼 개발',
@@ -360,7 +360,7 @@ WITH base AS (
 )
 -- Project leader member row
 INSERT INTO project_member (project_id, user_id, role, tech_part)
-SELECT p.project_id, p.team_leader_id, 'LEADER', 
+SELECT p.project_id, p.team_leader_id, 'LEADER',
   (ARRAY['프론트엔드', '백엔드', '풀스택', '모바일', '데브옵스', 'AI/ML', 'UI/UX디자인', 'PM/기획'])[(p.project_id % 8) + 1]
 FROM ins_proj p;
 
@@ -384,7 +384,7 @@ ON CONFLICT ON CONSTRAINT uq_project_tech_stack DO NOTHING;
 
 -- Additional project members: 2..5 per project, unique per project, not leader
 INSERT INTO project_member (project_id, user_id, role, tech_part)
-SELECT p.project_id, m.user_id, 'MEMBER', 
+SELECT p.project_id, m.user_id, 'MEMBER',
   (ARRAY['프론트엔드', '백엔드', '풀스택', '모바일', '데브옵스', 'AI/ML', '게임개발', '보안', 'QA/테스터', 'UI/UX디자인', 'PM/기획', '데이터사이언스'])[(m.user_id % 12) + 1]
 FROM project_recruitment p
 JOIN LATERAL (
@@ -400,7 +400,7 @@ ON CONFLICT DO NOTHING;
 -- Team Member Reviews (80% probability for each pair)
 -- ---------------------------------------------
 INSERT INTO team_member_review (project_id, reviewer_id, reviewee_id, rating, comment, created_at)
-SELECT 
+SELECT
   pm1.project_id,
   pm1.user_id AS reviewer_id,
   pm2.user_id AS reviewee_id,
@@ -449,8 +449,8 @@ SELECT
   ) END AS comment,
   current_timestamp
 FROM project_member pm1
-JOIN project_member pm2 
-  ON pm1.project_id = pm2.project_id 
+JOIN project_member pm2
+  ON pm1.project_id = pm2.project_id
   AND pm1.user_id <> pm2.user_id
 WHERE random() < 0.8
 ON CONFLICT (project_id, reviewer_id, reviewee_id) DO NOTHING;
@@ -459,7 +459,7 @@ ON CONFLICT (project_id, reviewer_id, reviewee_id) DO NOTHING;
 -- Project Applications (프로젝트 지원 데이터)
 -- ---------------------------------------------
 INSERT INTO project_application (project_id, user_id, tech_part, application_message, status)
-SELECT 
+SELECT
   pr.project_id,
   u.user_id,
   (ARRAY['프론트엔드', '백엔드', '풀스택', '모바일', '데브옵스', 'AI/ML', '게임개발', '보안', 'QA/테스터', 'UI/UX디자인', 'PM/기획', '데이터사이언스'])[(u.user_id % 12) + 1],
@@ -475,19 +475,19 @@ SELECT
     '이 분야에 대한 열정이 있어 지원하게 되었습니다.',
     '프로젝트 성공을 위해 최선을 다하겠습니다.'
   ])[(floor(random()*10)+1)::int],
-  CASE 
+  CASE
     WHEN random() < 0.3 THEN 'ACCEPTED'::varchar  -- 30% 승인
-    WHEN random() < 0.6 THEN 'PENDING'::varchar   -- 30% 대기중  
+    WHEN random() < 0.6 THEN 'PENDING'::varchar   -- 30% 대기중
     ELSE 'REJECTED'::varchar                       -- 40% 거절
   END
 FROM project_recruitment pr
 CROSS JOIN users u
-WHERE 
+WHERE
   -- 프로젝트 리더는 자신의 프로젝트에 지원하지 않음
   pr.team_leader_id != u.user_id
   -- 이미 프로젝트 멤버인 경우도 지원하지 않음
   AND NOT EXISTS (
-    SELECT 1 FROM project_member pm 
+    SELECT 1 FROM project_member pm
     WHERE pm.project_id = pr.project_id AND pm.user_id = u.user_id
   )
   -- 랜덤하게 15% 확률로 지원 (너무 많으면 비현실적)
@@ -498,7 +498,7 @@ ON CONFLICT (project_id, user_id) DO NOTHING;
 -- Portfolio Projects (사용자가 참여한 프로젝트 중 랜덤하게 포트폴리오 등록)
 -- ---------------------------------------------
 INSERT INTO portfolio_project (user_id, project_id, created_at)
-SELECT 
+SELECT
   pm.user_id,
   pm.project_id,
   current_timestamp
@@ -510,14 +510,14 @@ ON CONFLICT (user_id, project_id) DO NOTHING;
 -- Project Likes (프로젝트 좋아요 데이터)
 -- ---------------------------------------------
 INSERT INTO likes (user_id, target_type, target_id, created_at)
-SELECT 
+SELECT
   u.user_id,
   'PROJECT'::varchar,
   pr.project_id,
   current_timestamp - ((floor(random() * 30) || ' days')::interval) - ((floor(random() * 24) || ' hours')::interval)
 FROM users u
 CROSS JOIN project_recruitment pr
-WHERE 
+WHERE
   -- 자신의 프로젝트는 좋아요하지 않음
   pr.team_leader_id != u.user_id
   -- 프로젝트 멤버는 자신의 프로젝트를 좋아요할 확률 높임 (80%)
@@ -533,14 +533,14 @@ ON CONFLICT (user_id, target_type, target_id) DO NOTHING;
 -- Portfolio Likes (포트폴리오 좋아요 데이터)
 -- ---------------------------------------------
 INSERT INTO likes (user_id, target_type, target_id, created_at)
-SELECT 
+SELECT
   u1.user_id,
   'PORTFOLIO'::varchar,
   u2.user_id,
   current_timestamp - ((floor(random() * 60) || ' days')::interval) - ((floor(random() * 24) || ' hours')::interval)
 FROM users u1
 CROSS JOIN users u2
-WHERE 
+WHERE
   -- 자기 자신은 좋아요하지 않음
   u1.user_id != u2.user_id
   -- 포트폴리오가 공개된 경우만
@@ -548,14 +548,14 @@ WHERE
   -- 같은 프로젝트에 참여한 적이 있으면 좋아요할 확률 높임 (60%)
   AND (
     (EXISTS (
-      SELECT 1 FROM project_member pm1 
-      JOIN project_member pm2 ON pm1.project_id = pm2.project_id 
+      SELECT 1 FROM project_member pm1
+      JOIN project_member pm2 ON pm1.project_id = pm2.project_id
       WHERE pm1.user_id = u1.user_id AND pm2.user_id = u2.user_id
     ) AND random() < 0.6)
     OR
     -- 같은 기술 파트면 좋아요할 확률 중간 (25%)
     (EXISTS (
-      SELECT 1 FROM user_profile up1 
+      SELECT 1 FROM user_profile up1
       JOIN user_profile up2 ON up1.tech_part_id = up2.tech_part_id
       WHERE up1.user_id = u1.user_id AND up2.user_id = u2.user_id
     ) AND random() < 0.25)

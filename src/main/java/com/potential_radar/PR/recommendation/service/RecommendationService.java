@@ -530,4 +530,31 @@ public class RecommendationService {
             return false;
         }
     }
+
+    /**
+     * 사용자가 숨김 처리한 프로젝트 ID 목록 조회 (AI 서버용)
+     */
+    public List<Long> getHiddenProjectIds(Long userId) {
+        try {
+            // 사용자 확인
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다: " + userId));
+
+            // 숨김 처리한 피드백들에서 프로젝트 ID 추출
+            List<Long> hiddenProjectIds = feedbackRepository
+                    .findByUserUserIdOrderByCreatedAtDesc(userId)
+                    .stream()
+                    .filter(feedback -> feedback.getFeedbackAction() == FeedbackAction.HIDE)
+                    .map(feedback -> feedback.getRecommendationHistory().getRecommendedProject().getProjectId())
+                    .distinct()
+                    .toList();
+
+            log.info("🔍 사용자 {} 숨김 프로젝트 조회: {}개", userId, hiddenProjectIds.size());
+            return hiddenProjectIds;
+
+        } catch (Exception e) {
+            log.error("❌ 숨김 프로젝트 조회 실패 (사용자 ID: {}): {}", userId, e.getMessage(), e);
+            return Collections.emptyList();
+        }
+    }
 }

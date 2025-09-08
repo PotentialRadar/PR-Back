@@ -88,6 +88,17 @@ public class RecommendationController {
     }
 
     /**
+     * 간편 피드백 - 추천그만받기
+     */
+    @PostMapping("/feedback/{recommendationHistoryId}/hide")
+    public ResponseEntity<String> submitHide(
+            @RequestHeader(value = "User-Id", required = false) Long userId,
+            @PathVariable Long recommendationHistoryId
+    ) {
+        return submitFeedback(userId, recommendationHistoryId, FeedbackAction.HIDE);
+    }
+
+    /**
      * 사용자 피드백 통계 조회 (AI 서버용)
      */
     @GetMapping("/users/{userId}/feedback-stats")
@@ -138,6 +149,20 @@ public class RecommendationController {
                 "sessionId", sessionId != null ? sessionId : "none"
             );
             return ResponseEntity.ok(response);
+        }
+    }
+
+    /**
+     * 사용자가 숨김 처리한 프로젝트 ID 목록 조회 (AI 서버용)
+     */
+    @GetMapping("/users/{userId}/hidden-projects")
+    public ResponseEntity<List<Long>> getHiddenProjects(@PathVariable Long userId) {
+        try {
+            List<Long> hiddenProjects = recommendationService.getHiddenProjectIds(userId);
+            return ResponseEntity.ok(hiddenProjects);
+        } catch (Exception e) {
+            log.error("❌ 숨김 프로젝트 조회 실패: {}", e.getMessage());
+            return ResponseEntity.ok(List.of()); // 빈 리스트 반환
         }
     }
 }

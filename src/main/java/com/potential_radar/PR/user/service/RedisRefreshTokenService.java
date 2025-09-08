@@ -1,5 +1,6 @@
 package com.potential_radar.PR.user.service;
 
+import com.potential_radar.PR.config.jwt.JwtProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -17,7 +18,7 @@ import java.util.concurrent.TimeUnit;
  * Redis 저장 구조:
  * - Key: "refresh_token:{userId}" (예: "refresh_token:123")
  * - Value: RefreshTokenInfo JSON (토큰 값, 생성 시간, 사용 횟수 등)
- * - TTL: 14일 자동 만료
+ * - TTL: application.yml 설정값 기반 자동 만료
  * 
  * 보안 기능:
  * - 토큰 회전(Rotation): 토큰 사용 시마다 새 토큰 발급
@@ -31,6 +32,7 @@ import java.util.concurrent.TimeUnit;
 public class RedisRefreshTokenService {
 
     private final RedisTemplate<String, Object> redisTemplate;
+    private final JwtProperties jwtProperties;
     
     // 🔑 Redis 키 접두사 - 사용자별 토큰을 구분하는 네임스페이스
     private static final String REFRESH_TOKEN_PREFIX = "refresh_token:";
@@ -40,9 +42,6 @@ public class RedisRefreshTokenService {
     
     // 🔑 사용된 토큰 추적 키 접두사 - 재사용 탐지를 위한 블랙리스트
     private static final String USED_TOKEN_PREFIX = "used_token:";
-    
-    // ⏰ Refresh Token 만료 시간 (14일)
-    private static final long REFRESH_TOKEN_TTL = 14L;
     
     /**
      * 🏭 새로운 Refresh Token 생성 및 저장
@@ -68,13 +67,16 @@ public class RedisRefreshTokenService {
             .usedCount(0)                      // 🔢 사용 횟수 추적 (재사용 탐지용)
             .build();
         
+        // ⏰ 설정에서 TTL 정보 조회
+        TTLInfo ttlInfo = getRefreshTokenTTL();
+        
         // 💾 사용자 ID → 토큰 정보 저장 (메인 저장소)
         String userKey = REFRESH_TOKEN_PREFIX + userId;
-        redisTemplate.opsForValue().set(userKey, tokenInfo, REFRESH_TOKEN_TTL, TimeUnit.DAYS);
+        redisTemplate.opsForValue().set(userKey, tokenInfo, ttlInfo.value, ttlInfo.unit);
         
         // 🔄 토큰 → 사용자 ID 역방향 매핑 저장 (빠른 조회용)
         String tokenKey = TOKEN_MAPPING_PREFIX + refreshToken;
-        redisTemplate.opsForValue().set(tokenKey, userId, REFRESH_TOKEN_TTL, TimeUnit.DAYS);
+        redisTemplate.opsForValue().set(tokenKey, userId, ttlInfo.value, ttlInfo.unit);
         
         log.info("🎫 사용자 {}의 새 Refresh Token 생성됨: {}", userId, refreshToken.substring(0, 8) + "...");
         return refreshToken;
@@ -91,13 +93,12 @@ public class RedisRefreshTokenService {
      */
     public Long getUserIdByToken(String refreshToken) {
         // 🔍 토큰이 이미 사용되었는지 확인 (재사용 탐지)
-        if (isTokenUsed(refreshToken)) {
-            log.warn("⚠️ 이미 사용된 토큰 재사용 시도: {}", refreshToken.substring(0, 8) + "...");
+        Long usedTokenUserId = getUsedTokenUserId(refreshToken);
+        if (usedTokenUserId != null) {
+            log.warn("⚠️ 이미 사용된 토큰 재사용 시도: {} (원 소유자: {})", 
+                refreshToken.substring(0, 8) + "...", usedTokenUserId);
             // 🚨 재사용 탐지 시 해당 사용자의 모든 토큰 무효화
-            Long userId = getUserIdFromMapping(refreshToken);
-            if (userId != null) {
-                revokeAllTokensForUser(userId);
-            }
+            revokeAllTokensForUser(usedTokenUserId);
             return null;
         }
         
@@ -203,29 +204,132 @@ public class RedisRefreshTokenService {
 
     /**
      * 🔄 토큰 매핑에서 사용자 ID 조회 (내부용)
+     * 
+     * Redis에서 숫자가 Integer로 역직렬화될 수 있으므로 안전한 타입 변환을 수행합니다.
      */
     private Long getUserIdFromMapping(String refreshToken) {
         String tokenKey = TOKEN_MAPPING_PREFIX + refreshToken;
         Object userId = redisTemplate.opsForValue().get(tokenKey);
-        return userId != null ? (Long) userId : null;
+        
+        if (userId == null) {
+            return null;
+        }
+        
+        // 🔧 안전한 타입 변환: Integer, Long, String 모두 지원
+        try {
+            if (userId instanceof Long) {
+                return (Long) userId;
+            } else if (userId instanceof Integer) {
+                return ((Integer) userId).longValue(); // Integer → Long 안전 변환
+            } else if (userId instanceof String) {
+                return Long.parseLong((String) userId); // String → Long 변환
+            } else if (userId instanceof Number) {
+                return ((Number) userId).longValue(); // 기타 Number 타입 처리
+            } else {
+                log.warn("⚠️ 예상하지 못한 userId 타입: {} -> {}", userId.getClass().getSimpleName(), userId);
+                return null;
+            }
+        } catch (NumberFormatException e) {
+            log.error("🔥 userId 타입 변환 실패: {} -> {}", userId, e.getMessage());
+            return null;
+        }
     }
 
     /**
-     * 🏷️ 토큰을 사용됨으로 표시 (재사용 탐지용)
+     * 🏷️ 토큰을 사용됨으로 표시 (재사용 탐지용 - userId 포함)
+     * 
+     * 토큰 회전 시 기존 토큰을 "사용됨" 상태로 표시합니다.
+     * 재사용 탐지 시 해당 사용자의 모든 토큰을 무효화할 수 있도록 userId도 함께 저장합니다.
      */
     private void markTokenAsUsed(String refreshToken) {
-        String usedTokenKey = USED_TOKEN_PREFIX + refreshToken;
-        // 🗑️ 사용된 토큰 정보를 7일간 보관 (재사용 탐지용)
-        redisTemplate.opsForValue().set(usedTokenKey, true, 7L, TimeUnit.DAYS);
+        // 먼저 현재 토큰의 사용자 ID를 조회
+        Long userId = getUserIdFromMapping(refreshToken);
+        if (userId != null) {
+            String usedTokenKey = USED_TOKEN_PREFIX + refreshToken;
+            // 🔍 사용된 토큰에 userId를 저장하여 재사용 탐지 시 전체 회수 가능하게 함
+            redisTemplate.opsForValue().set(usedTokenKey, userId.toString(), 7L, TimeUnit.DAYS);
+            log.debug("🏷️ 토큰을 사용됨으로 표시: {} (사용자: {})", refreshToken.substring(0, 8) + "...", userId);
+        }
     }
 
     /**
      * 🔍 토큰이 이미 사용되었는지 확인 (재사용 탐지용)
+     * 
+     * @param refreshToken 확인할 토큰
+     * @return 사용된 토큰이면 true, 그렇지 않으면 false
      */
     private boolean isTokenUsed(String refreshToken) {
+        return getUsedTokenUserId(refreshToken) != null;
+    }
+
+    /**
+     * 🔍 사용된 토큰의 원래 소유자 ID 조회 (재사용 탐지용)
+     * 
+     * 재사용 탐지 시 해당 사용자의 모든 토큰을 무효화하기 위해 사용됩니다.
+     * 
+     * @param refreshToken 조회할 토큰
+     * @return 원래 소유자의 사용자 ID, 사용되지 않은 토큰이면 null
+     */
+    private Long getUsedTokenUserId(String refreshToken) {
         String usedTokenKey = USED_TOKEN_PREFIX + refreshToken;
-        Boolean isUsed = (Boolean) redisTemplate.opsForValue().get(usedTokenKey);
-        return Boolean.TRUE.equals(isUsed);
+        Object userIdObj = redisTemplate.opsForValue().get(usedTokenKey);
+        
+        if (userIdObj != null) {
+            try {
+                // 문자열로 저장했으므로 Long으로 변환
+                return Long.parseLong(userIdObj.toString());
+            } catch (NumberFormatException e) {
+                log.warn("⚠️ 사용된 토큰 키 형식 오류: {} -> {}", refreshToken.substring(0, 8) + "...", userIdObj);
+                return null;
+            }
+        }
+        
+        return null;
+    }
+
+    /**
+     * ⏰ JWT 설정에서 Refresh Token TTL 계산 (내부용)
+     * 
+     * application.yml의 refresh-token-expiration(밀리초)를 
+     * Redis TTL용 시간 단위로 변환합니다.
+     * 
+     * @return TTL 값과 시간 단위를 담은 TTL 정보 객체
+     */
+    private TTLInfo getRefreshTokenTTL() {
+        long expirationMs = jwtProperties.getRefreshTokenExpiration();
+        
+        // 🧮 밀리초를 적절한 단위로 변환 (성능과 정확성 고려)
+        if (expirationMs >= TimeUnit.DAYS.toMillis(1)) {
+            // 1일 이상이면 일(day) 단위 사용
+            long days = TimeUnit.MILLISECONDS.toDays(expirationMs);
+            log.debug("⏰ Refresh Token TTL 계산: {}ms = {}일", expirationMs, days);
+            return new TTLInfo(days, TimeUnit.DAYS);
+            
+        } else if (expirationMs >= TimeUnit.HOURS.toMillis(1)) {
+            // 1시간 이상이면 시간(hour) 단위 사용
+            long hours = TimeUnit.MILLISECONDS.toHours(expirationMs);
+            log.debug("⏰ Refresh Token TTL 계산: {}ms = {}시간", expirationMs, hours);
+            return new TTLInfo(hours, TimeUnit.HOURS);
+            
+        } else {
+            // 그 외는 분(minute) 단위 사용
+            long minutes = TimeUnit.MILLISECONDS.toMinutes(expirationMs);
+            log.debug("⏰ Refresh Token TTL 계산: {}ms = {}분", expirationMs, minutes);
+            return new TTLInfo(Math.max(1, minutes), TimeUnit.MINUTES); // 최소 1분 보장
+        }
+    }
+
+    /**
+     * ⏰ TTL 정보를 담는 내부 헬퍼 클래스
+     */
+    private static class TTLInfo {
+        final long value;
+        final TimeUnit unit;
+        
+        TTLInfo(long value, TimeUnit unit) {
+            this.value = value;
+            this.unit = unit;
+        }
     }
 
     /**

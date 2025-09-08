@@ -3,6 +3,7 @@ package com.potential_radar.PR.user.service;
 import com.potential_radar.PR.config.jwt.TokenProvider;
 import com.potential_radar.PR.common.exception.InvalidTokenException;
 import com.potential_radar.PR.user.domain.User;
+import com.potential_radar.PR.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,7 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class TokenService {
 
     private final TokenProvider tokenProvider;
-    private final UserService userService;
+    private final UserRepository userRepository;  // 순환 의존성 해결: UserService 대신 직접 Repository 사용
     private final RedisRefreshTokenService redisRefreshTokenService;
 
     /**
@@ -42,20 +43,41 @@ public class TokenService {
      * @param refreshToken 기존 Refresh Token
      * @return 새로 발급된 Access Token
      * @throws InvalidTokenException 토큰이 유효하지 않거나 재사용 탐지 시
+     * @deprecated 새 Refresh Token도 함께 반환하는 refreshTokenPair() 메소드 사용 권장
      */
+    @Deprecated
     @Transactional
     public String createNewAccessToken(String refreshToken) {
+        TokenPair tokenPair = refreshTokenPair(refreshToken);
+        return tokenPair.getAccessToken();
+    }
+
+    /**
+     * 🔄 토큰 쌍 갱신 (Access + Refresh Token 회전)
+     * 
+     * 기존 Refresh Token을 사용하여 새로운 토큰 쌍을 발급합니다.
+     * 보안을 위해 Refresh Token도 새것으로 회전(교체)합니다.
+     * 
+     * ⚠️ 중요: 반환된 새 Refresh Token을 반드시 클라이언트에 전달해야 합니다!
+     * 
+     * @param refreshToken 기존 Refresh Token
+     * @return 새로 발급된 토큰 쌍 (Access Token + 회전된 Refresh Token)
+     * @throws InvalidTokenException 토큰이 유효하지 않거나 재사용 탐지 시
+     */
+    @Transactional
+    public TokenPair refreshTokenPair(String refreshToken) {
         // 🔍 Refresh Token 유효성 검사 및 사용자 조회
         Long userId = redisRefreshTokenService.getUserIdByToken(refreshToken);
         
         if (userId == null) {
-            log.warn("❌ 유효하지 않은 Refresh Token으로 Access Token 요청: {}", 
+            log.warn("❌ 유효하지 않은 Refresh Token으로 갱신 요청: {}", 
                 refreshToken.substring(0, 8) + "...");
             throw new InvalidTokenException("유효하지 않은 Refresh Token입니다. 다시 로그인해주세요.");
         }
 
-        // 👤 사용자 정보 조회
-        User user = userService.findById(userId);
+        // 👤 사용자 정보 조회 (Repository 직접 사용으로 순환 의존성 해결)
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new InvalidTokenException("사용자를 찾을 수 없습니다. ID: " + userId));
 
         // 🔄 Refresh Token 회전 (보안 강화)
         String newRefreshToken = redisRefreshTokenService.rotateRefreshToken(refreshToken);
@@ -68,10 +90,10 @@ public class TokenService {
         // 🎫 새로운 Access Token 생성
         String newAccessToken = tokenProvider.generateAccessToken(user);
         
-        log.info("✅ 토큰 갱신 성공 - 사용자: {}, 새 Refresh Token: {}", 
+        log.info("✅ 토큰 쌍 갱신 성공 - 사용자: {}, 새 Refresh Token: {}", 
             userId, newRefreshToken.substring(0, 8) + "...");
             
-        return newAccessToken;
+        return new TokenPair(newAccessToken, newRefreshToken);
     }
 
     /**

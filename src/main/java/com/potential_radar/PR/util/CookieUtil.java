@@ -49,9 +49,8 @@ public class CookieUtil {
         cookie.setHttpOnly(true);              // 🛡️ JavaScript 접근 차단 (XSS 방어)
         cookie.setMaxAge(maxAge);              // ⏰ 쿠키 만료 시간 설정
         
-        // TODO: 프로덕션 환경에서는 HTTPS 강제 설정
-        // cookie.setSecure(true);             // 🔒 HTTPS에서만 전송 (프로덕션용)
-        // cookie.setAttribute("SameSite", "Strict"); // 🚫 CSRF 공격 방어
+        // 🔒 환경별 보안 설정 적용
+        addSecurityAttributes(cookie);
         
         response.addCookie(cookie);
         log.info("🍪 쿠키 생성됨: {} (만료: {}초)", name, maxAge);
@@ -98,6 +97,9 @@ public class CookieUtil {
         cookie.setHttpOnly(true);              // 🛡️ 보안 설정 유지
         cookie.setMaxAge(0);                   // ⏰ 즉시 만료로 삭제
         
+        // 🔒 삭제 시에도 동일한 보안 설정 적용
+        addSecurityAttributes(cookie);
+        
         response.addCookie(cookie);
         log.info("🗑️ 쿠키 삭제됨: {}", name);
     }
@@ -143,5 +145,79 @@ public class CookieUtil {
                     return null;
                 }
             });
+    }
+
+    /**
+     * 🔒 쿠키에 환경별 보안 속성 적용
+     * 
+     * 개발환경과 프로덕션환경에 따라 적절한 보안 설정을 적용합니다.
+     * 
+     * 보안 속성:
+     * - Secure: HTTPS에서만 쿠키 전송 (프로덕션에서만 true)
+     * - SameSite=Lax: CSRF 공격 방어 (일반적인 사용성 고려)
+     * 
+     * @param cookie 보안 속성을 적용할 쿠키 객체
+     */
+    private static void addSecurityAttributes(Cookie cookie) {
+        // 🌍 현재 환경 감지 (프로덕션 환경에서는 HTTPS 필수)
+        boolean isProduction = isProductionEnvironment();
+        
+        if (isProduction) {
+            // 🔒 프로덕션: HTTPS에서만 쿠키 전송
+            cookie.setSecure(true);
+            log.debug("🔒 Secure 플래그 활성화됨 (프로덕션 환경)");
+        } else {
+            // 🔧 개발: HTTP에서도 쿠키 전송 허용
+            cookie.setSecure(false);
+            log.debug("🔧 Secure 플래그 비활성화됨 (개발 환경)");
+        }
+        
+        // 🚫 SameSite=Lax: 일반적인 CSRF 보호 (Strict보다 사용성 좋음)
+        // Note: Jakarta Servlet 6.0+에서 직접 지원, 이전 버전은 setAttribute 사용
+        try {
+            cookie.setAttribute("SameSite", "Lax");
+            log.debug("🚫 SameSite=Lax 설정 완료");
+        } catch (Exception e) {
+            // 이전 버전 호환성을 위한 fallback (필요시 확장)
+            log.warn("⚠️ SameSite 속성 설정 실패 (구버전 서블릿): {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 🌍 현재 실행 환경이 프로덕션인지 확인
+     * 
+     * Spring Profile이나 환경변수를 확인하여 프로덕션 환경 여부를 판단합니다.
+     * 
+     * 판단 기준:
+     * 1. spring.profiles.active 프로파일 확인
+     * 2. 환경변수 확인 (SPRING_PROFILES_ACTIVE)
+     * 3. localhost 여부 확인 (fallback)
+     * 
+     * @return 프로덕션 환경이면 true, 개발환경이면 false
+     */
+    private static boolean isProductionEnvironment() {
+        // 🔍 Spring Profile 확인 (JVM 속성)
+        String activeProfiles = System.getProperty("spring.profiles.active");
+        if (activeProfiles != null) {
+            boolean isProduction = activeProfiles.toLowerCase().contains("prod");
+            log.debug("🔍 Spring Profile 감지: {} -> Production: {}", activeProfiles, isProduction);
+            return isProduction;
+        }
+        
+        // 🌐 환경변수 확인
+        activeProfiles = System.getenv("SPRING_PROFILES_ACTIVE");
+        if (activeProfiles != null) {
+            boolean isProduction = activeProfiles.toLowerCase().contains("prod");
+            log.debug("🌐 환경변수 감지: {} -> Production: {}", activeProfiles, isProduction);
+            return isProduction;
+        }
+        
+        // 📡 기본값: localhost 기반 판단 (개발환경 가정)
+        String serverPort = System.getProperty("server.port", "8080");
+        boolean isLocalhost = "localhost".equals(System.getProperty("server.address", "localhost")) || 
+                             "8080".equals(serverPort);
+        
+        log.debug("📡 기본 환경 감지 -> localhost: {} (Production: {})", isLocalhost, !isLocalhost);
+        return !isLocalhost; // localhost가 아니면 프로덕션으로 가정
     }
 }

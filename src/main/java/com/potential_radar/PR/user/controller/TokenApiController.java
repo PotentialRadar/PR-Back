@@ -84,18 +84,23 @@ public class TokenApiController {
         String refreshToken = refreshCookie.get().getValue();
         
         try {
-            // 🔄 새로운 Access Token 생성 (Refresh Token 회전 포함)
-            String newAccessToken = tokenService.createNewAccessToken(refreshToken);
+            // 🔄 새로운 토큰 쌍 생성 (Access + Refresh Token 회전)
+            TokenService.TokenPair tokenPair = tokenService.refreshTokenPair(refreshToken);
             
             // 🍪 새 Access Token을 보안 쿠키로 설정
             int accessTokenMaxAge = (int) (jwtProperties.getAccessTokenExpiration() / 1000); // 밀리초 → 초
-            CookieUtil.addCookie(response, "access_token", newAccessToken, accessTokenMaxAge);
+            CookieUtil.addCookie(response, "access_token", tokenPair.getAccessToken(), accessTokenMaxAge);
             
-            log.info("✅ Access Token 갱신 성공");
+            // 🍪 ⚠️ 중요: 새 Refresh Token도 반드시 쿠키로 설정 (회전된 토큰)
+            int refreshTokenMaxAge = (int) (jwtProperties.getRefreshTokenExpiration() / 1000); // 밀리초 → 초
+            CookieUtil.addCookie(response, "refresh_token", tokenPair.getRefreshToken(), refreshTokenMaxAge);
+            
+            log.info("✅ 토큰 쌍 갱신 성공 (Access + Refresh Token 회전)");
             
             return ResponseEntity.ok(Map.of(
                 "message", "토큰이 성공적으로 갱신되었습니다.",
-                "expiresIn", accessTokenMaxAge
+                "accessExpiresIn", accessTokenMaxAge,
+                "refreshExpiresIn", refreshTokenMaxAge
             ));
             
         } catch (Exception e) {
@@ -110,50 +115,4 @@ public class TokenApiController {
         }
     }
     
-    /**
-     * 🚪 로그아웃 API
-     * 
-     * 현재 사용자의 모든 토큰을 무효화하고 쿠키를 삭제합니다.
-     * 보안을 위해 서버와 클라이언트 양쪽에서 토큰을 완전히 제거합니다.
-     * 
-     * @param request HttpServletRequest 객체 (쿠키 추출용)
-     * @param response HttpServletResponse 객체 (쿠키 삭제용)
-     * @return 로그아웃 성공 메시지
-     */
-    @PostMapping("/api/logout")
-    public ResponseEntity<Object> logout(HttpServletRequest request, HttpServletResponse response) {
-        
-        try {
-            // 🍪 Refresh Token 쿠키에서 사용자 정보 추출
-            Optional<Cookie> refreshCookie = CookieUtil.getCookie(request, "refresh_token");
-            
-            if (refreshCookie.isPresent()) {
-                String refreshToken = refreshCookie.get().getValue();
-                
-                // 🔍 사용자 ID 조회 후 모든 토큰 삭제
-                // TokenService에서 사용자 ID를 조회하는 메소드가 필요하므로 추가해야 함
-                // 임시로 refresh token으로 사용자를 식별하여 삭제
-                try {
-                    // Redis에서 토큰으로 사용자 ID를 조회하고 모든 토큰을 삭제
-                    tokenService.logoutByRefreshToken(refreshToken);
-                    log.info("🚪 사용자 로그아웃 완료");
-                } catch (Exception e) {
-                    log.warn("⚠️ 토큰 삭제 중 오류 발생: {}", e.getMessage());
-                    // 로그아웃은 실패해도 쿠키는 삭제해야 함
-                }
-            }
-            
-        } catch (Exception e) {
-            log.warn("⚠️ 로그아웃 중 토큰 처리 실패: {}", e.getMessage());
-            // 로그아웃은 실패해도 쿠키는 삭제해야 함
-        }
-        
-        // 🗑️ 클라이언트 쿠키 삭제
-        CookieUtil.deleteCookie(response, "access_token");
-        CookieUtil.deleteCookie(response, "refresh_token");
-        
-        log.info("🚪 로그아웃 완료 - 모든 쿠키 삭제됨");
-        
-        return ResponseEntity.ok(Map.of("message", "로그아웃되었습니다."));
-    }
 }

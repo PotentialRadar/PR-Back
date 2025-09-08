@@ -158,11 +158,11 @@ public class RedisEmailAuthService {
         boolean isCorrect = verificationInfo.getCode().equals(inputCode);
         
         if (isCorrect) {
-            // 🎉 인증 성공 - 사용됨으로 표시하고 삭제
+            // 🎉 인증 성공 - 사용됨으로 표시하고 5분간 유지 (재사용 방지 + 회원가입 실패 시 재시도 허용)
             verificationInfo.setIsVerified(true);
-            redisTemplate.delete(key);
+            redisTemplate.opsForValue().set(key, verificationInfo, 5, TimeUnit.MINUTES);
             resetAttemptCount(email);
-            log.info("✅ 이메일 인증 성공: {}", email);
+            log.info("✅ 이메일 인증 성공: {} (5분간 재사용 가능)", email);
             return true;
         } else {
             // ❌ 인증 실패 - 시도 횟수 업데이트
@@ -195,6 +195,37 @@ public class RedisEmailAuthService {
             (EmailVerificationInfo) redisTemplate.opsForValue().get(key);
         
         return verificationInfo != null && !verificationInfo.getIsVerified();
+    }
+
+    /**
+     * ✅ 이메일 인증 완료 여부 확인 (회원가입 시 사용)
+     * 
+     * 회원가입 전에 해당 이메일이 인증 완료된 상태인지 확인합니다.
+     * 인증 성공 후 5분 내에 회원가입을 완료해야 합니다.
+     * 
+     * @param email 확인할 이메일 주소
+     * @return 인증 완료된 상태이면 true, 그렇지 않으면 false
+     */
+    public boolean isVerifiedEmail(String email) {
+        String key = EMAIL_VERIFY_PREFIX + email;
+        EmailVerificationInfo verificationInfo = 
+            (EmailVerificationInfo) redisTemplate.opsForValue().get(key);
+        
+        return verificationInfo != null && verificationInfo.getIsVerified();
+    }
+
+    /**
+     * 🗑️ 회원가입 완료 후 인증 코드 정리 (회원가입 성공 시 호출)
+     * 
+     * 회원가입이 성공적으로 완료되면 더 이상 필요 없는 인증 코드를 삭제합니다.
+     * 
+     * @param email 정리할 이메일 주소
+     */
+    public void markSignupCompleted(String email) {
+        String key = EMAIL_VERIFY_PREFIX + email;
+        redisTemplate.delete(key);
+        resetAttemptCount(email);
+        log.info("🎉 회원가입 완료로 인증 코드 정리: {}", email);
     }
 
     /**

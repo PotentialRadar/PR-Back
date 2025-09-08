@@ -158,6 +158,9 @@ FROM all_users_rn aur
 -- ---------------------------------------------
 -- User Tech Stacks: 3~7 random stacks per user
 -- ---------------------------------------------
+-- 먼저 기존 데이터가 있으면 삭제 (더미 데이터 초기화)
+DELETE FROM user_tech_stack WHERE EXISTS (SELECT 1 FROM users WHERE email LIKE 'user%@naver.com');
+
 INSERT INTO user_tech_stack (user_id, stack_id, skill_level)
 SELECT u.user_id, s.tech_stack_id, (floor(random()*5)+1)::int
 FROM users u
@@ -167,6 +170,7 @@ FROM users u
     ORDER BY random()
         LIMIT (3 + (floor(random()*5))::int)  -- 3..7
     ) s ON TRUE
+WHERE u.email LIKE 'user%@naver.com'  -- 더미 데이터만 생성
     ON CONFLICT ON CONSTRAINT uk_user_tech_stack_user_stack DO NOTHING;
 
 -- ---------------------------------------------
@@ -219,11 +223,28 @@ FROM base b
 WHERE (b.n=1) OR (random() < 0.2);
 
 -- ---------------------------------------------
--- Projects (50)
+-- Projects (50) - 더미 데이터 초기화
 -- ---------------------------------------------
+-- 기존 더미 프로젝트 관련 데이터 삭제 (더미 데이터 초기화)
+DELETE FROM project_tech_stack WHERE project_id IN (
+    SELECT project_id FROM project_recruitment 
+    WHERE team_leader_id IN (SELECT user_id FROM users WHERE email LIKE 'user%@naver.com')
+);
+DELETE FROM project_tech_part WHERE project_id IN (
+    SELECT project_id FROM project_recruitment 
+    WHERE team_leader_id IN (SELECT user_id FROM users WHERE email LIKE 'user%@naver.com')
+);
+DELETE FROM project_member WHERE project_id IN (
+    SELECT project_id FROM project_recruitment 
+    WHERE team_leader_id IN (SELECT user_id FROM users WHERE email LIKE 'user%@naver.com')
+);
+DELETE FROM project_recruitment WHERE team_leader_id IN (
+    SELECT user_id FROM users WHERE email LIKE 'user%@naver.com'
+);
+
 WITH base AS (
     SELECT gs AS i,
-           (SELECT user_id FROM users ORDER BY random() LIMIT 1) AS team_leader_id,
+           (SELECT user_id FROM users WHERE email LIKE 'user%@naver.com' ORDER BY random() LIMIT 1) AS team_leader_id,
          current_date AS today
 FROM generate_series(1,50) gs
     ), dates AS (
@@ -373,14 +394,27 @@ FROM project_recruitment p
 ) tp ON TRUE
     ON CONFLICT DO NOTHING;
 
--- Project Tech Stacks: 4..6 random entries per project
+-- Project Tech Stacks: 프로젝트별로 다양한 기술스택 (4~6개씩 다르게)
 INSERT INTO project_tech_stack (project_id, tech_stack_id, recruit_count)
-SELECT p.project_id, ts.tech_stack_id, (1 + floor(random()*2))::int
+SELECT p.project_id, s.tech_stack_id, (1 + floor(random()*2))::int
 FROM project_recruitment p
-         JOIN LATERAL (
-    SELECT tech_stack_id FROM tech_stack ORDER BY random() LIMIT (4 + floor(random()*3))::int
-) ts ON TRUE
-    ON CONFLICT ON CONSTRAINT uq_project_tech_stack DO NOTHING;
+    CROSS JOIN LATERAL (
+        -- 각 프로젝트마다 고유한 시드로 다른 기술스택 조합 생성
+        WITH project_seed AS (
+            SELECT (p.project_id * 7919) % 1000 AS seed
+        ),
+        random_stacks AS (
+            SELECT ts.tech_stack_id, 
+                   ((ts.tech_stack_id * ps.seed * 31) % 997) AS sort_key
+            FROM tech_stack ts, project_seed ps
+        )
+        SELECT tech_stack_id 
+        FROM random_stacks 
+        ORDER BY sort_key 
+        LIMIT (4 + (p.project_id % 3))  -- 4~6개 (프로젝트 ID에 따라 다름)
+    ) s
+WHERE p.team_leader_id IN (SELECT user_id FROM users WHERE email LIKE 'user%@naver.com')  -- 더미 프로젝트만
+ON CONFLICT ON CONSTRAINT uq_project_tech_stack DO NOTHING;
 
 -- Additional project members: 2..5 per project, unique per project, not leader
 INSERT INTO project_member (project_id, user_id, role, tech_part)
@@ -456,8 +490,14 @@ WHERE random() < 0.8
 ON CONFLICT (project_id, reviewer_id, reviewee_id) DO NOTHING;
 
 -- ---------------------------------------------
--- Project Applications (프로젝트 지원 데이터)
+-- Project Applications (프로젝트 지원 데이터) - 더미 데이터 초기화
 -- ---------------------------------------------
+-- 기존 더미 데이터 삭제
+DELETE FROM project_application WHERE project_id IN (
+    SELECT project_id FROM project_recruitment 
+    WHERE team_leader_id IN (SELECT user_id FROM users WHERE email LIKE 'user%@naver.com')
+);
+
 INSERT INTO project_application (project_id, user_id, tech_part, application_message, status)
 SELECT
     pr.project_id,
@@ -495,8 +535,14 @@ WHERE
 ON CONFLICT (project_id, user_id) DO NOTHING;
 
 -- ---------------------------------------------
--- Portfolio Projects (사용자가 참여한 프로젝트 중 랜덤하게 포트폴리오 등록)
+-- Portfolio Projects (사용자가 참여한 프로젝트 중 랜덤하게 포트폴리오 등록) - 더미 데이터 초기화
 -- ---------------------------------------------
+-- 기존 더미 데이터 삭제
+DELETE FROM portfolio_project WHERE project_id IN (
+    SELECT project_id FROM project_recruitment 
+    WHERE team_leader_id IN (SELECT user_id FROM users WHERE email LIKE 'user%@naver.com')
+);
+
 INSERT INTO portfolio_project (user_id, project_id, created_at)
 SELECT
     pm.user_id,
@@ -507,8 +553,17 @@ WHERE random() < 0.4  -- 40% 확률로 포트폴리오에 등록
     ON CONFLICT (user_id, project_id) DO NOTHING;
 
 -- ---------------------------------------------
--- Project Likes (프로젝트 좋아요 데이터)
+-- Project Likes (프로젝트 좋아요 데이터) - 더미 데이터 초기화
 -- ---------------------------------------------
+-- 기존 더미 좋아요 데이터 삭제
+DELETE FROM likes WHERE (target_type = 'PROJECT' AND target_id IN (
+    SELECT project_id FROM project_recruitment 
+    WHERE team_leader_id IN (SELECT user_id FROM users WHERE email LIKE 'user%@naver.com')
+)) OR (target_type = 'PORTFOLIO' AND (
+    user_id IN (SELECT user_id FROM users WHERE email LIKE 'user%@naver.com') OR
+    target_id IN (SELECT user_id FROM users WHERE email LIKE 'user%@naver.com')
+));
+
 INSERT INTO likes (user_id, target_type, target_id, created_at)
 SELECT
     u.user_id,
@@ -564,3 +619,20 @@ WHERE
     (random() < 0.1)
     )
 ON CONFLICT (user_id, target_type, target_id) DO NOTHING;
+
+-- ---------------------------------------------
+-- Update User Profile Reputation Scores (리뷰 점수 평균 계산 및 업데이트)
+-- ---------------------------------------------
+-- 각 사용자의 받은 리뷰들의 평균 점수와 리뷰 개수를 계산하여 user_profile 테이블 업데이트
+UPDATE user_profile 
+SET reputation_score = COALESCE(review_stats.avg_rating, 0.0),
+    review_count = COALESCE(review_stats.total_reviews, 0)
+FROM (
+    SELECT 
+        reviewee_id,
+        ROUND(AVG(rating::numeric), 2) as avg_rating,
+        COUNT(*) as total_reviews
+    FROM team_member_review 
+    GROUP BY reviewee_id
+) as review_stats
+WHERE user_profile.user_id = review_stats.reviewee_id;

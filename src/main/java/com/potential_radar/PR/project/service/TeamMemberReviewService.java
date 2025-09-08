@@ -5,6 +5,7 @@ import com.potential_radar.PR.project.repository.ProjectMemberRepository;
 import com.potential_radar.PR.project.repository.ProjectRecruitmentRepository;
 import com.potential_radar.PR.project.repository.TeamMemberReviewRepository;
 import com.potential_radar.PR.user.repository.UserRepository;
+import com.potential_radar.PR.user.service.UserReputationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,7 @@ public class TeamMemberReviewService {
     private final ProjectRecruitmentRepository projectRecruitmentRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final UserRepository userRepository;
+    private final UserReputationService userReputationService;
 
     public void createReview(TeamMemberReviewRequestDto request, Long reviewerId) {
         // 1. 프로젝트 조회
@@ -77,5 +79,8 @@ public class TeamMemberReviewService {
                 .build();
 
         teamMemberReviewRepository.save(review);
+        
+        // 9. 📊 리뷰 대상자의 평판 점수 업데이트
+        userReputationService.updateUserReputation(reviewee.getUserId());
     }
 }

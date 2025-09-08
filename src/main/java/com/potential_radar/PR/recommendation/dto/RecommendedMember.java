@@ -61,4 +61,7 @@ public class RecommendedMember {
     
     @JsonProperty("currentProjectCount")
     private Integer currentProjectCount;
+    
+    @JsonProperty("isPortfolioOpen")
+    private Boolean isPortfolioOpen;
 }

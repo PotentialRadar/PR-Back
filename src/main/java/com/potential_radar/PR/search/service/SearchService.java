@@ -87,21 +87,47 @@ public class SearchService {
             log.info("Applying keyword filter: '{}' (lowercase: '{}')", keyword, keywordLower);
 
             // 키워드는 모든 필드에서 검색 (nickname, jobTitle, 기술스택, 기술파트)
-            // 공백이 포함된 키워드는 match 쿼리로 처리
-            Criteria keywordCriteria;
+            // 다양한 검색 방식을 조합하여 최대한 유연한 검색 제공
+            
+            // 닉네임과 직무 검색 - 공백 처리 개선
+            Criteria userInfoCriteria;
             if (keyword.contains(" ")) {
-                // 공백이 포함된 경우 match 쿼리 사용
-                keywordCriteria = new Criteria("nickname").matches(keyword)
-                        .or(new Criteria("jobTitle").matches(keyword))
-                        .or(new Criteria("techStacks").matches(keywordLower))
-                        .or(new Criteria("techPart").matches(keywordLower));
+                userInfoCriteria = new Criteria("nickname").matches(keyword)
+                        .or(new Criteria("jobTitle").matches(keyword));
             } else {
-                // 단일 단어는 contains 사용
-                keywordCriteria = new Criteria("nickname").contains(keyword)
-                        .or(new Criteria("jobTitle").contains(keyword))
-                        .or(new Criteria("techStacks").contains(keywordLower))
-                        .or(new Criteria("techPart").contains(keywordLower));
+                userInfoCriteria = new Criteria("nickname").contains(keyword)
+                        .or(new Criteria("jobTitle").contains(keyword));
             }
+            
+            // 기술스택 검색 - 공백 처리 개선
+            Criteria techStackCriteria;
+            if (keywordLower.contains(" ")) {
+                // 공백이 있는 경우: phrase 필드와 기존 필드 모두 검색
+                techStackCriteria = new Criteria("techStacks.phrase").is(keywordLower)
+                        .or(new Criteria("techStacks").matches(keywordLower))
+                        .or(new Criteria("techStacks").expression("*" + keywordLower.replace(" ", "*") + "*"));
+            } else {
+                // 공백이 없는 경우: contains, matches, 와일드카드 모두 사용
+                techStackCriteria = new Criteria("techStacks").contains(keywordLower)
+                        .or(new Criteria("techStacks").matches(keywordLower))
+                        .or(new Criteria("techStacks").expression("*" + keywordLower + "*"));
+            }
+            
+            // 기술파트 검색 - 공백 처리 개선
+            Criteria techPartCriteria;
+            if (keywordLower.contains(" ")) {
+                // 공백이 있는 경우: matches와 정확한 expression 사용
+                techPartCriteria = new Criteria("techPart").matches(keywordLower)
+                        .or(new Criteria("techPart").expression(keywordLower.replace(" ", "*")));
+            } else {
+                // 공백이 없는 경우: contains, matches, 와일드카드 모두 사용
+                techPartCriteria = new Criteria("techPart").contains(keywordLower)
+                        .or(new Criteria("techPart").matches(keywordLower))
+                        .or(new Criteria("techPart").expression("*" + keywordLower + "*"));
+            }
+            
+            // 모든 조건을 OR로 결합
+            Criteria keywordCriteria = userInfoCriteria.or(techStackCriteria).or(techPartCriteria);
 
             finalCriteria = keywordCriteria;
             hasConditions = true;
@@ -180,7 +206,7 @@ public class SearchService {
         log.debug("Applied visibility filter (isPortfolioOpen=true AND isSearchOpen=true). hasConditions: {}", hasConditions);
 
         // 💡 2. 페이징 및 정렬
-        Sort sort = Sort.by(Sort.Order.desc("_score"), Sort.Order.desc("createdAt"));
+        Sort sort = createUserSort(request.getSortBy());
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
         Query query = new CriteriaQuery(finalCriteria).setPageable(pageable);
 
@@ -352,21 +378,47 @@ public class SearchService {
             log.info("Applying keyword filter: '{}' (lowercase: '{}')", keyword, keywordLower);
 
             // 키워드는 모든 필드에서 검색 (nickname, jobTitle, 기술스택, 기술파트)
-            // 공백이 포함된 키워드는 match 쿼리로 처리
-            Criteria keywordCriteria;
+            // 다양한 검색 방식을 조합하여 최대한 유연한 검색 제공
+            
+            // 닉네임과 직무 검색 - 공백 처리 개선
+            Criteria userInfoCriteria;
             if (keyword.contains(" ")) {
-                // 공백이 포함된 경우 match 쿼리 사용
-                keywordCriteria = new Criteria("nickname").matches(keyword)
-                        .or(new Criteria("jobTitle").matches(keyword))
-                        .or(new Criteria("techStacks").matches(keywordLower))
-                        .or(new Criteria("techPart").matches(keywordLower));
+                userInfoCriteria = new Criteria("nickname").matches(keyword)
+                        .or(new Criteria("jobTitle").matches(keyword));
             } else {
-                // 단일 단어는 contains 사용
-                keywordCriteria = new Criteria("nickname").contains(keyword)
-                        .or(new Criteria("jobTitle").contains(keyword))
-                        .or(new Criteria("techStacks").contains(keywordLower))
-                        .or(new Criteria("techPart").contains(keywordLower));
+                userInfoCriteria = new Criteria("nickname").contains(keyword)
+                        .or(new Criteria("jobTitle").contains(keyword));
             }
+            
+            // 기술스택 검색 - 공백 처리 개선
+            Criteria techStackCriteria;
+            if (keywordLower.contains(" ")) {
+                // 공백이 있는 경우: phrase 필드와 기존 필드 모두 검색
+                techStackCriteria = new Criteria("techStacks.phrase").is(keywordLower)
+                        .or(new Criteria("techStacks").matches(keywordLower))
+                        .or(new Criteria("techStacks").expression("*" + keywordLower.replace(" ", "*") + "*"));
+            } else {
+                // 공백이 없는 경우: contains, matches, 와일드카드 모두 사용
+                techStackCriteria = new Criteria("techStacks").contains(keywordLower)
+                        .or(new Criteria("techStacks").matches(keywordLower))
+                        .or(new Criteria("techStacks").expression("*" + keywordLower + "*"));
+            }
+            
+            // 기술파트 검색 - 공백 처리 개선
+            Criteria techPartCriteria;
+            if (keywordLower.contains(" ")) {
+                // 공백이 있는 경우: matches와 정확한 expression 사용
+                techPartCriteria = new Criteria("techPart").matches(keywordLower)
+                        .or(new Criteria("techPart").expression(keywordLower.replace(" ", "*")));
+            } else {
+                // 공백이 없는 경우: contains, matches, 와일드카드 모두 사용
+                techPartCriteria = new Criteria("techPart").contains(keywordLower)
+                        .or(new Criteria("techPart").matches(keywordLower))
+                        .or(new Criteria("techPart").expression("*" + keywordLower + "*"));
+            }
+            
+            // 모든 조건을 OR로 결합
+            Criteria keywordCriteria = userInfoCriteria.or(techStackCriteria).or(techPartCriteria);
 
             finalCriteria = keywordCriteria;
             hasConditions = true;
@@ -445,7 +497,7 @@ public class SearchService {
         log.debug("Applied visibility filter (isPortfolioOpen=true AND isSearchOpen=true). hasConditions: {}", hasConditions);
 
         // 페이징 및 정렬
-        Sort sort = Sort.by(Sort.Order.desc("_score"), Sort.Order.desc("createdAt"));
+        Sort sort = createUserSort(request.getSortBy());
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
         Query query = new CriteriaQuery(finalCriteria).setPageable(pageable);
 
@@ -492,6 +544,7 @@ public class SearchService {
                 .githubUrl(doc.getGithubUrl())
                 .jobTitle(doc.getJobTitle())
                 .experienceRange(doc.getExperienceRange())
+                .likeCount(doc.getLikeCount())
                 .createdAt(doc.getCreatedAt())
                 .matchScore((double) hit.getScore())
                 .build();
@@ -508,6 +561,7 @@ public class SearchService {
                 .githubUrl(doc.getGithubUrl())
                 .jobTitle(doc.getJobTitle())
                 .experienceRange(doc.getExperienceRange())
+                .likeCount(doc.getLikeCount())
                 .createdAt(doc.getCreatedAt())
                 .matchScore(1.0) // 기본 점수
                 .build();
@@ -553,14 +607,60 @@ public class SearchService {
 
         // 키워드 검색 - 기술스택/기술파트는 소문자로 변환하여 검색
         if (request.getKeyword() != null && !request.getKeyword().trim().isEmpty()) {
-            String keyword = request.getKeyword().trim();
+            String keyword = normalizeSearchKeyword(request.getKeyword().trim());
             String keywordLower = keyword.toLowerCase(); // 기술스택/기술파트용 소문자 키워드
             log.info("Applying keyword filter: '{}' (lowercase: '{}')", keyword, keywordLower);
 
-            // 키워드는 제목과 기술스택에서만 검색
-            Criteria keywordCriteria = new Criteria("title").contains(keyword)
-                    .or(new Criteria("title.text").contains(keyword))
-                    .or(new Criteria("techStacks").contains(keywordLower));
+            // 키워드는 제목, 기술스택, 기술파트에서 검색
+            // 다양한 검색 방식을 조합하여 최대한 유연한 검색 제공
+            
+            // 제목 검색 - 공백이 있는 경우 matches, 없는 경우 contains
+            Criteria titleCriteria;
+            if (keyword.contains(" ")) {
+                titleCriteria = new Criteria("title").matches(keyword)
+                        .or(new Criteria("title.text").matches(keyword));
+            } else {
+                titleCriteria = new Criteria("title").contains(keyword)
+                        .or(new Criteria("title.text").contains(keyword));
+            }
+            
+            // 기술스택 검색 - Spring Security 같은 공백 포함 키워드 특별 처리
+            Criteria techStackCriteria;
+            if (keywordLower.contains(" ")) {
+                // 공백이 있는 경우: phrase 필드와 기존 필드 모두 검색
+                techStackCriteria = new Criteria("techStacks.phrase").is(keywordLower)
+                        .or(new Criteria("techStacks").matches(keywordLower))
+                        .or(new Criteria("techStacks").expression("*" + keywordLower.replace(" ", "*") + "*"));
+                
+                // Spring Security처럼 두 단어인 경우, 각 단어 모두 포함 검색
+                String[] words = keywordLower.split("\\s+");
+                if (words.length == 2) {
+                    Criteria bothWordsCriteria = new Criteria("techStacks").expression("*" + words[0] + "*" + words[1] + "*")
+                            .or(new Criteria("techStacks").expression("*" + words[1] + "*" + words[0] + "*"));
+                    techStackCriteria = techStackCriteria.or(bothWordsCriteria);
+                }
+            } else {
+                // 공백이 없는 경우: contains, matches, 와일드카드 모두 사용
+                techStackCriteria = new Criteria("techStacks").contains(keywordLower)
+                        .or(new Criteria("techStacks").matches(keywordLower))
+                        .or(new Criteria("techStacks").expression("*" + keywordLower + "*"));
+            }
+            
+            // 기술파트 검색 - 공백 처리 개선
+            Criteria techPartCriteria;
+            if (keywordLower.contains(" ")) {
+                // 공백이 있는 경우: matches와 정확한 expression 사용
+                techPartCriteria = new Criteria("techParts").matches(keywordLower)
+                        .or(new Criteria("techParts").expression(keywordLower.replace(" ", "*")));
+            } else {
+                // 공백이 없는 경우: contains, matches, 와일드카드 모두 사용
+                techPartCriteria = new Criteria("techParts").contains(keywordLower)
+                        .or(new Criteria("techParts").matches(keywordLower))
+                        .or(new Criteria("techParts").expression("*" + keywordLower + "*"));
+            }
+            
+            // 모든 조건을 OR로 결합
+            Criteria keywordCriteria = titleCriteria.or(techStackCriteria).or(techPartCriteria);
 
             finalCriteria = keywordCriteria;
             hasConditions = true;
@@ -572,13 +672,37 @@ public class SearchService {
         // 기술 파트 필터 추가
         if (request.getTechParts() != null && !request.getTechParts().isEmpty()) {
             log.info("Adding tech parts filter: {}", request.getTechParts());
-            filterCriteriaList.add(new Criteria("techParts").in(request.getTechParts()));
+            // 기술파트가 여러 개인 경우 OR 조건으로 결합
+            Criteria techPartCriteria = null;
+            for (String techPart : request.getTechParts()) {
+                Criteria singlePartCriteria = new Criteria("techParts").matches(techPart);
+                if (techPartCriteria == null) {
+                    techPartCriteria = singlePartCriteria;
+                } else {
+                    techPartCriteria = techPartCriteria.or(singlePartCriteria);
+                }
+            }
+            if (techPartCriteria != null) {
+                filterCriteriaList.add(techPartCriteria);
+            }
         }
 
         // 기술 스택 필터 추가
         if (request.getTechStacks() != null && !request.getTechStacks().isEmpty()) {
             log.info("Adding tech stacks filter: {}", request.getTechStacks());
-            filterCriteriaList.add(new Criteria("techStacks").in(request.getTechStacks()));
+            // 기술스택이 여러 개인 경우 OR 조건으로 결합
+            Criteria techStackCriteria = null;
+            for (String techStack : request.getTechStacks()) {
+                Criteria singleStackCriteria = new Criteria("techStacks").matches(techStack);
+                if (techStackCriteria == null) {
+                    techStackCriteria = singleStackCriteria;
+                } else {
+                    techStackCriteria = techStackCriteria.or(singleStackCriteria);
+                }
+            }
+            if (techStackCriteria != null) {
+                filterCriteriaList.add(techStackCriteria);
+            }
         }
 
         // 상태 필터 추가
@@ -604,8 +728,8 @@ public class SearchService {
             finalCriteria = new Criteria("projectId").exists();
         }
 
-        // 점수와 생성일시 기준으로 정렬
-        Sort sort = Sort.by(Sort.Order.desc("_score"), Sort.Order.desc("createdAt"));
+        // 정렬 조건 설정
+        Sort sort = createProjectSort(request.getSortBy());
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
         Query query = new CriteriaQuery(finalCriteria).setPageable(pageable);
 
@@ -670,6 +794,7 @@ public class SearchService {
                 .teamLeaderNickname(doc.getTeamLeaderNickname())
                 .recruitCount(doc.getRecruitCount())
                 .viewCount(doc.getViewCount())
+                .likeCount(doc.getLikeCount())
                 .recruitDeadline(doc.getRecruitDeadline())
                 .startDate(doc.getStartDate())
                 .endDate(doc.getEndDate())
@@ -814,7 +939,118 @@ public class SearchService {
         }
     }
 
+    /**
+     * 특수 기술스택 검색어를 정규화하는 메서드 (한글 외래어 표기법 포함)
+     */
+    private Sort createProjectSort(String sortBy) {
+        if (sortBy == null) sortBy = "latest";
+        
+        log.info("Creating project sort with sortBy: '{}'", sortBy);
+        
+        switch (sortBy.toLowerCase()) {
+            case "popular":
+                log.info("Using POPULAR sort: likeCount desc, viewCount desc, createdAt desc");
+                return Sort.by(Sort.Order.desc("likeCount"), Sort.Order.desc("viewCount"), Sort.Order.desc("createdAt"));
+            case "deadline":
+                log.info("Using DEADLINE sort: recruitDeadline asc, createdAt desc");
+                return Sort.by(Sort.Order.asc("recruitDeadline"), Sort.Order.desc("createdAt"));
+            case "latest":
+            default:
+                log.info("Using LATEST sort: createdAt desc");
+                return Sort.by(Sort.Order.desc("createdAt"));
+        }
+    }
+    
+    private Sort createUserSort(String sortBy) {
+        if (sortBy == null) sortBy = "latest";
+        
+        log.info("Creating user sort with sortBy: '{}'", sortBy);
+        
+        switch (sortBy.toLowerCase()) {
+            case "popular":
+                log.info("Using USER POPULAR sort: likeCount desc, createdAt desc");
+                return Sort.by(Sort.Order.desc("likeCount"), Sort.Order.desc("createdAt"));
+            case "latest":
+            default:
+                log.info("Using USER LATEST sort: _score desc, createdAt desc");
+                return Sort.by(Sort.Order.desc("_score"), Sort.Order.desc("createdAt"));
+        }
+    }
 
-
-
+    private String normalizeSearchKeyword(String keyword) {
+        if (keyword == null) return keyword;
+        
+        String normalized = keyword.trim();
+        
+        // 특수 기술스택 매핑 (한글 포함)
+        switch (normalized.toLowerCase()) {
+            // 영어 → 표준 영어
+            case "spring cloud": case "springcloud": case "스프링클라우드": case "스프링 클라우드": return "Spring Cloud";
+            case "objective-c": case "objectivec": case "objc": case "오브젝티브씨": return "Objective-C";
+            case "c#": case "csharp": case "c sharp": case "씨샵": case "시샵": case "dotnet": case "C Sharp": case "c-sharp": case "c_sharp": return "C#";
+            case "node.js": case "nodejs": case "노드제이에스": case "노드js": return "Node.js";
+            case "vue.js": case "vuejs": case "뷰제이에스": case "뷰js": return "Vue.js";
+            case "react native": case "reactnative": case "리액트네이티브": case "리액트 네이티브": return "React Native";
+            case "next.js": case "nextjs": case "넥스트제이에스": case "넥스트js": return "Next.js";
+            case "nuxt.js": case "nuxtjs": case "넉스트제이에스": case "넉스트js": return "Nuxt.js";
+            case "express.js": case "expressjs": case "익스프레스제이에스": case "익스프레스js": return "Express.js";
+            case "nest.js": case "nestjs": case "네스트제이에스": case "네스트js": return "Nest.js";
+            case "d3.js": case "d3js": case "디쓰리제이에스": case "디쓰리js": return "D3.js";
+            case "three.js": case "threejs": case "쓰리제이에스": case "쓰리js": return "Three.js";
+            case "chart.js": case "chartjs": case "차트제이에스": case "차트js": return "Chart.js";
+            case "socket.io": case "socketio": case "소켓아이오": return "Socket.io";
+            case "web3.js": case "web3js": case "웹쓰리제이에스": case "웹쓰리js": return "Web3.js";
+            
+            // 한글 → 영어
+            case "자바": return "Java";
+            case "자바스크립트": return "JavaScript";
+            case "파이썬": return "Python";
+            case "리액트": return "React";
+            case "뷰": return "Vue";
+            case "앵귤러": return "Angular";
+            case "노드": return "Node";
+            case "익스프레스": return "Express";
+            case "스프링": return "Spring";
+            case "스프링부트": case "스프링 부트": return "Spring Boot";
+            case "스프링프레임워크": case "스프링 프레임워크": return "Spring Framework";
+            case "스프링시큐리티": case "스프링 시큐리티": case "spring security": case "springsecurity": return "Spring Security";
+            case "스프링데이터jpa": case "스프링 데이터 jpa": return "Spring Data JPA";
+            case "하이버네이트": return "Hibernate";
+            case "마이바티스": return "MyBatis";
+            case "제이피에이": return "JPA";
+            case "마이에스큐엘": return "MySQL";
+            case "포스트그레스큐엘": case "포스트그레sql": return "PostgreSQL";
+            case "몽고디비": return "MongoDB";
+            case "레디스": return "Redis";
+            case "엘라스틱서치": return "Elasticsearch";
+            case "도커": return "Docker";
+            case "쿠버네티스": return "Kubernetes";
+            case "아마존웹서비스": return "AWS";
+            case "타입스크립트": return "TypeScript";
+            case "스위프트": return "Swift";
+            case "코틀린": return "Kotlin";
+            case "플러터": return "Flutter";
+            case "그래프큐엘": return "GraphQL";
+            case "레스트api": case "레스트 api": return "REST API";
+            case "깃": return "Git";
+            case "깃허브": case "깃헙": return "GitHub";
+            case "깃랩": return "GitLab";
+            case "젠킨스": return "Jenkins";
+            case "엔진엑스": return "Nginx";
+            case "아파치": return "Apache";
+            
+            // 기술파트 한글
+            case "프론트": case "프런트": return "프론트엔드";
+            case "백": case "백앤드": return "백엔드"; 
+            case "풀": case "풀 스택": return "풀스택";
+            case "앱": case "앱개발": return "모바일";
+            case "운영": case "인프라": return "데브옵스";
+            case "인공지능": case "머신러닝": case "딥러닝": return "AI/ML";
+            case "디자인": case "유아이": case "유엑스": return "UI/UX디자인";
+            case "테스터": case "품질관리": return "QA/테스터";
+            case "기획": case "프로덕트매니저": return "PM/기획";
+            
+            default: return normalized;
+        }
+    }
 }

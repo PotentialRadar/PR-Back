@@ -8,19 +8,121 @@
         "tokenizer": "keyword",
         "filter": [
           "lowercase",
+          "tech_stack_synonyms",
           "tech_stack_filter"
+        ]
+      },
+      "tech_stack_phrase_analyzer": {
+        "type": "custom",
+        "tokenizer": "standard",
+        "filter": [
+          "lowercase",
+          "tech_stack_synonyms"
+        ]
+      },
+      "tech_part_analyzer": {
+        "type": "custom",
+        "tokenizer": "keyword",
+        "filter": [
+          "lowercase",
+          "tech_part_synonyms",
+          "tech_part_filter"
         ]
       }
     },
     "filter": {
+      "tech_stack_synonyms": {
+        "type": "synonym",
+        "synonyms": [
+          "Java,자바",
+          "JavaScript,자바스크립트",
+          "Python,파이썬",
+          "React,리액트",
+          "Vue,뷰",
+          "Angular,앵귤러",
+          "Node,노드",
+          "Express,익스프레스",
+          "Spring,스프링",
+          "Spring Boot,스프링부트,스프링 부트",
+          "Spring Framework,스프링프레임워크,스프링 프레임워크",
+          "Spring Security,스프링시큐리티,스프링 시큐리티",
+          "Spring Cloud,스프링클라우드,스프링 클라우드,springcloud,spring_cloud",
+          "Spring Data JPA,스프링데이터JPA,스프링 데이터 JPA",
+          "Hibernate,하이버네이트",
+          "MyBatis,마이바티스",
+          "JPA,제이피에이",
+          "MySQL,마이에스큐엘",
+          "PostgreSQL,포스트그레스큐엘,포스트그레SQL",
+          "MongoDB,몽고디비",
+          "Redis,레디스",
+          "Elasticsearch,엘라스틱서치",
+          "Docker,도커",
+          "Kubernetes,쿠버네티스",
+          "AWS,아마존웹서비스",
+          "TypeScript,타입스크립트",
+          "C#,씨샵,씨 샵,csharp,c_sharp,dotnet,시샵,C Sharp,c#,c sharp",
+          "Objective-C,오브젝티브씨,objectivec,objective_c,objc",
+          "Swift,스위프트",
+          "Kotlin,코틀린",
+          "Flutter,플러터",
+          "React Native,리액트네이티브,리액트 네이티브,reactnative,react_native",
+          "Node.js,노드제이에스,노드js,nodejs,node_js",
+          "Vue.js,뷰제이에스,뷰js,vuejs,vue_js",
+          "Next.js,넥스트제이에스,넥스트js,nextjs,next_js",
+          "Nuxt.js,넉스트제이에스,넉스트js,nuxtjs,nuxt_js",
+          "Express.js,익스프레스제이에스,익스프레스js,expressjs,express_js",
+          "Nest.js,네스트제이에스,네스트js,nestjs,nest_js",
+          "D3.js,디쓰리제이에스,디쓰리js,d3js,d3_js",
+          "Three.js,쓰리제이에스,쓰리js,threejs,three_js",
+          "Chart.js,차트제이에스,차트js,chartjs,chart_js",
+          "Socket.io,소켓아이오,socketio,socket_io",
+          "Web3.js,웹쓰리제이에스,웹쓰리js,web3js,web3_js",
+          "GraphQL,그래프큐엘",
+          "REST API,레스트API,레스트 API",
+          "Git,깃",
+          "GitHub,깃허브,깃헙",
+          "GitLab,깃랩",
+          "Jenkins,젠킨스",
+          "Nginx,엔진엑스",
+          "Apache,아파치"
+        ]
+      },
       "tech_stack_filter": {
         "type": "word_delimiter",
         "generate_word_parts": true,
         "generate_number_parts": true,
         "catenate_words": true,
         "catenate_numbers": true,
-        "split_on_case_change": true,
-        "split_on_numerics": true
+        "split_on_case_change": false,
+        "split_on_numerics": false,
+        "preserve_original": true
+      },
+      "tech_part_synonyms": {
+        "type": "synonym",
+        "synonyms": [
+          "프론트엔드,frontend,front,프론트,front-end,Frontend,Front-end,프런트엔드,프론트엔드개발",
+          "백엔드,backend,back,백,back-end,Backend,Back-end,백앤드",
+          "풀스택,fullstack,full-stack,전체스택,Full-stack,Fullstack,풀 스택",
+          "모바일,mobile,Mobile,앱개발,앱,App",
+          "데브옵스,devops,dev-ops,운영,DevOps,Dev-ops,인프라",
+          "데이터사이언스,datascience,data-science,데이터분석,Data Science,데이터 사이언스",
+          "AI/ML,aiml,ai-ml,인공지능,머신러닝,machine learning,artificial intelligence,딥러닝",
+          "게임개발,game,gaming,Game Development,게임,Game",
+          "보안,security,Security,정보보안,사이버보안",
+          "QA/테스터,qa,tester,테스터,품질관리,Quality Assurance,QA,Test",
+          "UI/UX디자인,uiux,ui-ux,디자인,Design,UI,UX,유아이,유엑스",
+          "PM/기획,pm,product manager,기획,planning,제품기획,프로덕트매니저"
+        ]
+      },
+      "tech_part_filter": {
+        "type": "word_delimiter",
+        "generate_word_parts": true,
+        "generate_number_parts": true,
+        "catenate_words": true,
+        "catenate_numbers": true,
+        "split_on_case_change": false,
+        "split_on_numerics": false,
+        "preserve_original": true
       }
     }
   }

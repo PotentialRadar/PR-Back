@@ -21,7 +21,13 @@
       "analyzer": "standard"
     },
     "techParts": {
-      "type": "keyword"
+      "type": "text",
+      "analyzer": "tech_part_analyzer",
+      "fields": {
+        "keyword": {
+          "type": "keyword"
+        }
+      }
     },
     "techStacks": {
       "type": "text",
@@ -29,6 +35,10 @@
       "fields": {
         "keyword": {
           "type": "keyword"
+        },
+        "phrase": {
+          "type": "text",
+          "analyzer": "tech_stack_phrase_analyzer"
         }
       }
     },
@@ -53,21 +63,24 @@
     "viewCount": {
       "type": "integer"
     },
+    "likeCount": {
+      "type": "integer"
+    },
     "recruitDeadline": {
-      "type": "text",
-      "index": false
+      "type": "date",
+      "format": "yyyy-MM-dd'T'HH:mm:ss.SSS"
     },
     "startDate": {
-      "type": "text",
-      "index": false
+      "type": "date",
+      "format": "yyyy-MM-dd'T'HH:mm:ss.SSS"
     },
     "endDate": {
-      "type": "text",
-      "index": false
+      "type": "date",
+      "format": "yyyy-MM-dd'T'HH:mm:ss.SSS"
     },
     "createdAt": {
-      "type": "text",
-      "index": false
+      "type": "date",
+      "format": "yyyy-MM-dd'T'HH:mm:ss.SSS"
     },
     "updatedAt": {
       "type": "text",

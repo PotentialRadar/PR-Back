@@ -16,16 +16,18 @@ public class ProjectSearchReq {
     private List<String> techParts;      // 기술 파트 필터
     private List<String> techStacks;     // 기술 스택 필터
     private List<String> statuses;       // 프로젝트 상태 필터
+    private String sortBy = "latest";    // 정렬 조건 (latest, popular, deadline)
     private int page = 0;                // 페이지 번호
     private int size = 20;               // 페이지 크기
     
     @Builder
     public ProjectSearchReq(String keyword, List<String> techParts, List<String> techStacks,
-                           List<String> statuses, int page, int size) {
+                           List<String> statuses, String sortBy, int page, int size) {
         this.keyword = keyword;
         this.techParts = techParts;
         this.techStacks = techStacks;
         this.statuses = statuses;
+        this.sortBy = sortBy;
         this.page = page;
         this.size = size;
     }

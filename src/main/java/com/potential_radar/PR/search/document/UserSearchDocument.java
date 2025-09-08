@@ -49,6 +49,9 @@ public class UserSearchDocument {
     @Field(type = FieldType.Keyword)
     private ExperienceRange experienceRange;
 
+    @Field(type = FieldType.Integer)
+    private Integer likeCount;
+
     @Field(type = FieldType.Boolean)
     private Boolean isPortfolioOpen = true;
 

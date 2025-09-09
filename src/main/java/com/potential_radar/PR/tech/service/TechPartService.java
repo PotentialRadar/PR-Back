@@ -21,7 +21,7 @@ public class TechPartService {
     
     private final TechPartRepository techPartRepository;
 
-    // @PostConstruct  // 임시 비활성화
+     @PostConstruct
     private void initializeTechParts() {
         List<String> techPartNames = Arrays.asList(
                 "프론트엔드", "백엔드", "풀스택", "모바일", "데브옵스",

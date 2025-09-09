@@ -158,22 +158,83 @@ FROM all_users_rn aur
     ON CONFLICT (user_id) DO NOTHING;
 
 -- ---------------------------------------------
--- User Tech Stacks: 3~7 random stacks per user
+-- User Tech Stacks: Categorized realistic assignments (5-8 stacks per user)
 -- ---------------------------------------------
 -- 먼저 기존 데이터가 있으면 삭제 (더미 데이터 초기화)
 DELETE FROM user_tech_stack WHERE EXISTS (SELECT 1 FROM users WHERE email LIKE 'user%@naver.com');
 
+-- 사용자 카테고리별 기술스택 할당 (현실적인 조합으로 5-8개)
+WITH user_categories AS (
+  SELECT 
+    user_id,
+    CASE 
+      WHEN user_id BETWEEN 1 AND 25 THEN 'backend'
+      WHEN user_id BETWEEN 26 AND 45 THEN 'frontend' 
+      WHEN user_id BETWEEN 46 AND 65 THEN 'fullstack'
+      WHEN user_id BETWEEN 66 AND 80 THEN 'ai_ml'
+      WHEN user_id BETWEEN 81 AND 90 THEN 'mobile'
+      WHEN user_id BETWEEN 91 AND 95 THEN 'devops'
+      ELSE 'designer'
+    END as category
+  FROM users 
+  WHERE email LIKE 'user%@naver.com'
+),
+category_stacks AS (
+  SELECT 
+    uc.user_id,
+    uc.category,
+    CASE uc.category
+      WHEN 'backend' THEN 
+        ARRAY['Java', 'Spring Boot', 'Spring Framework', 'PostgreSQL', 'MySQL', 'Node.js', 'Express.js', 'Python', 'Django', 'Docker']
+      WHEN 'frontend' THEN 
+        ARRAY['JavaScript', 'TypeScript', 'React', 'Vue.js', 'HTML5', 'CSS3', 'Next.js', 'Nuxt.js', 'Angular', 'Svelte']
+      WHEN 'fullstack' THEN 
+        ARRAY['JavaScript', 'TypeScript', 'React', 'Node.js', 'Express.js', 'PostgreSQL', 'MongoDB', 'Spring Boot', 'Java', 'Docker']
+      WHEN 'ai_ml' THEN 
+        ARRAY['Python', 'TensorFlow', 'PyTorch', 'Scikit-learn', 'Pandas', 'NumPy', 'Keras', 'PostgreSQL', 'MongoDB', 'Flask']
+      WHEN 'mobile' THEN 
+        ARRAY['Flutter', 'Dart', 'React Native', 'JavaScript', 'Android', 'iOS', 'Swift', 'Kotlin', 'Firebase', 'SQLite']
+      WHEN 'devops' THEN 
+        ARRAY['Docker', 'Kubernetes', 'AWS', 'Jenkins', 'Linux', 'PostgreSQL', 'Redis', 'Elasticsearch', 'Helm', 'Python']
+      ELSE -- designer
+        ARRAY['HTML5', 'CSS3', 'JavaScript', 'React', 'Vue.js', 'Figma', 'Adobe XD', 'Sketch', 'Photoshop', 'Illustrator']
+    END as available_stacks
+  FROM user_categories uc
+),
+selected_stacks AS (
+  SELECT 
+    cs.user_id,
+    cs.category,
+    -- 우선순위가 높은 핵심 기술 (처음 3-4개)
+    ARRAY(
+      SELECT unnest(cs.available_stacks[1:(3 + (cs.user_id % 2))])
+      ORDER BY random()
+    ) as priority_stacks,
+    -- 나머지 기술 중에서 랜덤 선택 (2-4개 추가)
+    ARRAY(
+      SELECT unnest(cs.available_stacks[(3 + (cs.user_id % 2) + 1):])
+      ORDER BY random()
+      LIMIT (2 + (cs.user_id % 3))
+    ) as additional_stacks
+  FROM category_stacks cs
+),
+final_user_stacks AS (
+  SELECT 
+    user_id,
+    category,
+    priority_stacks || additional_stacks as tech_stack_names
+  FROM selected_stacks
+)
 INSERT INTO user_tech_stack (user_id, stack_id, skill_level)
-SELECT u.user_id, s.tech_stack_id, (floor(random()*5)+1)::int
-FROM users u
-         JOIN LATERAL (
-    SELECT ts.tech_stack_id
-    FROM tech_stack ts
-    ORDER BY random()
-        LIMIT (3 + (floor(random()*5))::int)  -- 3..7
-    ) s ON TRUE
-WHERE u.email LIKE 'user%@naver.com'  -- 더미 데이터만 생성
-    ON CONFLICT ON CONSTRAINT uk_user_tech_stack_user_stack DO NOTHING;
+SELECT 
+  fus.user_id, 
+  ts.tech_stack_id, 
+  (3 + floor(random()*3))::int  -- 3-5 레벨 (현실적인 숙련도)
+FROM final_user_stacks fus
+CROSS JOIN LATERAL unnest(fus.tech_stack_names) as stack_name
+JOIN tech_stack ts ON ts.name = stack_name
+WHERE fus.user_id IN (SELECT user_id FROM users WHERE email LIKE 'user%@naver.com')
+ON CONFLICT ON CONSTRAINT uk_user_tech_stack_user_stack DO NOTHING;
 
 -- ---------------------------------------------
 -- User Experiences: ~0..3 per user with time windows

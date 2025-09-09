@@ -160,17 +160,54 @@ JOIN LATERAL (
 ON CONFLICT (user_id) DO NOTHING;
 
 -- ---------------------------------------------
--- User Tech Stacks: 3~7 random stacks per user
+-- User Tech Stacks: 분야별 연관성 있는 기술스택 (5-8개)
 -- ---------------------------------------------
+WITH user_categories AS (
+  SELECT 
+    user_id,
+    CASE 
+      WHEN user_id BETWEEN 1 AND 25 THEN 'backend'
+      WHEN user_id BETWEEN 26 AND 45 THEN 'frontend' 
+      WHEN user_id BETWEEN 46 AND 65 THEN 'fullstack'
+      WHEN user_id BETWEEN 66 AND 80 THEN 'ai_ml'
+      WHEN user_id BETWEEN 81 AND 90 THEN 'mobile'
+      WHEN user_id BETWEEN 91 AND 95 THEN 'devops'
+      ELSE 'designer'
+    END AS category
+  FROM users
+), tech_stacks_by_category AS (
+  SELECT 
+    'backend' AS category,
+    ARRAY['Spring Boot', 'Java', 'MySQL', 'PostgreSQL', 'Redis', 'Docker', 'Spring Framework', 'Spring Security'] AS tech_names
+  UNION ALL SELECT 'frontend', ARRAY['React', 'JavaScript', 'TypeScript', 'HTML5', 'CSS3', 'Vue.js', 'Next.js', 'Angular']
+  UNION ALL SELECT 'fullstack', ARRAY['Node.js', 'React', 'MongoDB', 'Express.js', 'JavaScript', 'TypeScript', 'AWS', 'Docker'] 
+  UNION ALL SELECT 'ai_ml', ARRAY['Python', 'TensorFlow', 'PyTorch', 'Pandas', 'NumPy', 'Scikit-learn', 'Keras', 'PostgreSQL']
+  UNION ALL SELECT 'mobile', ARRAY['React Native', 'Flutter', 'Dart', 'Swift', 'Kotlin', 'Firebase', 'Android', 'iOS']
+  UNION ALL SELECT 'devops', ARRAY['Docker', 'Kubernetes', 'AWS', 'Linux', 'Jenkins', 'Helm', 'PostgreSQL', 'Redis']
+  UNION ALL SELECT 'designer', ARRAY['HTML5', 'CSS3', 'JavaScript', 'React', 'Vue.js', 'TypeScript', 'Angular', 'Next.js']
+), user_tech_selection AS (
+  SELECT 
+    uc.user_id,
+    ts.tech_stack_id,
+    (floor(random()*3)+3)::int AS skill_level,  -- 레벨 3-5
+    ROW_NUMBER() OVER (PARTITION BY uc.user_id ORDER BY 
+      CASE 
+        WHEN ts.name = tbc.tech_names[1] THEN 1
+        WHEN ts.name = ANY(tbc.tech_names[2:3]) THEN 2 + random()
+        ELSE 3 + random()
+      END
+    ) as priority
+  FROM user_categories uc
+  JOIN tech_stacks_by_category tbc ON uc.category = tbc.category
+  JOIN tech_stack ts ON ts.name = ANY(tbc.tech_names)
+), filtered_selection AS (
+  SELECT user_id, tech_stack_id, skill_level
+  FROM user_tech_selection
+  WHERE priority <= (5 + (user_id % 4))  -- 사용자별로 5-8개 기술스택
+)
 INSERT INTO user_tech_stack (user_id, stack_id, skill_level)
-SELECT u.user_id, s.tech_stack_id, (floor(random()*5)+1)::int
-FROM users u
-CROSS JOIN LATERAL (
-  SELECT ts.tech_stack_id, random() as r
-  FROM tech_stack ts
-  ORDER BY random() + u.user_id * 0.0001  -- 각 유저마다 다른 시드 사용
-  LIMIT (3 + (abs(hashtext(u.email::text)) % 5))  -- 각 유저마다 다른 개수 (3..7)
-) s
+SELECT user_id, tech_stack_id, skill_level
+FROM filtered_selection
 ON CONFLICT ON CONSTRAINT uk_user_tech_stack_user_stack DO NOTHING;
 
 -- ---------------------------------------------
@@ -382,16 +419,80 @@ CROSS JOIN LATERAL (
 ) tp
 ON CONFLICT DO NOTHING;
 
--- Project Tech Stacks: 4..6 random entries per project
+-- Project Tech Stacks: 제목에 맞는 연관성 있는 기술스택 (3-8개)
+WITH project_tech_mapping AS (
+  SELECT 
+    p.project_id,
+    p.title,
+    CASE 
+      WHEN p.title LIKE '%React%' OR p.title LIKE '%쇼핑몰%' THEN 
+        ARRAY['React', 'JavaScript', 'Node.js', 'MongoDB', 'Express.js']
+      WHEN p.title LIKE '%AI%' OR p.title LIKE '%챗봇%' THEN 
+        ARRAY['Python', 'TensorFlow', 'Flask', 'PostgreSQL', 'Docker']
+      WHEN p.title LIKE '%모바일%' OR p.title LIKE '%앱%' THEN 
+        ARRAY['React Native', 'JavaScript', 'Firebase', 'MongoDB']
+      WHEN p.title LIKE '%블록체인%' OR p.title LIKE '%NFT%' THEN 
+        ARRAY['Solidity', 'Web3.js', 'React', 'Node.js', 'MongoDB']
+      WHEN p.title LIKE '%스트리밍%' THEN 
+        ARRAY['Node.js', 'Socket.io', 'React', 'Redis', 'AWS']
+      WHEN p.title LIKE '%IoT%' OR p.title LIKE '%스마트%' THEN 
+        ARRAY['Python', 'Flask', 'PostgreSQL', 'Docker', 'Linux']
+      WHEN p.title LIKE '%교육%' OR p.title LIKE '%학습%' THEN 
+        ARRAY['React', 'Node.js', 'PostgreSQL', 'Express.js', 'AWS']
+      WHEN p.title LIKE '%소셜%' OR p.title LIKE '%커뮤니티%' THEN 
+        ARRAY['React', 'Node.js', 'PostgreSQL', 'Redis', 'Docker']
+      WHEN p.title LIKE '%부동산%' THEN 
+        ARRAY['Vue.js', 'JavaScript', 'Spring Boot', 'MySQL', 'Docker']
+      WHEN p.title LIKE '%음식%' OR p.title LIKE '%배달%' OR p.title LIKE '%주문%' THEN 
+        ARRAY['React Native', 'Node.js', 'MongoDB', 'Express.js', 'Firebase']
+      WHEN p.title LIKE '%게임%' THEN 
+        ARRAY['Unity', 'C#', 'PostgreSQL', 'Node.js']
+      WHEN p.title LIKE '%헬스케어%' OR p.title LIKE '%의료%' THEN 
+        ARRAY['React', 'Spring Boot', 'MySQL', 'Java', 'AWS']
+      WHEN p.title LIKE '%여행%' THEN 
+        ARRAY['Vue.js', 'Node.js', 'PostgreSQL', 'Express.js']
+      WHEN p.title LIKE '%주식%' OR p.title LIKE '%투자%' OR p.title LIKE '%분석%' THEN 
+        ARRAY['Python', 'Pandas', 'NumPy', 'PostgreSQL', 'Flask']
+      WHEN p.title LIKE '%CMS%' OR p.title LIKE '%관리%' THEN 
+        ARRAY['React', 'Spring Boot', 'MySQL', 'Java', 'Docker']
+      WHEN p.title LIKE '%AR%' OR p.title LIKE '%VR%' THEN 
+        ARRAY['Unity', 'C#', 'Unreal Engine', 'Blender']
+      WHEN p.title LIKE '%클라우드%' OR p.title LIKE '%파일%' OR p.title LIKE '%저장%' THEN 
+        ARRAY['Node.js', 'AWS', 'MongoDB', 'Express.js', 'Docker']
+      WHEN p.title LIKE '%협업%' OR p.title LIKE '%팀%' THEN 
+        ARRAY['React', 'Socket.io', 'Node.js', 'PostgreSQL', 'Redis']
+      WHEN p.title LIKE '%날씨%' THEN 
+        ARRAY['React', 'Node.js', 'PostgreSQL', 'Express.js']
+      WHEN p.title LIKE '%음악%' THEN 
+        ARRAY['React', 'Node.js', 'MongoDB', 'Express.js', 'AWS']
+      WHEN p.title LIKE '%택시%' OR p.title LIKE '%호출%' THEN 
+        ARRAY['React Native', 'Node.js', 'PostgreSQL', 'Socket.io', 'MongoDB']
+      WHEN p.title LIKE '%온라인 법률%' THEN 
+        ARRAY['Spring Boot', 'Java', 'MySQL', 'React', 'Docker']
+      ELSE 
+        ARRAY['React', 'Node.js', 'PostgreSQL', 'Express.js', 'JavaScript']
+    END AS tech_names
+  FROM project_recruitment p
+), project_tech_selection AS (
+  SELECT 
+    ptm.project_id,
+    ts.tech_stack_id,
+    (1 + floor(random()*2))::int AS recruit_count
+  FROM project_tech_mapping ptm
+  JOIN tech_stack ts ON ts.name = ANY(ptm.tech_names)
+  JOIN LATERAL (
+    SELECT random() AS r
+  ) rand ON rand.r < (
+    CASE 
+      WHEN ts.name = ptm.tech_names[1] THEN 1.0    -- 첫 번째 기술은 100% 확률
+      WHEN ts.name = ANY(ptm.tech_names[2:3]) THEN 0.9  -- 핵심 기술은 90% 확률
+      ELSE 0.6  -- 나머지 기술은 60% 확률
+    END
+  )
+)
 INSERT INTO project_tech_stack (project_id, tech_stack_id, recruit_count)
-SELECT p.project_id, ts.tech_stack_id, (1 + floor(random()*2))::int
-FROM project_recruitment p
-CROSS JOIN LATERAL (
-  SELECT tech_stack_id, random() as r
-  FROM tech_stack 
-  ORDER BY random() + p.project_id * 0.0001  -- 각 프로젝트마다 다른 시드 사용
-  LIMIT (4 + (abs(hashtext(p.title)) % 3))  -- 각 프로젝트마다 다른 개수 (4..6)
-) ts
+SELECT project_id, tech_stack_id, recruit_count
+FROM project_tech_selection
 ON CONFLICT ON CONSTRAINT uq_project_tech_stack DO NOTHING;
 
 -- Additional project members: 2..5 per project, unique per project, not leader

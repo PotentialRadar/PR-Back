@@ -51,6 +51,9 @@ public class ProjectSearchDocument {
     @Field(type = FieldType.Integer)
     private Integer viewCount;
 
+    @Field(type = FieldType.Integer)
+    private Integer likeCount;
+
     @Field(type = FieldType.Date, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS")
     private String recruitDeadline;
 
@@ -70,7 +73,7 @@ public class ProjectSearchDocument {
     public ProjectSearchDocument(String id, Long projectId, String title, String description,
                                List<String> techParts, List<String> techStacks, String status,
                                Long teamLeaderId, String teamLeaderNickname, Integer recruitCount,
-                               Integer viewCount, String recruitDeadline, String startDate,
+                               Integer viewCount, Integer likeCount, String recruitDeadline, String startDate,
                                String endDate, String createdAt, String updatedAt) {
         this.id = id;
         this.projectId = projectId;
@@ -83,6 +86,7 @@ public class ProjectSearchDocument {
         this.teamLeaderNickname = teamLeaderNickname;
         this.recruitCount = recruitCount;
         this.viewCount = viewCount;
+        this.likeCount = likeCount;
         this.recruitDeadline = recruitDeadline;
         this.startDate = startDate;
         this.endDate = endDate;

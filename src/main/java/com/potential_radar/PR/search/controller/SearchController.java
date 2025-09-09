@@ -60,6 +60,7 @@ public class SearchController {
             @RequestParam(required = false) List<String> techParts,
             @RequestParam(required = false) List<String> techStacks,
             @RequestParam(required = false) List<String> experienceRanges,
+            @RequestParam(defaultValue = "latest") String sortBy,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
@@ -76,6 +77,7 @@ public class SearchController {
                 .techParts(techParts)
                 .techStacks(techStacks)
                 .experienceRanges(experienceEnums)
+                .sortBy(sortBy)
                 .page(page)
                 .size(size)
                 .build();
@@ -107,6 +109,7 @@ public class SearchController {
             @RequestParam(required = false) List<String> techParts,
             @RequestParam(required = false) List<String> techStacks,
             @RequestParam(required = false) List<String> statuses,
+            @RequestParam(defaultValue = "latest") String sortBy,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
@@ -115,6 +118,7 @@ public class SearchController {
                 .techParts(techParts)
                 .techStacks(techStacks)
                 .statuses(statuses)
+                .sortBy(sortBy)
                 .page(page)
                 .size(size)
                 .build();

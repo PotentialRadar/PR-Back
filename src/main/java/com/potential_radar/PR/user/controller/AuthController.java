@@ -5,7 +5,7 @@ import com.potential_radar.PR.user.dto.EmailRequest;
 import com.potential_radar.PR.user.dto.EmailVerificationRequest;
 import com.potential_radar.PR.user.dto.UserInfoResponse;
 import com.potential_radar.PR.user.domain.User;
-import com.potential_radar.PR.user.service.EmailAuthService;
+import com.potential_radar.PR.user.service.RedisEmailAuthService;
 import com.potential_radar.PR.user.service.UserService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -46,7 +46,7 @@ public class AuthController {
 
     // 🔧 의존성 주입받는 서비스들
     private final UserService userService;         // 사용자 관리 비즈니스 로직
-    private final EmailAuthService emailAuthService;  // 이메일 인증 서비스
+    private final RedisEmailAuthService emailAuthService;  // Redis 기반 이메일 인증 서비스
 
     /**
      * 📧 이메일 인증 코드 발송 API

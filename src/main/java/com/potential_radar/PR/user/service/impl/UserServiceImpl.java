@@ -12,7 +12,7 @@ import com.potential_radar.PR.user.domain.UserProfile;
 import com.potential_radar.PR.user.dto.editInfo.UpdatedUserProfileResponse;
 import com.potential_radar.PR.user.dto.editInfo.UserProfileUpdateRequest;
 import com.potential_radar.PR.user.repository.*;
-import com.potential_radar.PR.user.service.RefreshTokenService;
+import com.potential_radar.PR.user.service.RedisRefreshTokenService;
 import com.potential_radar.PR.user.service.UserService;
 import com.potential_radar.PR.search.event.UserUpdatedEvent;
 import jakarta.transaction.Transactional;
@@ -32,7 +32,7 @@ public class UserServiceImpl implements UserService {
     private final TechPartRepository techPartRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenProvider tokenProvider;
-    private final RefreshTokenService refreshTokenService;
+    private final RedisRefreshTokenService redisRefreshTokenService;  // Redis 기반 토큰 서비스로 변경
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
@@ -85,8 +85,8 @@ public class UserServiceImpl implements UserService {
 
         // 3. 액세스 토큰 생성 (만료 시간은 JwtProperties에서 관리)
         String accessToken = tokenProvider.generateAccessToken(user);
-        // 4. 리프레시 토큰 생성 및 저장 (UUID 기반, 로직은 RefreshTokenService에 위임)
-        String refreshToken = refreshTokenService.createAndSaveRefreshToken(user);
+        // 4. 🔄 Redis 기반 리프레시 토큰 생성 및 저장 (UUID 기반, TTL 자동 관리)
+        String refreshToken = redisRefreshTokenService.createRefreshToken(user.getUserId());
 
         // 5. 응답 반환
         return new LoginResponse(accessToken, refreshToken);
@@ -159,8 +159,8 @@ public class UserServiceImpl implements UserService {
         // 프로필이 있다면 삭제
         userProfileRepository.findByUser(user).ifPresent(userProfileRepository::delete);
 
-        // 리프레시 토큰 삭제
-        refreshTokenService.deleteRefreshToken(user.getUserId());
+        // 🗑️ Redis 기반 리프레시 토큰 모두 삭제
+        redisRefreshTokenService.revokeAllTokensForUser(user.getUserId());
 
         // 사용자 삭제
         userRepository.delete(user);

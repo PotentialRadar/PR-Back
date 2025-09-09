@@ -20,6 +20,7 @@ import com.potential_radar.PR.user.service.UserService; // 사용자 관련 비�
 import jakarta.servlet.http.Cookie; // HTTP 쿠키 객체 (토큰을 쿠키에 저장하기 위해)
 import jakarta.servlet.http.HttpServletRequest; // HTTP 요청 객체 (클라이언트 요청 정보)
 import jakarta.servlet.http.HttpServletResponse; // HTTP 응답 객체 (쿠키 설정 등)
+import com.potential_radar.PR.util.CookieUtil; // 보안 강화된 쿠키 유틸리티
 
 // === 검증 및 보안 관련 Import ===
 import jakarta.validation.Valid; // 요청 DTO 유효성 검증 어노테이션
@@ -64,10 +65,6 @@ public class UserController {
     private final TokenService tokenService; // JWT 토큰 관리 서비스 (DB에서 refresh token 관리)
     private final LikeService likeService; // 좋아요 기능 비즈니스 로직 서비스
     private final TokenProvider tokenProvider; // JWT 토큰 생성/검증 유틸리티 클래스
-    
-    // === 설정 값 주입 ===
-    @Value("${app.cookie.secure:true}") // application.yml에서 쿠키 보안 설정 값 주입 (기본값: true)
-    private boolean cookieSecure; // HTTPS 환경에서만 쿠키 전송 여부 (개발환경: false, 운영환경: true)
 
     /**
      * 🔐 로그인 API
@@ -83,27 +80,16 @@ public class UserController {
         // 1. 사용자 인증 및 토큰 생성
         LoginResponse tokens = userService.login(loginRequest); // 이메일/비밀번호 검증 후 토큰 생성
         
-        // 2. Access Token을 HttpOnly + SameSite 쿠키로 설정
-        ResponseCookie accessTokenCookie = ResponseCookie.from("access_token", tokens.accessToken())
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .path("/")
-                .sameSite("Lax")
-                .maxAge(java.time.Duration.ofMillis(tokenProvider.getJwtProperties().getAccessTokenExpiration()))
-                .build();
-        response.addHeader("Set-Cookie", accessTokenCookie.toString());
+        // 2. CookieUtil을 사용한 통일된 보안 쿠키 설정 (환경별 자동 Secure 처리)
+        int accessTokenMaxAge = (int) (tokenProvider.getJwtProperties().getAccessTokenExpiration() / 1000);
+        int refreshTokenMaxAge = (int) (tokenProvider.getJwtProperties().getRefreshTokenExpiration() / 1000);
         
-        // 3. Refresh Token을 HttpOnly + SameSite 쿠키로 설정
-        ResponseCookie refreshTokenCookie = ResponseCookie.from("refresh_token", tokens.refreshToken())
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .path("/")
-                .sameSite("Lax")
-                .maxAge(java.time.Duration.ofMillis(tokenProvider.getJwtProperties().getRefreshTokenExpiration()))
-                .build();
-        response.addHeader("Set-Cookie", refreshTokenCookie.toString());
+        CookieUtil.addCookie(response, "access_token", tokens.accessToken(), accessTokenMaxAge);
+        CookieUtil.addCookie(response, "refresh_token", tokens.refreshToken(), refreshTokenMaxAge);
         
-        // 4. 성공 응답 반환 (토큰은 쿠키로 전달되므로 응답 본문에는 메시지만 포함)
+        log.info("🔐 로그인 성공: 쿠키 기반 토큰 발급 완료");
+        
+        // 3. 성공 응답 반환 (토큰은 쿠키로 전달되므로 응답 본문에는 메시지만 포함)
         return ResponseEntity.status(HttpStatus.OK).body(Map.of("message", "로그인 성공"));
     }
 
@@ -175,78 +161,9 @@ public class UserController {
         User user = userService.findByEmail(email); // 사용자 정보 조회
         tokenService.deleteRefreshToken(user.getUserId()); // DB에서 Refresh Token 삭제
         
-        // 2. 브라우저에서 쿠키 삭제 (다양한 경로/도메인 조합으로 확실히 삭제)
-        String host = request.getServerName(); // 현재 호스트명 추출 (localhost)
-
-        //TODO : 유틸로 따로 빼놓기! - 쿠키 삭제 로직을 별도 유틸리티 클래스로 분리 예정
-        // TODO: 공부,,,,, 코드 공부,,,,!!!!!!!!!!!!! - 쿠키 삭제 메커니즘에 대한 학습 필요
-
-        // 쿠키 삭제는 동일한 이름, 경로, 도메인으로 빈 값과 MaxAge=0으로 설정해야 합니다.
-        // 과거에 다양한 설정으로 쿠키를 생성했을 가능성이 있으므로 모든 조합으로 삭제 시도
-
-        // 2-1) 경로 "/" (도메인 미지정) - 기본 설정
-        Cookie atRoot = new Cookie("access_token", ""); // Access Token 쿠키 삭제용 생성
-        atRoot.setHttpOnly(true); // JavaScript 접근 차단
-        atRoot.setSecure(cookieSecure); // HTTPS 설정
-        atRoot.setPath("/"); // 루트 경로
-        atRoot.setMaxAge(0); // 즉시 만료 (삭제)
-        response.addCookie(atRoot);
-
-        Cookie rtRoot = new Cookie("refresh_token", ""); // Refresh Token 쿠키 삭제용 생성
-        rtRoot.setHttpOnly(true);
-        rtRoot.setSecure(cookieSecure);
-        rtRoot.setPath("/");
-        rtRoot.setMaxAge(0); // 즉시 만료
-        response.addCookie(rtRoot);
-
-        // 2-2) 경로 "/api" (도메인 미지정) - 과거 API 경로로 설정된 쿠키 삭제용
-        Cookie atApi = new Cookie("access_token", "");
-        atApi.setHttpOnly(true);
-        atApi.setSecure(cookieSecure);
-        atApi.setPath("/api"); // API 경로로 설정된 쿠키 삭제
-        atApi.setMaxAge(0);
-        response.addCookie(atApi);
-
-        Cookie rtApi = new Cookie("refresh_token", "");
-        rtApi.setHttpOnly(true);
-        rtApi.setSecure(cookieSecure);
-        rtApi.setPath("/api");
-        rtApi.setMaxAge(0);
-        response.addCookie(rtApi);
-
-        // 2-3) 경로 "/" + 현재 호스트 도메인 지정 - 과거 Domain 설정 쿠키 호환
-        Cookie atRootDomain = new Cookie("access_token", "");
-        atRootDomain.setHttpOnly(true);
-        atRootDomain.setSecure(cookieSecure);
-        atRootDomain.setPath("/");
-        atRootDomain.setMaxAge(0);
-        atRootDomain.setDomain(host); // 명시적 도메인 설정으로 생성된 쿠키 삭제
-        response.addCookie(atRootDomain);
-
-        Cookie rtRootDomain = new Cookie("refresh_token", "");
-        rtRootDomain.setHttpOnly(true);
-        rtRootDomain.setSecure(cookieSecure);
-        rtRootDomain.setPath("/");
-        rtRootDomain.setMaxAge(0);
-        rtRootDomain.setDomain(host);
-        response.addCookie(rtRootDomain);
-
-        // 2-4) 경로 "/api" + 현재 호스트 도메인 지정 - 과거 Domain+Path 설정 쿠키 호환
-        Cookie atApiDomain = new Cookie("access_token", "");
-        atApiDomain.setHttpOnly(true);
-        atApiDomain.setSecure(cookieSecure);
-        atApiDomain.setPath("/api");
-        atApiDomain.setMaxAge(0);
-        atApiDomain.setDomain(host);
-        response.addCookie(atApiDomain);
-
-        Cookie rtApiDomain = new Cookie("refresh_token", "");
-        rtApiDomain.setHttpOnly(true);
-        rtApiDomain.setSecure(cookieSecure);
-        rtApiDomain.setPath("/api");
-        rtApiDomain.setMaxAge(0);
-        rtApiDomain.setDomain(host);
-        response.addCookie(rtApiDomain);
+        // 2. CookieUtil을 사용한 통일된 쿠키 삭제
+        CookieUtil.deleteCookie(response, "access_token");
+        CookieUtil.deleteCookie(response, "refresh_token");
 
         // 3. 세션이 존재하면 무효화 (JSESSIONID 제거 및 SecurityContext 정리)
         if (request.getSession(false) != null) { // 기존 세션이 있는지 확인 (false: 세션이 없으면 null 반환)

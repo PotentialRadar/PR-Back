@@ -20,6 +20,7 @@ public class UserSearchRes {
     private String githubUrl;
     private String jobTitle;
     private ExperienceRange experienceRange;
+    private Integer likeCount;
     private String createdAt;
 
     // 검색 관련

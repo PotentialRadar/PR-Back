@@ -23,6 +23,9 @@ public class UserSearchReq {
     // 경력(ExperienceRange) 다중 선택
     private List<ExperienceRange> experienceRanges;
 
+    // 정렬 조건 (latest, popular)
+    private String sortBy = "latest";
+
     // 페이징
     private int page = 0;
     private int size = 20;

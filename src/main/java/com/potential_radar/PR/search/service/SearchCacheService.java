@@ -55,6 +55,11 @@ public class SearchCacheService {
         keyBuilder.append("page:").append(request.getPage()).append(":")
                   .append("size:").append(request.getSize());
         
+        // 정렬 옵션도 캐시 키에 포함
+        if (request.getSortBy() != null && !request.getSortBy().trim().isEmpty()) {
+            keyBuilder.append(":sort:").append(request.getSortBy());
+        }
+        
         return keyBuilder.toString();
     }
     

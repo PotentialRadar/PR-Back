@@ -14,9 +14,31 @@ from app.config import settings
 from app.database import get_db
 from app.models import Project, ProjectTechStack
 from app.core.model_loader import get_model, is_ml_model_available
+import requests
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+def get_hidden_projects(user_id: int) -> List[int]:
+    """사용자가 숨김 처리한 프로젝트 ID 목록 조회"""
+    try:
+        # Spring Boot API에서 숨김 프로젝트 목록 조회
+        url = f"http://localhost:8080/api/recommend/users/{user_id}/hidden-projects"
+        response = requests.get(url, timeout=10)
+        
+        if response.status_code == 200:
+            hidden_projects = response.json()
+            logger.info(f"🚫 사용자 {user_id} 숨김 프로젝트: {len(hidden_projects)}개")
+            return hidden_projects
+        else:
+            logger.warning(f"⚠️ 숨김 프로젝트 조회 실패 (HTTP {response.status_code})")
+            
+    except requests.RequestException as e:
+        logger.warning(f"⚠️ Spring Boot API 연결 실패: {e}")
+    except Exception as e:
+        logger.error(f"❌ 숨김 프로젝트 조회 중 오류: {e}")
+    
+    return []
 
 @router.post("/recommend/projects", response_model=List[ProjectRecommendation])
 def recommend_projects(
@@ -153,6 +175,14 @@ def get_recommended_projects(
         ))
     
     logger.info(f"📊 총 {len(all_projects)}개 프로젝트 변환 완료")
+    
+    # 🚫 숨김 프로젝트 필터링
+    hidden_project_ids = get_hidden_projects(request.user_id)
+    if hidden_project_ids:
+        before_count = len(all_projects)
+        all_projects = [p for p in all_projects if p.projectId not in hidden_project_ids]
+        after_count = len(all_projects)
+        logger.info(f"🚫 숨김 프로젝트 {len(hidden_project_ids)}개 제외: {before_count} → {after_count}개")
     
     # 프로젝트에서 실제 사용되는 기술스택 확인
     project_techs_sample = []

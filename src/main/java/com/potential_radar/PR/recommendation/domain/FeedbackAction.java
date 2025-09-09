@@ -5,7 +5,8 @@ package com.potential_radar.PR.recommendation.domain;
  */
 public enum FeedbackAction {
     LIKE("좋아요"),
-    DISLIKE("별로에요");
+    DISLIKE("별로에요"),
+    HIDE("추천그만받기");
 
     private final String description;
 
@@ -22,5 +23,12 @@ public enum FeedbackAction {
      */
     public boolean isPositive() {
         return this == LIKE;
+    }
+    
+    /**
+     * 숨김 처리 피드백인지 확인
+     */
+    public boolean isHide() {
+        return this == HIDE;
     }
 }

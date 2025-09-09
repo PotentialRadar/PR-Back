@@ -158,22 +158,83 @@ FROM all_users_rn aur
     ON CONFLICT (user_id) DO NOTHING;
 
 -- ---------------------------------------------
--- User Tech Stacks: 3~7 random stacks per user
+-- User Tech Stacks: Categorized realistic assignments (5-8 stacks per user)
 -- ---------------------------------------------
 -- 먼저 기존 데이터가 있으면 삭제 (더미 데이터 초기화)
 DELETE FROM user_tech_stack WHERE EXISTS (SELECT 1 FROM users WHERE email LIKE 'user%@naver.com');
 
+-- 사용자 카테고리별 기술스택 할당 (현실적인 조합으로 5-8개)
+WITH user_categories AS (
+  SELECT 
+    user_id,
+    CASE 
+      WHEN user_id BETWEEN 1 AND 25 THEN 'backend'
+      WHEN user_id BETWEEN 26 AND 45 THEN 'frontend' 
+      WHEN user_id BETWEEN 46 AND 65 THEN 'fullstack'
+      WHEN user_id BETWEEN 66 AND 80 THEN 'ai_ml'
+      WHEN user_id BETWEEN 81 AND 90 THEN 'mobile'
+      WHEN user_id BETWEEN 91 AND 95 THEN 'devops'
+      ELSE 'designer'
+    END as category
+  FROM users 
+  WHERE email LIKE 'user%@naver.com'
+),
+category_stacks AS (
+  SELECT 
+    uc.user_id,
+    uc.category,
+    CASE uc.category
+      WHEN 'backend' THEN 
+        ARRAY['Java', 'Spring Boot', 'Spring Framework', 'PostgreSQL', 'MySQL', 'Node.js', 'Express.js', 'Python', 'Django', 'Docker']
+      WHEN 'frontend' THEN 
+        ARRAY['JavaScript', 'TypeScript', 'React', 'Vue.js', 'HTML5', 'CSS3', 'Next.js', 'Nuxt.js', 'Angular', 'Svelte']
+      WHEN 'fullstack' THEN 
+        ARRAY['JavaScript', 'TypeScript', 'React', 'Node.js', 'Express.js', 'PostgreSQL', 'MongoDB', 'Spring Boot', 'Java', 'Docker']
+      WHEN 'ai_ml' THEN 
+        ARRAY['Python', 'TensorFlow', 'PyTorch', 'Scikit-learn', 'Pandas', 'NumPy', 'Keras', 'PostgreSQL', 'MongoDB', 'Flask']
+      WHEN 'mobile' THEN 
+        ARRAY['Flutter', 'Dart', 'React Native', 'JavaScript', 'Android', 'iOS', 'Swift', 'Kotlin', 'Firebase', 'SQLite']
+      WHEN 'devops' THEN 
+        ARRAY['Docker', 'Kubernetes', 'AWS', 'Jenkins', 'Linux', 'PostgreSQL', 'Redis', 'Elasticsearch', 'Helm', 'Python']
+      ELSE -- designer
+        ARRAY['HTML5', 'CSS3', 'JavaScript', 'React', 'Vue.js', 'Figma', 'Adobe XD', 'Sketch', 'Photoshop', 'Illustrator']
+    END as available_stacks
+  FROM user_categories uc
+),
+selected_stacks AS (
+  SELECT 
+    cs.user_id,
+    cs.category,
+    -- 우선순위가 높은 핵심 기술 (처음 3-4개)
+    ARRAY(
+      SELECT unnest(cs.available_stacks[1:(3 + (cs.user_id % 2))])
+      ORDER BY random()
+    ) as priority_stacks,
+    -- 나머지 기술 중에서 랜덤 선택 (2-4개 추가)
+    ARRAY(
+      SELECT unnest(cs.available_stacks[(3 + (cs.user_id % 2) + 1):])
+      ORDER BY random()
+      LIMIT (2 + (cs.user_id % 3))
+    ) as additional_stacks
+  FROM category_stacks cs
+),
+final_user_stacks AS (
+  SELECT 
+    user_id,
+    category,
+    priority_stacks || additional_stacks as tech_stack_names
+  FROM selected_stacks
+)
 INSERT INTO user_tech_stack (user_id, stack_id, skill_level)
-SELECT u.user_id, s.tech_stack_id, (floor(random()*5)+1)::int
-FROM users u
-         JOIN LATERAL (
-    SELECT ts.tech_stack_id
-    FROM tech_stack ts
-    ORDER BY random()
-        LIMIT (3 + (floor(random()*5))::int)  -- 3..7
-    ) s ON TRUE
-WHERE u.email LIKE 'user%@naver.com'  -- 더미 데이터만 생성
-    ON CONFLICT ON CONSTRAINT uk_user_tech_stack_user_stack DO NOTHING;
+SELECT 
+  fus.user_id, 
+  ts.tech_stack_id, 
+  (3 + floor(random()*3))::int  -- 3-5 레벨 (현실적인 숙련도)
+FROM final_user_stacks fus
+CROSS JOIN LATERAL unnest(fus.tech_stack_names) as stack_name
+JOIN tech_stack ts ON ts.name = stack_name
+WHERE fus.user_id IN (SELECT user_id FROM users WHERE email LIKE 'user%@naver.com')
+ON CONFLICT ON CONSTRAINT uk_user_tech_stack_user_stack DO NOTHING;
 
 -- ---------------------------------------------
 -- User Experiences: ~0..3 per user with time windows
@@ -451,26 +512,69 @@ CROSS JOIN LATERAL unnest(ptm.required_parts) AS required_part_name
 JOIN tech_part tp ON tp.name = required_part_name
 ON CONFLICT DO NOTHING;
 
--- Project Tech Stacks: 프로젝트별로 다양한 기술스택 (4~6개씩 다르게)
+-- Project Tech Stacks: 프로젝트 제목에 맞는 적절한 기술스택 할당 (4~6개)
+WITH project_tech_mapping AS (
+  SELECT 
+    pr.project_id,
+    pr.title,
+    CASE 
+      -- 웹/쇼핑몰 프로젝트
+      WHEN pr.title LIKE '%쇼핑몰%' OR pr.title LIKE '%이커머스%' OR pr.title LIKE '%웹%' THEN 
+        ARRAY['React', 'Vue.js', 'JavaScript', 'TypeScript', 'Spring Boot', 'Node.js', 'Express.js', 'PostgreSQL', 'MySQL', 'Docker']
+      -- 모바일 앱 프로젝트  
+      WHEN pr.title LIKE '%모바일%' OR pr.title LIKE '%앱%' THEN 
+        ARRAY['Flutter', 'React Native', 'Android', 'iOS', 'Dart', 'Swift', 'Kotlin', 'Firebase', 'SQLite', 'Node.js']
+      -- AI/ML 프로젝트
+      WHEN pr.title LIKE '%AI%' OR pr.title LIKE '%챗봇%' OR pr.title LIKE '%추천%' OR pr.title LIKE '%분석%' THEN 
+        ARRAY['Python', 'TensorFlow', 'PyTorch', 'Scikit-learn', 'Pandas', 'NumPy', 'Flask', 'FastAPI', 'PostgreSQL', 'MongoDB']
+      -- 게임 프로젝트
+      WHEN pr.title LIKE '%게임%' THEN 
+        ARRAY['Unity', 'Unreal Engine', 'C#', 'JavaScript', 'HTML5', 'CSS3', 'Node.js', 'SQLite', 'MongoDB', 'Docker']
+      -- IoT/스마트 프로젝트
+      WHEN pr.title LIKE '%IoT%' OR pr.title LIKE '%스마트%' THEN 
+        ARRAY['Node.js', 'Python', 'JavaScript', 'PostgreSQL', 'MongoDB', 'Docker', 'AWS', 'Redis', 'Express.js', 'React']
+      -- 스트리밍/실시간 프로젝트
+      WHEN pr.title LIKE '%스트리밍%' OR pr.title LIKE '%실시간%' THEN 
+        ARRAY['Node.js', 'Socket.io', 'React', 'JavaScript', 'Docker', 'Redis', 'PostgreSQL', 'AWS', 'Express.js', 'MongoDB']
+      -- 블록체인 프로젝트
+      WHEN pr.title LIKE '%블록체인%' OR pr.title LIKE '%NFT%' THEN 
+        ARRAY['Solidity', 'Web3.js', 'JavaScript', 'React', 'Node.js', 'PostgreSQL', 'MongoDB', 'Docker', 'Express.js', 'TypeScript']
+      -- 관리 시스템 프로젝트
+      WHEN pr.title LIKE '%관리%' OR pr.title LIKE '%시스템%' THEN 
+        ARRAY['React', 'Vue.js', 'Spring Boot', 'Java', 'JavaScript', 'PostgreSQL', 'MySQL', 'Docker', 'TypeScript', 'Node.js']
+      -- VR/AR 프로젝트
+      WHEN pr.title LIKE '%AR%' OR pr.title LIKE '%VR%' THEN 
+        ARRAY['Unity', 'Unreal Engine', 'C#', 'JavaScript', 'React', 'Node.js', 'MongoDB', 'Docker', 'Python', 'PostgreSQL']
+      -- 보안 관련 프로젝트
+      WHEN pr.title LIKE '%보안%' OR pr.title LIKE '%투표%' THEN 
+        ARRAY['Java', 'Spring Security', 'Spring Boot', 'PostgreSQL', 'React', 'JavaScript', 'Docker', 'Node.js', 'TypeScript', 'MongoDB']
+      -- 기본값: 일반적인 웹 프로젝트
+      ELSE 
+        ARRAY['React', 'JavaScript', 'Node.js', 'Express.js', 'PostgreSQL', 'TypeScript', 'Spring Boot', 'Java', 'Docker', 'Vue.js']
+    END as available_stacks
+  FROM project_recruitment pr
+  WHERE pr.team_leader_id IN (SELECT user_id FROM users WHERE email LIKE 'user%@naver.com')
+),
+selected_project_stacks AS (
+  SELECT 
+    ptm.project_id,
+    ptm.title,
+    -- 각 프로젝트마다 고유한 시드로 다른 기술스택 조합 생성 (4-6개)
+    ARRAY(
+      SELECT unnest(ptm.available_stacks)
+      ORDER BY ((ptm.project_id * 7919 + array_position(ptm.available_stacks, unnest(ptm.available_stacks)) * 31) % 997)
+      LIMIT (4 + (ptm.project_id % 3))
+    ) as selected_stacks
+  FROM project_tech_mapping ptm
+)
 INSERT INTO project_tech_stack (project_id, tech_stack_id, recruit_count)
-SELECT p.project_id, s.tech_stack_id, (1 + floor(random()*2))::int
-FROM project_recruitment p
-    CROSS JOIN LATERAL (
-        -- 각 프로젝트마다 고유한 시드로 다른 기술스택 조합 생성
-        WITH project_seed AS (
-            SELECT (p.project_id * 7919) % 1000 AS seed
-        ),
-        random_stacks AS (
-            SELECT ts.tech_stack_id, 
-                   ((ts.tech_stack_id * ps.seed * 31) % 997) AS sort_key
-            FROM tech_stack ts, project_seed ps
-        )
-        SELECT tech_stack_id 
-        FROM random_stacks 
-        ORDER BY sort_key 
-        LIMIT (4 + (p.project_id % 3))  -- 4~6개 (프로젝트 ID에 따라 다름)
-    ) s
-WHERE p.team_leader_id IN (SELECT user_id FROM users WHERE email LIKE 'user%@naver.com')  -- 더미 프로젝트만
+SELECT 
+  sps.project_id, 
+  ts.tech_stack_id, 
+  (1 + floor(random()*2))::int
+FROM selected_project_stacks sps
+CROSS JOIN LATERAL unnest(sps.selected_stacks) as stack_name
+JOIN tech_stack ts ON ts.name = stack_name
 ON CONFLICT ON CONSTRAINT uq_project_tech_stack DO NOTHING;
 
 -- Additional project members: 해당 프로젝트에 필요한 기술파트에서 선택

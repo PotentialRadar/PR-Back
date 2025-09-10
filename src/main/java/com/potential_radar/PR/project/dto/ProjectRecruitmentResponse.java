@@ -9,6 +9,8 @@ import java.util.List;
 public class ProjectRecruitmentResponse {
     private Long projectId;
     private Long teamLeaderId;
+    private String teamLeaderNickname;
+    private String teamLeaderProfileImageUrl;
     private String title;
     private String description;
     private LocalDate recruitDeadline;

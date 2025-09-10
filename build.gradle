@@ -49,10 +49,16 @@ dependencies {
 	testImplementation 'org.springframework.security:spring-security-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
-	implementation 'org.springframework.cloud:spring-cloud-starter-aws:2.2.6.RELEASE'
+    // AWS SDK for S3 (use with our custom S3Config)
+    implementation 'com.amazonaws:aws-java-sdk-s3:1.12.772'
 	implementation 'io.netty:netty-resolver-dns-native-macos:4.1.107.Final:osx-aarch_64' // macOS 전용 DNS 라이브러리 누락
 }
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+// Spring Boot 애플리케이션 실행 시 AWS 경고 메시지 비활성화
+bootRun {
+	systemProperty 'aws.java.v1.disableDeprecationAnnouncement', 'true'
 }

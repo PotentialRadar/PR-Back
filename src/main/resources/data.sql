@@ -85,7 +85,7 @@ SELECT
     WHEN u.provider = 'GOOGLE' THEN 'google_' || (floor(random()*900000000)+100000000)::bigint
     ELSE 'kakao_'  || (floor(random()*900000000)+100000000)::bigint
     END,
-    format('https://example.com/profile/%03s.jpg', to_char(ceil(random()*12)::int,'FM000')),
+    NULL,
     current_timestamp - ((floor(random() * 365) || ' days')::interval) - ((floor(random() * 24) || ' hours')::interval),
     current_timestamp - ((floor(random() * 30) || ' days')::interval) - ((floor(random() * 24) || ' hours')::interval)
 FROM u
@@ -141,9 +141,9 @@ SELECT
          ELSE 'https://linkedin.com/in/'||regexp_replace(lower(aur.nickname),'[^a-z0-9]','-','g') END AS linkedin_url,
     CASE WHEN (aur.rn-1) % 6 = 0 THEN NULL
          ELSE 'https://'||regexp_replace(lower(aur.nickname),'[^a-z0-9]','','g')||'.dev' END AS website_url,
-    CASE WHEN (aur.rn-1) % 10 < 7 THEN TRUE ELSE FALSE END AS is_portfolio_open,
+    TRUE AS is_portfolio_open,
     CASE WHEN (aur.rn-1) % 4 = 1 THEN TRUE ELSE FALSE END AS is_contact_open,
-    CASE WHEN (aur.rn-1) % 2 = 1 THEN TRUE ELSE FALSE END AS is_search_open,
+    TRUE AS is_search_open,
     ROUND(((random()*4.5 + 0.5))::numeric, 2) AS reputation_score,
     (random()*50)::int AS review_count,
     (ARRAY['FRESHER','LT_1','Y1_3','Y3_5','Y5_10','GE_10','ETC'])[(aur.rn-1) % 7 + 1]
@@ -305,11 +305,15 @@ DELETE FROM project_recruitment WHERE team_leader_id IN (
     SELECT user_id FROM users WHERE email LIKE 'user%@naver.com'
 );
 
-WITH base AS (
+WITH user_pool AS (
+    SELECT user_id, ROW_NUMBER() OVER (ORDER BY random()) as rn 
+    FROM users WHERE email LIKE 'user%@naver.com'
+), base AS (
     SELECT gs AS i,
-           (SELECT user_id FROM users WHERE email LIKE 'user%@naver.com' ORDER BY random() LIMIT 1) AS team_leader_id,
-         current_date AS today
-FROM generate_series(1,50) gs
+           up.user_id AS team_leader_id,
+           current_date AS today
+    FROM generate_series(1,50) gs
+    JOIN user_pool up ON (gs % (SELECT COUNT(*) FROM user_pool)) + 1 = up.rn
     ), dates AS (
 SELECT i, team_leader_id,
     (today + ((10 + floor(random()*30))||' days')::interval)::date AS recruit_deadline,

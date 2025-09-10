@@ -6,6 +6,8 @@ import com.potential_radar.PR.user.repository.UserTechStackRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -14,6 +16,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Arrays;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,8 +36,8 @@ public class PopularSearchService {
     @Value("${app.popular-search.min-search-count:5}")
     private int minSearchCount;
     
-    @Value("${app.popular-search.cache-duration-hours:1}")
-    private int cacheDurationHours;
+    @Value("${app.popular-search.cache-duration-hours:168}")
+    private int cacheDurationHours;  // 기본값을 1주일(168시간)로 변경
     
     @Value("${app.popular-search.max-keywords:20}")
     private int maxKeywords;
@@ -54,9 +57,31 @@ public class PopularSearchService {
     private static final String POPULAR_USER_TECH_STACKS_KEY = "popular:user:techstacks";
     private static final String POPULAR_USER_TECH_PARTS_KEY = "popular:user:techparts";
     
-    @Scheduled(fixedRateString = "${app.popular-search.update-interval:3600000}")
+    // 애플리케이션 시작 시 기술스택 데이터 즉시 캐싱
+    @EventListener(ApplicationReadyEvent.class)
+    public void initializePopularItemsOnStartup() {
+        log.info("Initializing popular search items on application startup...");
+        try {
+            // 기술스택만 즉시 초기화 (가장 중요한 필터 태그)
+            updatePopularTechStacks();
+            updatePopularUserTechStacks();
+            log.info("Popular tech stacks initialized successfully on startup");
+            
+            // 다른 항목들도 초기화 (선택사항)
+            updatePopularKeywords();
+            updatePopularTechParts();
+            updatePopularUserKeywords();
+            updatePopularUserTechParts();
+            log.info("All popular search items initialized successfully on startup");
+        } catch (Exception e) {
+            log.error("Failed to initialize popular search items on startup: {}", e.getMessage());
+            // 실패해도 기본값으로 대체하므로 애플리케이션 시작을 방해하지 않음
+        }
+    }
+
+    @Scheduled(cron = "0 0 2 * * SUN")  // 매주 일요일 새벽 2시
     public void updatePopularItems() {
-        log.info("Updating popular search items... ({}일 기준, 최소 {}회 검색)", 
+        log.info("Weekly update of popular search items... ({}일 기준, 최소 {}회 검색)", 
                 popularSearchDays, minSearchCount);
         updatePopularKeywords();
         updatePopularTechStacks();
@@ -65,7 +90,7 @@ public class PopularSearchService {
         updatePopularUserKeywords();
         updatePopularUserTechStacks();
         updatePopularUserTechParts();
-        log.info("Popular search items updated successfully");
+        log.info("Weekly popular search items update completed successfully");
     }
     
     private void updatePopularKeywords() {
@@ -160,10 +185,16 @@ public class PopularSearchService {
     public List<String> getPopularTechStacks() {
         try {
             List<String> cached = (List<String>) redisTemplate.opsForValue().get(POPULAR_TECH_STACKS_KEY);
-            return cached != null ? cached : Collections.emptyList();
+            if (cached != null && !cached.isEmpty()) {
+                return cached;
+            }
+            
+            // 캐시된 데이터가 없으면 기본 인기 기술스택 반환
+            log.warn("No cached popular tech stacks found, returning default popular tech stacks for projects");
+            return getDefaultPopularTechStacks();
         } catch (Exception e) {
             log.warn("Failed to get popular tech stacks from cache: {}", e.getMessage());
-            return Collections.emptyList();
+            return getDefaultPopularTechStacks();
         }
     }
     
@@ -269,10 +300,16 @@ public class PopularSearchService {
     public List<String> getPopularUserTechStacks() {
         try {
             List<String> cached = (List<String>) redisTemplate.opsForValue().get(POPULAR_USER_TECH_STACKS_KEY);
-            return cached != null ? cached : Collections.emptyList();
+            if (cached != null && !cached.isEmpty()) {
+                return cached;
+            }
+            
+            // 캐시된 데이터가 없으면 기본 인기 기술스택 반환
+            log.warn("No cached popular user tech stacks found, returning default popular tech stacks for users");
+            return getDefaultPopularUserTechStacks();
         } catch (Exception e) {
             log.warn("Failed to get popular user tech stacks from cache: {}", e.getMessage());
-            return Collections.emptyList();
+            return getDefaultPopularUserTechStacks();
         }
     }
     
@@ -285,5 +322,25 @@ public class PopularSearchService {
             log.warn("Failed to get popular user tech parts from cache: {}", e.getMessage());
             return Collections.emptyList();
         }
+    }
+    
+    // 기본 프로젝트 기반 인기 기술스택 (캐시 실패 시 사용)
+    private List<String> getDefaultPopularTechStacks() {
+        return Arrays.asList(
+            "JavaScript", "React", "Vue.js", "Node.js", "TypeScript",
+            "Java", "Spring Boot", "Spring", "Python", "Django",
+            "MySQL", "PostgreSQL", "MongoDB", "AWS", "Docker", 
+            "Git", "HTML/CSS", "Express.js", "Next.js", "Flutter"
+        );
+    }
+    
+    // 기본 사용자 기반 인기 기술스택 (캐시 실패 시 사용)  
+    private List<String> getDefaultPopularUserTechStacks() {
+        return Arrays.asList(
+            "JavaScript", "React", "Java", "Python", "Vue.js",
+            "Spring Boot", "Node.js", "TypeScript", "MySQL", "Spring",
+            "HTML/CSS", "Git", "AWS", "PostgreSQL", "Express.js",
+            "Django", "Docker", "MongoDB", "Next.js", "Flutter"
+        );
     }
 }

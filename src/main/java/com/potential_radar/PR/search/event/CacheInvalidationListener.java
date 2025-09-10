@@ -1,6 +1,6 @@
 package com.potential_radar.PR.search.event;
 
-import com.potential_radar.PR.search.service.SearchCacheService;
+import com.potential_radar.PR.search.service.SmartCacheService;
 import com.potential_radar.PR.search.service.DataSyncService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,14 +13,16 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class CacheInvalidationListener {
     
-    private final SearchCacheService searchCacheService;
+    private final SmartCacheService smartCacheService;
     private final DataSyncService dataSyncService;
     
     @EventListener({ProjectCreatedEvent.class, ProjectUpdatedEvent.class})
     @Async
     public void handleProjectDataChange(Object event) {
-        log.info("Project data changed, invalidating related caches");
-        searchCacheService.evictProjectSearchCache("");
+        log.info("Project data changed, invalidating search result caches only");
+        
+        // 검색 결과 캐시만 무효화 (인기 검색어/기술스택은 보존)
+        smartCacheService.evictProjectSearchCache();
         
         // Elasticsearch 동기화
         try {
@@ -41,8 +43,10 @@ public class CacheInvalidationListener {
     @EventListener(ProjectDeletedEvent.class)
     @Async
     public void handleProjectDelete(ProjectDeletedEvent event) {
-        log.info("Project deleted, removing from Elasticsearch and invalidating caches");
-        searchCacheService.evictProjectSearchCache("");
+        log.info("Project deleted, removing from Elasticsearch and invalidating search result caches");
+        
+        // 검색 결과 캐시만 무효화 (인기 검색어/기술스택은 보존)
+        smartCacheService.evictProjectSearchCache();
         
         // Elasticsearch에서 삭제
         try {
@@ -56,8 +60,10 @@ public class CacheInvalidationListener {
     @EventListener(UserUpdatedEvent.class)
     @Async 
     public void handleUserDataChange(UserUpdatedEvent event) {
-        log.info("User data changed, invalidating related portfolio caches");
-        searchCacheService.evictPortfolioSearchCache("");
+        log.info("User data changed, invalidating user search result caches only");
+        
+        // 사용자 검색 결과 캐시만 무효화 (인기 검색어/기술스택은 보존)
+        smartCacheService.evictUserSearchCache();
         
         // Elasticsearch 동기화
         try {

@@ -50,8 +50,8 @@ public class SearchService {
     // 사용자의 검색 활동(키워드, 필터 등)을 데이터베이스에 비동기적으로 기록
     private final SearchEventService searchEventService;
 
-    // 인기 검색어에 대한 검색 결과를 Redis에 캐싱하고 조회하는 역할
-    private final SearchCacheService searchCacheService;
+    // 스마트 캐싱 전략을 구현하는 서비스 (기존 SearchCacheService 대체)
+    private final SmartCacheService smartCacheService;
 
     // 프론트엔드에 제공할 기술 분야 태그 목록을 조회
     private final TechPartService techPartService;
@@ -574,15 +574,15 @@ public class SearchService {
         long startTime = System.currentTimeMillis();
         log.info("Starting project search with request: {}", request);
 
-        // 1. 인기 검색어 판단 및 캐시 확인
-        boolean isPopularSearch = searchCacheService.shouldCacheProjectSearch(request);
+        // 1. 스마트 캐싱: 인기 검색어 판단 및 캐시 확인
+        boolean isPopularSearch = smartCacheService.shouldCacheProjectSearch(request);
         if (isPopularSearch) {
-            log.info("Popular search detected, checking Redis cache");
+            log.info("Popular search detected, checking smart cache");
 
-            SearchResult<ProjectSearchRes> cachedResult = searchCacheService.getCachedProjectSearchResult(request);
+            SearchResult<ProjectSearchRes> cachedResult = smartCacheService.getCachedProjectSearchResult(request);
             if (cachedResult != null) {
                 long cacheHitTime = System.currentTimeMillis() - startTime;
-                log.info("Cache HIT: returning cached result for popular search (actual response time: {}ms vs original search time: {}ms)",
+                log.info("Smart Cache HIT: returning cached result for popular search (actual response time: {}ms vs original search time: {}ms)",
                         cacheHitTime, cachedResult.getSearchTimeMs());
                 searchEventService.saveSearchLog(request, cachedResult.getTotalElements());
                 return SearchResult.<ProjectSearchRes>builder()
@@ -598,7 +598,7 @@ public class SearchService {
                         .actualResponseTimeMs(cacheHitTime) // 실제 응답 시간
                         .build();
             }
-            log.info("Cache MISS: will execute search and cache result");
+            log.info("Smart Cache MISS: will execute search and cache result");
         }
 
         // Criteria 구성 (유저 검색과 동일한 방식)
@@ -763,10 +763,10 @@ public class SearchService {
         // 2. 비동기 로깅
         searchEventService.saveSearchLog(request, totalElements);
 
-        // 3. 인기 검색어는 Redis에 캐싱
+        // 3. 인기 검색어는 스마트 캐시에 저장 (5분 TTL)
         if (isPopularSearch) {
-            searchCacheService.cacheProjectSearchResult(request, result);
-            log.info("Cached popular search result in Redis");
+            smartCacheService.cacheProjectSearchResult(request, result);
+            log.info("Cached popular search result in smart cache with 5-minute TTL");
         }
 
         return result;

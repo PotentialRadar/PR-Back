@@ -94,6 +94,11 @@ public class ProjectRecruitmentService {
         return ProjectRecruitmentResponse.builder()
                 .projectId(pr.getProjectId())
                 .teamLeaderId(pr.getTeamLeader().getUserId())
+                .teamLeaderNickname(pr.getTeamLeader().getNickname())
+                .teamLeaderProfileImageUrl(
+                        (pr.getTeamLeader().getProfileImage() == null || pr.getTeamLeader().getProfileImage().isBlank())
+                                ? null
+                                : pr.getTeamLeader().getProfileImage())
                 .title(pr.getTitle())
                 .description(pr.getDescription())
                 .recruitDeadline(pr.getRecruitDeadline())

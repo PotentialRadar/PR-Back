@@ -83,49 +83,73 @@ public class RedisRefreshTokenService {
     }
 
     /**
-     * 🔍 Refresh Token으로 사용자 ID 조회
+     * 🔍 Refresh Token으로 사용자 ID 조회 - ⭐ 재사용 감지 시스템의 최전선!
      * 
-     * 토큰 문자열을 받아서 해당 토큰을 소유한 사용자 ID를 반환합니다.
-     * 토큰 유효성 검증과 재사용 탐지도 함께 수행됩니다.
+     * 🛡️ 비유: 출입증을 확인하는 보안 게이트와 같습니다
+     * 
+     * ✨ 보안 검사 과정:
+     * 1️⃣ 블랙리스트 확인 → "이 토큰 이미 쓰인 거 아님?"
+     * 2️⃣ 재사용 감지 시 → **즉시 비상 대응** (모든 토큰 무효화)
+     * 3️⃣ 정상 토큰이면 → 사용자 ID 반환
+     * 
+     * 🚨 능동 대응의 핵심!
+     * - 공격자가 탈취한 토큰으로 접근 시도하면 **즉시 감지**
+     * - 피해자의 **모든 세션을 강제 종료**하여 추가 피해 방지
      * 
      * @param refreshToken 조회할 Refresh Token 문자열
      * @return 토큰 소유자의 사용자 ID, 유효하지 않으면 null
      */
     public Long getUserIdByToken(String refreshToken) {
-        // 🔍 토큰이 이미 사용되었는지 확인 (재사용 탐지)
+        // 🚨 1단계: 재사용 탐지 - 가장 중요한 보안 검사!
         Long usedTokenUserId = getUsedTokenUserId(refreshToken);
         if (usedTokenUserId != null) {
-            log.warn("⚠️ 이미 사용된 토큰 재사용 시도: {} (원 소유자: {})", 
+            // 🚨 경보 발생! 이미 사용된 토큰으로 재접근 시도 감지!
+            log.warn("⚠️ 🚨 토큰 재사용 공격 감지! 토큰: {} (원 소유자: {})", 
                 refreshToken.substring(0, 8) + "...", usedTokenUserId);
-            // 🚨 재사용 탐지 시 해당 사용자의 모든 토큰 무효화
+            
+            // ⚡ 즉시 대응: 해당 사용자의 모든 토큰 무효화 (능동 대응!)
+            // 💡 왜 이렇게 하나요? 공격자가 토큰을 탈취했을 가능성이 높으므로
+            //     피해자를 보호하기 위해 모든 세션을 강제 종료시킵니다.
             revokeAllTokensForUser(usedTokenUserId);
-            return null;
+            
+            log.info("🛡️ 보안 대응 완료: 사용자 {}의 모든 토큰이 무효화되었습니다", usedTokenUserId);
+            return null;  // 접근 거부
         }
         
-        // 🔄 토큰 매핑에서 사용자 ID 조회
+        // ✅ 2단계: 정상 토큰 - 사용자 ID 조회 후 반환
         return getUserIdFromMapping(refreshToken);
     }
 
     /**
-     * 🔄 Refresh Token 회전 (사용 후 새 토큰 발급)
+     * 🔄 Refresh Token 회전 (사용 후 새 토큰 발급) - ⭐ 능동 대응의 핵심!
      * 
-     * 기존 토큰을 무효화하고 새로운 토큰을 발급합니다.
-     * 토큰 탈취 위험을 줄이기 위해 매 사용마다 새 토큰을 생성합니다.
+     * 🏠 비유: 집 열쇠를 한 번 사용할 때마다 자물쇠를 바꾸는 것과 같습니다
      * 
-     * @param oldToken 사용된 기존 토큰
+     * ✨ 능동 대응 과정:
+     * 1️⃣ 기존 토큰 확인 → 유효한지 검증
+     * 2️⃣ 기존 토큰을 "사용됨" 블랙리스트에 추가 (재사용 방지)
+     * 3️⃣ 완전히 새로운 토큰 생성 및 발급
+     * 
+     * 🛡️ 보안 효과:
+     * - 토큰이 탈취되어도 한 번 사용하면 무효화됨
+     * - 공격자가 탈취한 토큰으로 재접근 시도 시 즉시 감지 가능
+     * 
+     * @param oldToken 사용된 기존 토큰 (이제 폐기될 토큰)
      * @return 새로 발급된 토큰, 실패 시 null
      */
     public String rotateRefreshToken(String oldToken) {
+        // 🔍 1단계: 기존 토큰이 유효한 토큰인지 확인
         Long userId = getUserIdFromMapping(oldToken);
         if (userId == null) {
             log.warn("❌ 유효하지 않은 토큰으로 회전 시도: {}", oldToken.substring(0, 8) + "...");
             return null;
         }
         
-        // 🏷️ 기존 토큰을 사용됨으로 표시 (재사용 탐지용)
+        // 🏷️ 2단계: 기존 토큰을 "사용됨" 블랙리스트에 추가 (능동 대응의 핵심!)
+        // 💡 이제 이 토큰을 누군가 다시 사용하려고 하면 바로 감지됨!
         markTokenAsUsed(oldToken);
         
-        // 🎫 새로운 토큰 생성 및 반환
+        // 🎫 3단계: 완전히 새로운 토큰 생성 및 발급
         String newToken = createRefreshToken(userId);
         log.info("🔄 사용자 {}의 토큰 회전 완료: {} → {}", 
             userId, oldToken.substring(0, 8) + "...", newToken.substring(0, 8) + "...");
@@ -134,30 +158,46 @@ public class RedisRefreshTokenService {
     }
 
     /**
-     * 🗑️ 특정 사용자의 모든 Refresh Token 삭제
+     * 🗑️ 특정 사용자의 모든 Refresh Token 무효화 - ⚡ 비상 대응의 핵심!
      * 
-     * 로그아웃이나 보안 위반 시 사용자의 모든 토큰을 무효화합니다.
+     * 🚨 비유: 화재 경보가 울리면 모든 출입문을 즉시 잠그는 것과 같습니다
      * 
-     * @param userId 토큰을 삭제할 사용자 ID
+     * 🛡️ 언제 사용되나요?
+     * 1️⃣ 토큰 재사용 감지 시 → 공격자로부터 사용자 보호
+     * 2️⃣ 로그아웃 시 → 정상적인 세션 종료
+     * 3️⃣ 보안 위반 감지 시 → 추가 피해 방지
+     * 
+     * ✨ 무효화 과정:
+     * 1️⃣ 현재 활성 토큰 조회
+     * 2️⃣ 토큰 매핑 테이블에서 삭제 (더 이상 조회 안됨)
+     * 3️⃣ 블랙리스트에 추가 (재사용 감지용)
+     * 4️⃣ 사용자 토큰 정보 완전 삭제
+     * 
+     * 🔥 결과: 해당 사용자는 **모든 디바이스에서 강제 로그아웃**됨
+     * 
+     * @param userId 토큰을 무효화할 사용자 ID
      */
     public void revokeAllTokensForUser(Long userId) {
-        // 🔍 기존 토큰 정보 조회
+        // 🔍 1단계: 현재 이 사용자가 가진 활성 토큰 찾기
         String userKey = REFRESH_TOKEN_PREFIX + userId;
         RefreshTokenInfo tokenInfo = (RefreshTokenInfo) redisTemplate.opsForValue().get(userKey);
         
         if (tokenInfo != null) {
-            // 🗑️ 토큰 매핑 삭제
+            // 🗑️ 2단계: 토큰 매핑 삭제 (더 이상 이 토큰으로 조회 안됨)
             String tokenKey = TOKEN_MAPPING_PREFIX + tokenInfo.getToken();
             redisTemplate.delete(tokenKey);
             
-            // 🏷️ 토큰을 사용됨으로 표시
+            // 🏷️ 3단계: 블랙리스트에 추가 (혹시 누군가 이 토큰을 재사용하려 하면 감지됨)
             markTokenAsUsed(tokenInfo.getToken());
+            
+            log.debug("🔥 토큰 매핑 및 블랙리스트 처리 완료: {}", tokenInfo.getToken().substring(0, 8) + "...");
         }
         
-        // 🗑️ 사용자 토큰 정보 삭제
+        // 🗑️ 4단계: 사용자 토큰 정보 완전 삭제 (더 이상 새 토큰 발급 불가)
         redisTemplate.delete(userKey);
         
-        log.info("🗑️ 사용자 {}의 모든 Refresh Token 삭제됨", userId);
+        log.info("🛡️ 보안 무효화 완료: 사용자 {}의 모든 Refresh Token이 무효화되었습니다", userId);
+        log.info("📱 결과: 해당 사용자는 모든 디바이스에서 강제 로그아웃됩니다");
     }
 
     /**
@@ -236,18 +276,31 @@ public class RedisRefreshTokenService {
     }
 
     /**
-     * 🏷️ 토큰을 사용됨으로 표시 (재사용 탐지용 - userId 포함)
+     * 🏷️ 토큰을 "사용됨" 블랙리스트에 추가 - ⭐ 능동 대응의 핵심 메커니즘!
      * 
-     * 토큰 회전 시 기존 토큰을 "사용됨" 상태로 표시합니다.
-     * 재사용 탐지 시 해당 사용자의 모든 토큰을 무효화할 수 있도록 userId도 함께 저장합니다.
+     * 📋 비유: 사용한 쿠폰을 "사용완료" 도장 찍어서 보관하는 것과 같습니다
+     * 
+     * ✨ 작동 원리:
+     * 1️⃣ Redis에 `used_token:토큰값` 키로 저장
+     * 2️⃣ 값으로는 원래 소유자의 userId를 저장 (중요!)
+     * 3️⃣ 7일간 보관 (토큰 완전 만료까지 충분한 기간)
+     * 
+     * 🚨 왜 userId를 함께 저장하나요?
+     * - 나중에 이 토큰이 재사용되면, 누구의 토큰이었는지 알아야
+     * - 그 사용자의 **모든 토큰을 무효화** 할 수 있기 때문!
+     * 
+     * @param refreshToken 블랙리스트에 추가할 토큰
      */
     private void markTokenAsUsed(String refreshToken) {
-        // 먼저 현재 토큰의 사용자 ID를 조회
+        // 🔍 1단계: 이 토큰의 원래 주인이 누구인지 조회
         Long userId = getUserIdFromMapping(refreshToken);
         if (userId != null) {
-            String usedTokenKey = USED_TOKEN_PREFIX + refreshToken;
-            // 🔍 사용된 토큰에 userId를 저장하여 재사용 탐지 시 전체 회수 가능하게 함
+            // 🗂️ 2단계: Redis 블랙리스트에 추가
+            String usedTokenKey = USED_TOKEN_PREFIX + refreshToken;  // "used_token:abc-123-def..."
+            
+            // 💾 3단계: 토큰과 함께 소유자 ID도 저장 (재사용 탐지 시 전체 무효화용)
             redisTemplate.opsForValue().set(usedTokenKey, userId.toString(), 7L, TimeUnit.DAYS);
+            
             log.debug("🏷️ 토큰을 사용됨으로 표시: {} (사용자: {})", refreshToken.substring(0, 8) + "...", userId);
         }
     }
@@ -263,27 +316,43 @@ public class RedisRefreshTokenService {
     }
 
     /**
-     * 🔍 사용된 토큰의 원래 소유자 ID 조회 (재사용 탐지용)
+     * 🔍 블랙리스트에서 사용된 토큰의 원래 소유자 찾기 - ⭐ 재사용 탐지의 핵심!
      * 
-     * 재사용 탐지 시 해당 사용자의 모든 토큰을 무효화하기 위해 사용됩니다.
+     * 🕵️ 비유: 사용된 쿠폰을 확인해서 "이거 누가 원래 쓰던 쿠폰이지?" 찾는 것
      * 
-     * @param refreshToken 조회할 토큰
+     * ✨ 작동 과정:
+     * 1️⃣ Redis 블랙리스트에서 `used_token:토큰값` 조회
+     * 2️⃣ 값이 있으면 → "이 토큰은 이미 사용됨!" 
+     * 3️⃣ 저장된 userId 반환 → 이 사람의 모든 토큰을 무효화할 예정
+     * 
+     * 🚨 이 정보가 왜 중요한가요?
+     * - 재사용된 토큰의 **원래 주인**을 찾아야
+     * - 그 사람의 **모든 세션을 강제 종료** 할 수 있기 때문!
+     * 
+     * @param refreshToken 조회할 토큰 (재사용 의심 토큰)
      * @return 원래 소유자의 사용자 ID, 사용되지 않은 토큰이면 null
      */
     private Long getUsedTokenUserId(String refreshToken) {
-        String usedTokenKey = USED_TOKEN_PREFIX + refreshToken;
+        // 🔍 1단계: Redis 블랙리스트에서 조회
+        String usedTokenKey = USED_TOKEN_PREFIX + refreshToken;  // "used_token:abc-123-def..."
         Object userIdObj = redisTemplate.opsForValue().get(usedTokenKey);
         
         if (userIdObj != null) {
+            // 📖 2단계: 찾았다! 이 토큰은 이미 사용된 토큰임
             try {
                 // 문자열로 저장했으므로 Long으로 변환
-                return Long.parseLong(userIdObj.toString());
+                Long originalOwnerId = Long.parseLong(userIdObj.toString());
+                log.debug("🔍 사용된 토큰 발견: {} (원래 소유자: {})", 
+                    refreshToken.substring(0, 8) + "...", originalOwnerId);
+                return originalOwnerId;
+                
             } catch (NumberFormatException e) {
                 log.warn("⚠️ 사용된 토큰 키 형식 오류: {} -> {}", refreshToken.substring(0, 8) + "...", userIdObj);
                 return null;
             }
         }
         
+        // ✅ 블랙리스트에 없음 = 아직 사용되지 않은 깨끗한 토큰
         return null;
     }
 

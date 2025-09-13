@@ -84,7 +84,9 @@ public class WebSecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 // 📴 세션을 생성/사용하지 않는 무상태 정책 (JWT)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // 🌐 CORS 설정: 프론트엔드와의 교차 출처 리소스 공유 허용
+                // 🌐 CORS 설정 적용: 프론트엔드와의 교차 출처 리소스 공유 허용
+                // 💡 corsConfigurationSource() 메소드에서 정의한 CORS 정책을 여기서 적용
+                // 🚪 결과: localhost:{frontendPort}에서 오는 요청들이 허용됨
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 // 🔐 URL별 접근 권한 설정
                 .authorizeHttpRequests(auth -> auth
@@ -160,28 +162,52 @@ public class WebSecurityConfig {
     }
 
     /**
-     * 🌐 CORS(Cross-Origin Resource Sharing) 설정
+     * 🌐 CORS(Cross-Origin Resource Sharing) 설정 - 🚪 프론트엔드 접근 허용의 핵심!
      *
-     * 프론트엔드 애플리케이션에서 백엔드 API에 접근할 수 있도록
-     * 교차 출처 리소스 공유 정책을 설정합니다.
+     * 🏠 쉬운 비유: 우리 집(백엔드)에서 이웃집(프론트엔드)의 방문을 허용하는 출입 허가증
+     *
+     * 🚫 문제 상황:
+     * - 브라우저는 기본적으로 다른 도메인 간 요청을 차단합니다 (Same-Origin Policy)
+     * - 예: localhost:3000(프론트) → localhost:8080(백엔드) 차단 ❌
+     *
+     * ✅ 해결책:
+     * - CORS 설정으로 특정 도메인의 접근을 명시적으로 허용
+     * - 보안을 유지하면서도 필요한 통신을 가능하게 함
+     *
+     * 🎯 설정 내용:
+     * - 허용 도메인: http://localhost:{frontendPort} (개발환경)
+     * - 허용 메소드: GET, POST, PUT, PATCH, DELETE, OPTIONS
+     * - 쿠키 및 인증 헤더 전송 허용 (JWT 토큰용)
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // 🎯 허용할 오리진 패턴 설정 (프론트엔드 주소)
+        
+        // 🎯 1단계: 어떤 도메인에서 오는 요청을 허용할지 설정
+        // 💡 현재 설정: 프론트엔드 개발 서버만 허용 (보안성 확보)
         configuration.setAllowedOriginPatterns(List.of("http://localhost:" + frontendPort));
-        // 📝 허용할 HTTP 메소드들 설정
+        
+        // 📝 2단계: 어떤 HTTP 메소드를 허용할지 설정
+        // 💡 RESTful API의 기본 메소드들 + OPTIONS(CORS 사전 요청용)
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        // 📋 허용할 요청 헤더들 설정 (모든 헤더 허용)
+        
+        // 📋 3단계: 요청할 때 포함할 수 있는 헤더들 설정
+        // 💡 "*" = 모든 헤더 허용 (Authorization, Content-Type 등)
         configuration.setAllowedHeaders(List.of("*"));
-        // 📤 응답에 노출할 헤더들 설정 (JWT 토큰과 쿠키를 위한 헤더들)
+        
+        // 📤 4단계: 응답에서 프론트엔드가 읽을 수 있는 헤더들 설정
+        // 💡 JWT 토큰(Authorization)과 쿠키(Set-Cookie) 헤더 노출 허용
         configuration.setExposedHeaders(List.of("Authorization", "Set-Cookie"));
-        // 🍪 자격 증명(쿠키, Authorization 헤더 등) 포함 요청 허용
+        
+        // 🍪 5단계: 인증 정보(쿠키, 토큰 등) 포함 요청 허용
+        // 💡 HttpOnly 쿠키 전송을 위해 반드시 필요!
         configuration.setAllowCredentials(true);
 
-        // 🗺️ URL 기반 CORS 설정 소스 생성 및 모든 경로에 설정 적용
+        // 🗺️ 6단계: 모든 API 경로에 CORS 설정 적용
+        // 💡 "/**" = /api/*, /oauth2/*, 모든 경로에 적용
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);  // 모든 경로에 CORS 설정 적용
+        source.registerCorsConfiguration("/**", configuration);
+        
         return source;
     }
 }

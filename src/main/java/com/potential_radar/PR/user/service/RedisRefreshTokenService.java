@@ -34,13 +34,33 @@ public class RedisRefreshTokenService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final JwtProperties jwtProperties;
     
-    // 🔑 Redis 키 접두사 - 사용자별 토큰을 구분하는 네임스페이스
+    // ┌─────────────────────────────────────────────────────────────────┐
+    // │ 🔑 **Redis 키 네이밍 전략** - 체계적인 데이터 관리               │
+    // │                                                                 │
+    // │ 🤔 왜 접두사를 사용하나요?                                       │
+    // │ - Redis는 하나의 거대한 저장소 → 데이터 구분 필요                │
+    // │ - 접두사로 데이터 종류를 구분 (마치 폴더 구조와 같음)             │
+    // │ - 관리와 디버깅이 쉬워짐                                         │
+    // └─────────────────────────────────────────────────────────────────┘
+    
+    // 🔑 **1️⃣ 메인 토큰 저장소** - 사용자별 토큰을 구분하는 네임스페이스
+    // 💾 저장 형태: "refresh_token:123" → RefreshTokenInfo 객체
+    // 📋 용도: 사용자 ID로 해당 사용자의 활성 토큰 정보 조회
+    // 🕒 TTL: 14일 (Refresh Token 만료 시간과 동일)
     private static final String REFRESH_TOKEN_PREFIX = "refresh_token:";
     
-    // 🔑 토큰 매핑 키 접두사 - 토큰으로 사용자 ID를 조회하는 역방향 매핑
+    // 🔄 **2️⃣ 역방향 매핑 테이블** - 토큰으로 사용자 ID를 조회하는 고속 검색용
+    // 💾 저장 형태: "token_mapping:abc-def-ghi" → 123 (사용자 ID)
+    // 📋 용도: 토큰 값으로 빠르게 소유자 찾기 (인증 시 필수)
+    // 🕒 TTL: 14일 (메인 토큰과 동기화)
+    // ⚡ 성능: O(1) 시간복잡도로 즉시 조회 가능
     private static final String TOKEN_MAPPING_PREFIX = "token_mapping:";
     
-    // 🔑 사용된 토큰 추적 키 접두사 - 재사용 탐지를 위한 블랙리스트
+    // 🚨 **3️⃣ 블랙리스트** - 재사용 탐지를 위한 사용된 토큰 추적소
+    // 💾 저장 형태: "used_token:abc-def-ghi" → "123" (원래 소유자 ID)
+    // 📋 용도: 토큰 재사용 공격 감지 및 능동 대응
+    // 🕒 TTL: 7일 (충분한 탐지 기간 보장)
+    // 🛡️ 보안: 재사용 감지 시 해당 사용자 모든 세션 무효화
     private static final String USED_TOKEN_PREFIX = "used_token:";
     
     /**
@@ -70,13 +90,33 @@ public class RedisRefreshTokenService {
         // ⏰ 설정에서 TTL 정보 조회
         TTLInfo ttlInfo = getRefreshTokenTTL();
         
-        // 💾 사용자 ID → 토큰 정보 저장 (메인 저장소)
-        String userKey = REFRESH_TOKEN_PREFIX + userId;
-        redisTemplate.opsForValue().set(userKey, tokenInfo, ttlInfo.value, ttlInfo.unit);
+        // 💾 **1단계: 메인 토큰 정보 저장** (사용자 ID → 토큰 정보)
+        // ┌─────────────────────────────────────────────────────────────┐
+        // │ 🔧 **RedisTemplate 사용법 예시**                            │
+        // │                                                             │
+        // │ redisTemplate.opsForValue().set(                           │
+        // │   key,        // 🔑 Redis 키 (문자열)                       │
+        // │   value,      // 📦 저장할 값 (객체)                        │
+        // │   ttl,        // ⏰ 수명 (숫자)                              │
+        // │   timeUnit    // 🕒 시간 단위 (DAYS/HOURS/MINUTES)          │
+        // │ );                                                          │
+        // └─────────────────────────────────────────────────────────────┘
+        String userKey = REFRESH_TOKEN_PREFIX + userId;  // "refresh_token:123"
+        redisTemplate.opsForValue().set(
+            userKey,           // 🔑 Key: "refresh_token:123"
+            tokenInfo,         // 📦 Value: RefreshTokenInfo 객체 (JSON으로 자동 변환)
+            ttlInfo.value,     // ⏰ TTL: 14 (숫자)
+            ttlInfo.unit       // 🕒 Unit: TimeUnit.DAYS
+        );
         
-        // 🔄 토큰 → 사용자 ID 역방향 매핑 저장 (빠른 조회용)
-        String tokenKey = TOKEN_MAPPING_PREFIX + refreshToken;
-        redisTemplate.opsForValue().set(tokenKey, userId, ttlInfo.value, ttlInfo.unit);
+        // 🔄 **2단계: 역방향 매핑 테이블 저장** (토큰 → 사용자 ID)
+        String tokenKey = TOKEN_MAPPING_PREFIX + refreshToken;  // "token_mapping:abc-def-ghi"
+        redisTemplate.opsForValue().set(
+            tokenKey,          // 🔑 Key: "token_mapping:abc-def-ghi" 
+            userId,            // 📦 Value: 123 (Long 타입, JSON으로 자동 변환)
+            ttlInfo.value,     // ⏰ TTL: 14 (메인 토큰과 동일)
+            ttlInfo.unit       // 🕒 Unit: TimeUnit.DAYS
+        );
         
         log.info("🎫 사용자 {}의 새 Refresh Token 생성됨: {}", userId, refreshToken.substring(0, 8) + "...");
         return refreshToken;
@@ -87,10 +127,21 @@ public class RedisRefreshTokenService {
      * 
      * 🛡️ 비유: 출입증을 확인하는 보안 게이트와 같습니다
      * 
-     * ✨ 보안 검사 과정:
-     * 1️⃣ 블랙리스트 확인 → "이 토큰 이미 쓰인 거 아님?"
-     * 2️⃣ 재사용 감지 시 → **즉시 비상 대응** (모든 토큰 무효화)
-     * 3️⃣ 정상 토큰이면 → 사용자 ID 반환
+     * ┌─────────────────────────────────────────────────────────────┐
+     * │ 🚨 **능동 대응 보안 흐름도**                               │
+     * │                                                             │
+     * │ 1️⃣ 토큰 접수                                               │
+     * │      ↓                                                      │
+     * │ 2️⃣ used_token 블랙리스트 확인                              │
+     * │      ├─ 🔴 발견됨 → 재사용 공격 감지!                      │
+     * │      │   ├─ ⚡ 즉시 revokeAllTokensForUser() 호출          │
+     * │      │   ├─ 🛡️ 해당 사용자 모든 세션 강제 종료             │
+     * │      │   └─ ❌ 접근 거부 (null 반환)                       │
+     * │      └─ 🟢 깨끗함 → 정상 처리 진행                         │
+     * │           ↓                                                │
+     * │ 3️⃣ token_mapping에서 사용자 ID 조회                       │
+     * │      └─ ✅ 사용자 ID 반환                                  │
+     * └─────────────────────────────────────────────────────────────┘
      * 
      * 🚨 능동 대응의 핵심!
      * - 공격자가 탈취한 토큰으로 접근 시도하면 **즉시 감지**
@@ -125,10 +176,21 @@ public class RedisRefreshTokenService {
      * 
      * 🏠 비유: 집 열쇠를 한 번 사용할 때마다 자물쇠를 바꾸는 것과 같습니다
      * 
-     * ✨ 능동 대응 과정:
-     * 1️⃣ 기존 토큰 확인 → 유효한지 검증
-     * 2️⃣ 기존 토큰을 "사용됨" 블랙리스트에 추가 (재사용 방지)
-     * 3️⃣ 완전히 새로운 토큰 생성 및 발급
+     * ┌─────────────────────────────────────────────────────────────┐
+     * │ 🔄 **토큰 회전 흐름도** (능동 대응의 핵심!)                 │
+     * │                                                             │
+     * │ 1️⃣ 기존 토큰 검증                                          │
+     * │      ├─ ❌ 무효 → null 반환 (회전 실패)                     │
+     * │      └─ ✅ 유효 → 2단계 진행                                │
+     * │           ↓                                                │
+     * │ 2️⃣ 기존 토큰을 used_token 블랙리스트에 추가                │
+     * │      └─ 🏷️ markTokenAsUsed() 호출                          │
+     * │           ↓                                                │
+     * │ 3️⃣ 완전히 새로운 토큰 생성                                  │
+     * │      └─ 🎫 createRefreshToken() 호출                       │
+     * │           ↓                                                │
+     * │ 4️⃣ **결과: 기존 토큰 재사용 시 공격자 즉시 탐지됨!**        │
+     * └─────────────────────────────────────────────────────────────┘
      * 
      * 🛡️ 보안 효과:
      * - 토큰이 탈취되어도 한 번 사용하면 무효화됨
@@ -359,29 +421,54 @@ public class RedisRefreshTokenService {
     /**
      * ⏰ JWT 설정에서 Refresh Token TTL 계산 (내부용)
      * 
-     * application.yml의 refresh-token-expiration(밀리초)를 
-     * Redis TTL용 시간 단위로 변환합니다.
+     * 🤔 TTL(Time To Live)이란?
+     * - 데이터의 "수명"을 설정하는 기능
+     * - 설정된 시간이 지나면 Redis가 자동으로 데이터 삭제
+     * - 마치 음식의 유통기한과 같은 개념!
+     * 
+     * 🎯 우리 시스템의 TTL 전략:
+     * ┌─────────────────────────────────────────────────────────────┐
+     * │ 📅 **TTL 설정 계층**                                        │
+     * │                                                             │
+     * │ 1️⃣ application.yml에서 기본값 설정                          │
+     * │    └─ refresh-token-expiration: 1209600000 (14일)          │
+     * │                                                             │
+     * │ 2️⃣ Redis TTL로 자동 변환                                   │
+     * │    ├─ 14일 = 14 (DAYS 단위)                                │
+     * │    ├─ 2시간 = 2 (HOURS 단위)                               │
+     * │    └─ 30분 = 30 (MINUTES 단위)                             │
+     * │                                                             │
+     * │ 3️⃣ Redis가 자동 관리                                       │
+     * │    └─ 시간 만료 시 데이터 자동 삭제                          │
+     * └─────────────────────────────────────────────────────────────┘
      * 
      * @return TTL 값과 시간 단위를 담은 TTL 정보 객체
      */
     private TTLInfo getRefreshTokenTTL() {
+        // 📋 1단계: application.yml에서 만료 시간 가져오기
+        // 💡 예: 1209600000ms = 14일
         long expirationMs = jwtProperties.getRefreshTokenExpiration();
         
-        // 🧮 밀리초를 적절한 단위로 변환 (성능과 정확성 고려)
+        // 🧮 2단계: 밀리초를 적절한 단위로 변환 (성능과 정확성 고려)
+        // 💡 Redis는 DAYS, HOURS, MINUTES 등 단위별로 최적화됨
+        
         if (expirationMs >= TimeUnit.DAYS.toMillis(1)) {
-            // 1일 이상이면 일(day) 단위 사용
+            // 📅 1일 이상이면 일(day) 단위 사용
+            // 💡 14일 = 14 DAYS (메모리 효율적)
             long days = TimeUnit.MILLISECONDS.toDays(expirationMs);
             log.debug("⏰ Refresh Token TTL 계산: {}ms = {}일", expirationMs, days);
             return new TTLInfo(days, TimeUnit.DAYS);
             
         } else if (expirationMs >= TimeUnit.HOURS.toMillis(1)) {
-            // 1시간 이상이면 시간(hour) 단위 사용
+            // 🕐 1시간 이상이면 시간(hour) 단위 사용
+            // 💡 2시간 = 2 HOURS
             long hours = TimeUnit.MILLISECONDS.toHours(expirationMs);
             log.debug("⏰ Refresh Token TTL 계산: {}ms = {}시간", expirationMs, hours);
             return new TTLInfo(hours, TimeUnit.HOURS);
             
         } else {
-            // 그 외는 분(minute) 단위 사용
+            // ⏱️ 그 외는 분(minute) 단위 사용
+            // 💡 30분 = 30 MINUTES (최소 1분 보장)
             long minutes = TimeUnit.MILLISECONDS.toMinutes(expirationMs);
             log.debug("⏰ Refresh Token TTL 계산: {}ms = {}분", expirationMs, minutes);
             return new TTLInfo(Math.max(1, minutes), TimeUnit.MINUTES); // 최소 1분 보장

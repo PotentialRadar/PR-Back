@@ -66,32 +66,44 @@ public class TokenService {
      */
     @Transactional
     public TokenPair refreshTokenPair(String refreshToken) {
-        // 🔍 Refresh Token 유효성 검사 및 사용자 조회
+        // 🔍 **1단계: 토큰 검증 및 재사용 탐지** (능동 대응의 시작점)
+        // ┌─────────────────────────────────────────────────────────────┐
+        // │ 🚨 이 호출에서 재사용 토큰 감지 시 즉시 전체 토큰 무효화!     │
+        // │ RedisRefreshTokenService.getUserIdByToken() 내부에서:         │
+        // │ • used_token 리스트 검사                                     │
+        // │ • 재사용 감지 → revokeAllTokensForUser() 자동 호출           │
+        // └─────────────────────────────────────────────────────────────┘
         Long userId = redisRefreshTokenService.getUserIdByToken(refreshToken);
         
         if (userId == null) {
-            log.warn("❌ 유효하지 않은 Refresh Token으로 갱신 요청: {}", 
+            log.warn("❌ 토큰 검증 실패 (무효하거나 재사용 감지됨): {}", 
                 refreshToken.substring(0, 8) + "...");
             throw new InvalidTokenException("유효하지 않은 Refresh Token입니다. 다시 로그인해주세요.");
         }
 
-        // 👤 사용자 정보 조회 (Repository 직접 사용으로 순환 의존성 해결)
+        // 👤 **2단계: 사용자 정보 조회** (Repository 직접 사용으로 순환 의존성 해결)
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new InvalidTokenException("사용자를 찾을 수 없습니다. ID: " + userId));
 
-        // 🔄 Refresh Token 회전 (보안 강화)
+        // 🔄 **3단계: 토큰 회전 실행** (능동 대응의 핵심!)
+        // ┌─────────────────────────────────────────────────────────────┐
+        // │ 🛡️ 보안 회전 과정:                                           │
+        // │ • 기존 토큰을 used_token 블랙리스트에 추가                    │
+        // │ • 완전히 새로운 Refresh Token 생성                           │
+        // │ • 이제 기존 토큰 재사용 시 공격자 즉시 탐지됨!                │
+        // └─────────────────────────────────────────────────────────────┘
         String newRefreshToken = redisRefreshTokenService.rotateRefreshToken(refreshToken);
         
         if (newRefreshToken == null) {
-            log.error("🔥 Refresh Token 회전 실패 - 사용자: {}", userId);
+            log.error("🔥 토큰 회전 실패 - 사용자: {}", userId);
             throw new InvalidTokenException("토큰 갱신에 실패했습니다. 다시 로그인해주세요.");
         }
 
-        // 🎫 새로운 Access Token 생성
+        // 🎫 **4단계: 새로운 Access Token 생성** (30분 만료)
         String newAccessToken = tokenProvider.generateAccessToken(user);
         
-        log.info("✅ 토큰 쌍 갱신 성공 - 사용자: {}, 새 Refresh Token: {}", 
-            userId, newRefreshToken.substring(0, 8) + "...");
+        log.info("✅ 능동 대응 토큰 회전 성공 - 사용자: {}, 기존 토큰 블랙리스트 등록 완료", userId);
+        log.debug("🔄 새 Refresh Token: {}", newRefreshToken.substring(0, 8) + "...");
             
         return new TokenPair(newAccessToken, newRefreshToken);
     }

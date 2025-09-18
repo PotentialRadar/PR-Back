@@ -84,18 +84,27 @@ public class TokenApiController {
         String refreshToken = refreshCookie.get().getValue();
         
         try {
-            // 🔄 새로운 토큰 쌍 생성 (Access + Refresh Token 회전)
+            // 🔄 **능동 대응 토큰 시스템 실행**
+            // ┌─────────────────────────────────────────────────────────────────┐
+            // │  🛡️ 보안 흐름: 기존 토큰 → 새 토큰 쌍으로 완전 교체                       │
+            // │  1️⃣ 기존 Refresh Token 검증                                       │
+            // │  2️⃣ 재사용 토큰 감지 (공격자 탐지)                                    │
+            // │  3️⃣ 기존 토큰을 used_token 리스트에 기록                              │
+            // │  4️⃣ 완전히 새로운 토큰 쌍 생성                                        │
+            // │  5️⃣ 클라이언트에 새 토큰 전달 (쿠키)                                   │
+            // └─────────────────────────────────────────────────────────────────┘
             TokenService.TokenPair tokenPair = tokenService.refreshTokenPair(refreshToken);
             
-            // 🍪 새 Access Token을 보안 쿠키로 설정
+            // 🍪 새 Access Token을 보안 쿠키로 설정 (30분 만료)
             int accessTokenMaxAge = (int) (jwtProperties.getAccessTokenExpiration() / 1000); // 밀리초 → 초
             CookieUtil.addCookie(response, "access_token", tokenPair.getAccessToken(), accessTokenMaxAge);
             
-            // 🍪 ⚠️ 중요: 새 Refresh Token도 반드시 쿠키로 설정 (회전된 토큰)
+            // 🍪 ⚠️ **중요: 새 Refresh Token도 반드시 쿠키로 설정** 
+            // 💡 기존 토큰은 이미 "사용됨" 처리되어 재사용 시 공격 감지됨!
             int refreshTokenMaxAge = (int) (jwtProperties.getRefreshTokenExpiration() / 1000); // 밀리초 → 초
             CookieUtil.addCookie(response, "refresh_token", tokenPair.getRefreshToken(), refreshTokenMaxAge);
             
-            log.info("✅ 토큰 쌍 갱신 성공 (Access + Refresh Token 회전)");
+            log.info("✅ 능동 대응 토큰 회전 완료 - 기존 토큰 무효화 및 새 토큰 쌍 발급");
             
             return ResponseEntity.ok(Map.of(
                 "message", "토큰이 성공적으로 갱신되었습니다.",

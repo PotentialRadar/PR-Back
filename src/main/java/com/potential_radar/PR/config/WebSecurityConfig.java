@@ -24,14 +24,39 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 /**
- * 🔐 Spring Security 중앙 설정 클래스
+ * 🔐 Spring Security 중앙 설정 클래스 - 전체 보안 정책의 사령탑!
  *
- * 이 클래스는 애플리케이션의 보안 정책을 정의하고 구성합니다.
- * - JWT 토큰 기반 인증 설정
- * - OAuth2 소셜 로그인 설정 (Google, Kakao)
- * - CORS 정책 설정
- * - 접근 권한 정의
- * - 보안 필터 체인 구성
+ * 🤔 이 클래스가 하는 일:
+ * - 🛡️ 보안 필터 체인 구성 (누가 어디에 접근 가능한지)
+ * - 🎫 JWT 토큰 기반 인증 시스템 설정
+ * - 🌐 OAuth2 소셜 로그인 (Google, Kakao) 통합
+ * - 🚪 CORS 정책으로 프론트엔드 접근 허용
+ * - 🔒 패스워드 암호화 및 인증 관리자 설정
+ * 
+ * 🔄 Spring Security 필터 체인 흐름:
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │ **보안 필터 실행 순서**                                      │
+ * │                                                             │
+ * │ 1️⃣ CORS Filter (크로스 도메인 허용 여부)                    │
+ * │      ↓                                                      │
+ * │ 2️⃣ CSRF Filter (토큰 기반이므로 비활성화)                   │
+ * │      ↓                                                      │
+ * │ 3️⃣ **JWT Authentication Filter** (우리가 만든 커스텀 필터)  │
+ * │      ├─ JWT 토큰 추출 및 검증                               │
+ * │      └─ SecurityContext에 인증 정보 설정                    │
+ * │      ↓                                                      │
+ * │ 4️⃣ OAuth2 Login Filter (소셜 로그인 처리)                  │
+ * │      ↓                                                      │
+ * │ 5️⃣ Authorization Filter (접근 권한 확인)                    │
+ * │      └─ permitAll() vs authenticated() 체크                │
+ * │      ↓                                                      │
+ * │ 6️⃣ Controller 도달 ✅                                       │
+ * └─────────────────────────────────────────────────────────────┘
+ * 
+ * 🎯 보안 전략:
+ * - 공개 API: /api/search/**, /api/projects/** (인증 불필요)
+ * - 인증 API: 나머지 모든 /api/** (JWT 토큰 필요)
+ * - 소셜 로그인: /oauth2/**, /login/oauth2/** (자동 토큰 발급)
  */
 @Configuration  // 스프링 설정 클래스임을 선언
 @EnableWebSecurity  // Spring Security 활성화

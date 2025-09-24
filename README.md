@@ -248,7 +248,7 @@ spring:
 | **0630hwi** | **Backend Developer** | • 프로젝트 전체 라이프사이클 기능 구현<br/>• S3 파일 업로드 기능 구현<br/>• 댓글 및 좋아요 기능 구현 | [![GitHub](https://img.shields.io/badge/GitHub-0630hwi-black?style=flat-square&logo=github)](https://github.com/0630hwi) |
 | **keemzleun** | **Search & Infrastructure** | • Elasticsearch 검색 및 필터링 기능<br/>• Redis 인기 검색어 캐싱<br/>• SSE를 이용한 실시간 알림 | [![GitHub](https://img.shields.io/badge/GitHub-keemzleun-black?style=flat-square&logo=github)](https://github.com/keemzleun) |
 | **myjuniverse** | **AI & Recommendation** | • AI 기반 매칭 시스템 구현<br/>• 하이브리드 추천 알고리즘<br/>• Spring Boot - FastAPI 연동<br/>• 실시간 피드백 학습 시스템 | [![GitHub](https://img.shields.io/badge/GitHub-myjuniverse-black?style=flat-square&logo=github)](https://github.com/myjuniverse) |
-| **xeexin** | **Authentication & User** | • 회원가입 및 로그인 기능 구현<br/>• JWT를 이용한 인증/인가 구현<br/>• OAuth2 소셜 로그인 (Google, Kakao)<br/>• 유저 및 포트폴리오 관련 기능 구현 | [![GitHub](https://img.shields.io/badge/GitHub-xeexin-black?style=flat-square&logo=github)](https://github.com/xeexin) |
+| **임희진** | **Authentication & User** | • 회원가입 및 로그인 기능 구현<br/>• JWT를 이용한 인증/인가 구현<br/>• OAuth2 소셜 로그인 (Google, Kakao)<br/>• 유저 및 포트폴리오 관련 기능 구현 | [![GitHub](https://img.shields.io/badge/GitHub-xeexin-black?style=flat-square&logo=github)](https://github.com/xeexin) |
 
 </div>
 

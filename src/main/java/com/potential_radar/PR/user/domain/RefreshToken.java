@@ -51,7 +51,7 @@ public class RefreshToken {
      * 🏭 Refresh Token 엔티티 생성자
      * 
      * 새로운 Refresh Token을 생성할 때 사용됩니다.
-     * 보통 RefreshTokenService에서 호출됩니다.
+     * DbRefreshTokenStore에서 호출됩니다.
      * 
      * @param userId 사용자 ID
      * @param refreshToken UUID 기반의 Refresh Token 문자열

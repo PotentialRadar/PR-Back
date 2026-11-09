@@ -39,9 +39,9 @@ public class DbRefreshTokenStore implements RefreshTokenStore {
 
     @Override
     @Transactional
-    public boolean rotate(Long userId, String oldToken, String newToken, Duration ttl) {
+    public RotateResult rotate(Long userId, String oldToken, String newToken, Duration ttl) {
         save(userId, newToken, ttl);
-        return true;
+        return RotateResult.rotated(newToken);
     }
 
     @Override

@@ -78,8 +78,39 @@ public class MigratingRefreshTokenStore implements RefreshTokenStore {
         return fromDb;
     }
 
+    /**
+     * 재발급용 조회. findUserIdByToken 과 같지만, 회전된 토큰을 만나도 여기서 무효화하지 않고
+     * 소유자만 돌려준다. 동시 요청(유예)인지 재사용 공격인지는 rotate()의 Lua 스크립트가 원자적으로 판정한다.
+     */
     @Override
-    public boolean rotate(Long userId, String oldToken, String newToken, Duration ttl) {
+    public Optional<Long> findOwnerForRotation(String token) {
+        if (props.getReadSource() == ReadSource.DB) {
+            return db.findUserIdByToken(token);
+        }
+
+        Optional<Long> fromRedis;
+        try {
+            fromRedis = redisStore.findOwnerForRotation(token);
+        } catch (DataAccessException e) {
+            if (!props.isDualWrite()) throw e;
+            log.warn("[TOKEN_REDIS_READ_FAIL] Redis 조회 실패, DB로 폴백합니다", e);
+            return db.findUserIdByToken(token);
+        }
+
+        if (fromRedis.isPresent() || !props.isDualWrite()) {
+            return fromRedis;
+        }
+
+        Optional<Long> fromDb = db.findUserIdByToken(token);
+        fromDb.ifPresent(id -> {
+            fallbackCount.incrementAndGet();
+            log.info("[TOKEN_FALLBACK] token miss in redis, fallback to db. userId={}", id);
+        });
+        return fromDb;
+    }
+
+    @Override
+    public RotateResult rotate(Long userId, String oldToken, String newToken, Duration ttl) {
         if (props.getReadSource() == ReadSource.DB) {
             db.rotate(userId, oldToken, newToken, ttl);
             try {
@@ -87,21 +118,22 @@ public class MigratingRefreshTokenStore implements RefreshTokenStore {
             } catch (DataAccessException e) {
                 log.warn("[TOKEN_REDIS_WRITE_FAIL] rotate userId={}, DB remains source of truth", userId, e);
             }
-            return true;
+            return RotateResult.rotated(newToken);
         }
 
-        boolean rotated;
+        RotateResult result;
         try {
-            rotated = redisStore.rotate(userId, oldToken, newToken, ttl);
+            result = redisStore.rotate(userId, oldToken, newToken, ttl);
         } catch (DataAccessException e) {
             if (!props.isDualWrite()) throw e;
             log.warn("[TOKEN_REDIS_WRITE_FAIL] rotate userId={}, DB remains source of truth", userId, e);
-            rotated = true;
+            result = RotateResult.rotated(newToken);
         }
-        if (rotated && props.isDualWrite()) {
+        // GRACE_HIT 은 먼저 온 요청이 이미 DB까지 반영하므로 여기서 다시 쓰지 않는다.
+        if (result.outcome() == RotateResult.Outcome.ROTATED && props.isDualWrite()) {
             db.rotate(userId, oldToken, newToken, ttl);
         }
-        return rotated;
+        return result;
     }
 
     @Override

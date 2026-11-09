@@ -15,10 +15,18 @@ public interface RefreshTokenStore {
     Optional<Long> findUserIdByToken(String token);
 
     /**
-     * oldToken을 newToken으로 회전한다.
-     * @return 회전 성공 여부. false면 이미 사용된 토큰(동시 재사용)이다.
+     * 재발급용 조회. 이미 회전된 토큰이어도 소유자를 돌려준다.
+     * 재사용 공격인지 동시 요청인지는 여기서 판단하지 않고 {@link #rotate}가 원자적으로 판정한다.
      */
-    boolean rotate(Long userId, String oldToken, String newToken, Duration ttl);
+    default Optional<Long> findOwnerForRotation(String token) {
+        return findUserIdByToken(token);
+    }
+
+    /**
+     * oldToken을 newToken으로 회전한다.
+     * 유예 구간 안의 동시 요청이면 newToken 대신 직전에 발급된 토큰을 돌려준다(GRACE_HIT).
+     */
+    RotateResult rotate(Long userId, String oldToken, String newToken, Duration ttl);
 
     /** 사용자의 활성 Refresh Token을 모두 무효화한다. */
     void deleteAllForUser(Long userId);

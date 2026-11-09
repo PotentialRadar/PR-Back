@@ -6,6 +6,7 @@ import com.potential_radar.PR.common.exception.InvalidTokenException;
 import com.potential_radar.PR.user.domain.User;
 import com.potential_radar.PR.user.repository.UserRepository;
 import com.potential_radar.PR.user.service.token.RefreshTokenStore;
+import com.potential_radar.PR.user.service.token.RotateResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -50,26 +51,31 @@ public class TokenService {
      */
     @Transactional(noRollbackFor = InvalidTokenException.class)
     public TokenPair refreshTokenPair(String refreshToken) {
-        Long userId = refreshTokenStore.findUserIdByToken(refreshToken)
+        // 이미 회전된 토큰이어도 소유자를 찾는다. 재사용인지 동시 요청인지는 rotate()가 원자적으로 판정한다.
+        Long userId = refreshTokenStore.findOwnerForRotation(refreshToken)
                 .orElseThrow(() -> {
-                    log.warn("❌ 토큰 검증 실패 (무효하거나 재사용 감지됨): {}", mask(refreshToken));
+                    log.warn("❌ 토큰 검증 실패 (무효하거나 만료됨): {}", mask(refreshToken));
                     return new InvalidTokenException("유효하지 않은 Refresh Token입니다. 다시 로그인해주세요.");
                 });
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new InvalidTokenException("사용자를 찾을 수 없습니다. ID: " + userId));
 
-        String newRefreshToken = newTokenValue();
-        if (!refreshTokenStore.rotate(userId, refreshToken, newRefreshToken, refreshTtl())) {
-            // 같은 토큰으로 동시에 들어온 요청 중 늦은 쪽: 이미 회전된 토큰이므로 재사용으로 간주
-            log.warn("[TOKEN_REUSE] 동시 회전 감지. userId={} 의 모든 토큰을 무효화합니다", userId);
-            refreshTokenStore.deleteAllForUser(userId);
-            throw new InvalidTokenException("유효하지 않은 Refresh Token입니다. 다시 로그인해주세요.");
+        RotateResult result = refreshTokenStore.rotate(userId, refreshToken, newTokenValue(), refreshTtl());
+        switch (result.outcome()) {
+            case ROTATED -> log.info("✅ 토큰 회전 성공 - 사용자: {}", userId);
+            // 유예 안에 다시 온 직전 토큰: 동시 요청으로 보고 방금 발급한 토큰을 그대로 돌려준다
+            case GRACE_HIT -> log.info("[TOKEN_GRACE] 유예 구간 내 동시 재발급. userId={} token={}", userId, mask(refreshToken));
+            case REUSE_DETECTED -> {
+                log.warn("[TOKEN_REUSE] 회전된 토큰 재사용 감지. userId={} token={} 의 모든 토큰을 무효화합니다",
+                        userId, mask(refreshToken));
+                refreshTokenStore.deleteAllForUser(userId);
+                throw new InvalidTokenException("유효하지 않은 Refresh Token입니다. 다시 로그인해주세요.");
+            }
         }
 
         String newAccessToken = tokenProvider.generateAccessToken(user);
-        log.info("✅ 토큰 회전 성공 - 사용자: {}", userId);
-        return new TokenPair(newAccessToken, newRefreshToken);
+        return new TokenPair(newAccessToken, result.refreshToken());
     }
 
     @Transactional

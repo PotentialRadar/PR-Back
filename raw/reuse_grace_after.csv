@@ -1,0 +1,5 @@
+timestamp,phase,case,grace_seconds,trials,false_positive,detected,same_token
+2026-11-09T19:12:13.009421,after,reuse_after_rerotate,2,100,-,100,0
+2026-11-09T19:12:19.790101,after,staggered,2,100,0,-,100
+2026-11-09T19:12:31.261715,after,reuse_after_grace,2,100,-,100,0
+2026-11-09T19:12:37.476076,after,concurrent,2,100,0,-,100

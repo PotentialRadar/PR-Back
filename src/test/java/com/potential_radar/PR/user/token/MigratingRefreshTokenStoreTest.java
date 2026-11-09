@@ -3,6 +3,7 @@ package com.potential_radar.PR.user.token;
 import com.potential_radar.PR.user.service.token.DbRefreshTokenStore;
 import com.potential_radar.PR.user.service.token.MigratingRefreshTokenStore;
 import com.potential_radar.PR.user.service.token.RedisRefreshTokenStore;
+import com.potential_radar.PR.user.service.token.RotateResult;
 import com.potential_radar.PR.user.service.token.TokenStoreProperties;
 import com.potential_radar.PR.user.service.token.TokenStoreProperties.ReadSource;
 import org.junit.jupiter.api.Test;
@@ -112,10 +113,30 @@ class MigratingRefreshTokenStoreTest {
 
     @Test
     void Redis_회전이_거부되면_DB도_갱신하지_않는다() {
-        when(redis.rotate(1L, "old", "new", TTL)).thenReturn(false);
+        when(redis.rotate(1L, "old", "new", TTL)).thenReturn(RotateResult.reuseDetected());
 
-        assertThat(store(true, ReadSource.REDIS).rotate(1L, "old", "new", TTL)).isFalse();
+        assertThat(store(true, ReadSource.REDIS).rotate(1L, "old", "new", TTL).isReuse()).isTrue();
         verify(db, never()).rotate(any(), any(), any(), any());
+    }
+
+    @Test
+    void 유예_적중은_먼저_온_요청의_토큰을_돌려주고_DB를_다시_쓰지_않는다() {
+        when(redis.rotate(1L, "old", "new", TTL)).thenReturn(RotateResult.graceHit("issued"));
+
+        RotateResult result = store(true, ReadSource.REDIS).rotate(1L, "old", "new", TTL);
+
+        assertThat(result.outcome()).isEqualTo(RotateResult.Outcome.GRACE_HIT);
+        assertThat(result.refreshToken()).isEqualTo("issued");
+        verify(db, never()).rotate(any(), any(), any(), any());
+    }
+
+    @Test
+    void 재발급용_조회는_회전된_토큰이어도_무효화하지_않고_소유자만_돌려준다() {
+        when(redis.findOwnerForRotation("old")).thenReturn(Optional.of(7L));
+
+        assertThat(store(false, ReadSource.REDIS).findOwnerForRotation("old")).contains(7L);
+        verify(redis, never()).deleteAllForUser(any());
+        verifyNoInteractions(db);
     }
 
     @Test

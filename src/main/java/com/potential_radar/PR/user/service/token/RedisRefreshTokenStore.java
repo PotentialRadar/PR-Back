@@ -18,6 +18,7 @@ import java.util.Optional;
  *   refresh_token:{userId} -> token       (사용자의 현재 토큰)
  *   token_mapping:{token}  -> userId      (토큰 → 사용자 역조회)
  *   used_token:{token}     -> userId      (회전된 토큰, 재사용 탐지용)
+ *   reuse_grace:{token}    -> newToken    (회전 직후 N초 동안만. 동시 요청에 같은 새 토큰을 돌려주기 위함)
  */
 @Component
 @RequiredArgsConstructor
@@ -26,12 +27,15 @@ public class RedisRefreshTokenStore implements RefreshTokenStore {
     static final String REFRESH_TOKEN_PREFIX = "refresh_token:";
     static final String TOKEN_MAPPING_PREFIX = "token_mapping:";
     static final String USED_TOKEN_PREFIX = "used_token:";
+    static final String REUSE_GRACE_PREFIX = "reuse_grace:";
     static final Duration USED_TOKEN_TTL = Duration.ofDays(7);
 
-    private static final RedisScript<Long> ROTATE_SCRIPT =
-            new DefaultRedisScript<>(readScript("redis/rotate_refresh_token.lua"), Long.class);
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static final RedisScript<List<String>> ROTATE_SCRIPT =
+            (RedisScript) new DefaultRedisScript<>(readScript("redis/rotate_refresh_token.lua"), List.class);
 
     private final StringRedisTemplate redis;
+    private final TokenStoreProperties props;
 
     @Override
     public void save(Long userId, String token, Duration ttl) {
@@ -50,18 +54,30 @@ public class RedisRefreshTokenStore implements RefreshTokenStore {
                 .map(Long::valueOf);
     }
 
+    /** 재발급용 조회: 활성 토큰이면 그 소유자, 이미 회전된 토큰이면 원래 소유자. 판정은 rotate()가 한다. */
     @Override
-    public boolean rotate(Long userId, String oldToken, String newToken, Duration ttl) {
-        Long result = redis.execute(ROTATE_SCRIPT,
+    public Optional<Long> findOwnerForRotation(String token) {
+        return findUserIdByToken(token).or(() -> findOwnerOfUsedToken(token));
+    }
+
+    @Override
+    public RotateResult rotate(Long userId, String oldToken, String newToken, Duration ttl) {
+        List<String> result = redis.execute(ROTATE_SCRIPT,
                 List.of(USED_TOKEN_PREFIX + oldToken,
                         TOKEN_MAPPING_PREFIX + oldToken,
                         TOKEN_MAPPING_PREFIX + newToken,
-                        REFRESH_TOKEN_PREFIX + userId),
+                        REFRESH_TOKEN_PREFIX + userId,
+                        REUSE_GRACE_PREFIX + oldToken),
                 String.valueOf(userId),
                 newToken,
                 String.valueOf(ttl.toSeconds()),
-                String.valueOf(USED_TOKEN_TTL.toSeconds()));
-        return Long.valueOf(1L).equals(result);
+                String.valueOf(USED_TOKEN_TTL.toSeconds()),
+                String.valueOf(props.getReuseGraceSeconds()));
+        return switch (result.get(0)) {
+            case "ROTATED" -> RotateResult.rotated(result.get(1));
+            case "GRACE_HIT" -> RotateResult.graceHit(result.get(1));
+            default -> RotateResult.reuseDetected();
+        };
     }
 
     @Override

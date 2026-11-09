@@ -28,11 +28,21 @@ public class TokenStoreProperties {
     private boolean dualWrite = false;
     private ReadSource readSource = ReadSource.REDIS;
 
+    /**
+     * 직전 Refresh Token 재사용 유예(초). 회전 직후 이 시간 안에 같은 옛 토큰이 다시 오고
+     * 사용자의 현재 토큰이 그때 발급한 토큰 그대로면, 동시 요청으로 보고 같은 토큰을 돌려준다.
+     * 0이면 유예 없음(옛 토큰은 즉시 재사용으로 판정). 길수록 오탐은 줄고 탈취 토큰이 끼어들 틈은 커진다.
+     */
+    private int reuseGraceSeconds = 3;
+
     @PostConstruct
     void validate() {
         if (readSource == ReadSource.DB && !dualWrite) {
             throw new IllegalStateException(
                     "auth.token.read-source=DB 는 auth.token.dual-write=true 일 때만 사용할 수 있습니다.");
+        }
+        if (reuseGraceSeconds < 0) {
+            throw new IllegalStateException("auth.token.reuse-grace-seconds 는 0 이상이어야 합니다.");
         }
     }
 }

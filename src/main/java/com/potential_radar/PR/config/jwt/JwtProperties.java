@@ -17,7 +17,6 @@ import org.springframework.stereotype.Component;
  * - jwt.secret-key: JWT 서명에 사용할 비밀 키 (256비트 이상 필요)
  * - jwt.access-token-expiration: Access Token 만료 시간 (밀리세컨드, 기본 1시간)
  * - jwt.refresh-token-expiration: Refresh Token 만료 시간 (밀리세컨드, 기본 14일)
- * - jwt.refresh-token-grace-period: Refresh Token 회전 유예 시간 (밀리세컨드, 기본 10초, 0이면 끔)
  * 
  * 보안 검증:
  * - @PostConstruct에서 모든 필수 속성의 유효성 검증
@@ -44,9 +43,6 @@ public class JwtProperties {
         if (refreshTokenExpiration == null || refreshTokenExpiration <= 0) {
             throw new IllegalStateException("Refresh 토큰 만료 시간(jwt.refresh-token-expiration)은 양수여야 합니다.");
         }
-        if (refreshTokenGracePeriod == null || refreshTokenGracePeriod < 0) {
-            throw new IllegalStateException("Refresh 토큰 회전 유예 시간(jwt.refresh-token-grace-period)은 0 이상이어야 합니다.");
-        }
         if (refreshTokenExpiration <= accessTokenExpiration) {
             log.warn("경고: Refresh 토큰의 만료 시간은 Access 토큰의 만료 시간보다 길게 설정하는 것이 좋습니다.");
         }
@@ -63,8 +59,4 @@ public class JwtProperties {
     
     // 🔄 Refresh Token 만료 시간 (밀리세컨드 단위, 예: 1209600000 = 14일)
     private Long refreshTokenExpiration;
-
-    // ⏳ Refresh Token 회전 유예 시간 (밀리세컨드 단위, 0이면 유예 없음, 기본 10초)
-    // 이 시간 안에 이미 회전된 토큰으로 다시 요청하면 전체 무효화 대신 직전에 발급한 토큰을 돌려준다.
-    private Long refreshTokenGracePeriod = 10000L;
 }

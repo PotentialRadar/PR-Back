@@ -3,14 +3,9 @@ package com.potential_radar.PR.user.service;
 import com.potential_radar.PR.config.jwt.JwtProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.script.DefaultRedisScript;
-import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.stereotype.Service;
 
-import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -62,25 +57,11 @@ public class RedisRefreshTokenService {
     private static final String TOKEN_MAPPING_PREFIX = "token_mapping:";
     
     // 🚨 **3️⃣ 블랙리스트** - 재사용 탐지를 위한 사용된 토큰 추적소
-    // 💾 저장 형태: "used_token:abc-def-ghi" → 123 (원래 소유자 ID)
+    // 💾 저장 형태: "used_token:abc-def-ghi" → "123" (원래 소유자 ID)
     // 📋 용도: 토큰 재사용 공격 감지 및 능동 대응
-    // 🕒 TTL: Refresh Token TTL과 동일 (토큰 수명 내내 재사용 탐지)
+    // 🕒 TTL: 7일 (충분한 탐지 기간 보장)
     // 🛡️ 보안: 재사용 감지 시 해당 사용자 모든 세션 무효화
     private static final String USED_TOKEN_PREFIX = "used_token:";
-
-    // ⏳ **4️⃣ 회전 유예** - 방금 회전된 토큰으로 다시 요청이 와도 짧은 시간 동안은 공격으로 보지 않음
-    // 💾 저장 형태: "rotation_grace:abc-def-ghi" → "새 토큰 원문" (Lua 스크립트만 읽고 씀)
-    // 📋 용도: 동시 요청·네트워크 재시도 시 직전에 발급한 새 토큰을 그대로 돌려줌
-    // 🕒 TTL: jwt.refresh-token-grace-period (기본 10초)
-    private static final String ROTATION_GRACE_PREFIX = "rotation_grace:";
-
-    // 🔒 토큰 회전 Lua 스크립트 (사용됨 표시 + 매핑 교체 + 새 토큰 저장 + 유예 판단을 원자적으로 실행)
-    private static final DefaultRedisScript<String> ROTATE_SCRIPT = new DefaultRedisScript<>();
-    static {
-        ROTATE_SCRIPT.setLocation(new ClassPathResource("redis/rotate_refresh_token.lua"));
-        ROTATE_SCRIPT.setResultType(String.class);
-    }
-    private static final String GRACE_RESULT_PREFIX = "GRACE:";
     
     /**
      * 🏭 새로운 Refresh Token 생성 및 저장
@@ -124,8 +105,8 @@ public class RedisRefreshTokenService {
         redisTemplate.opsForValue().set(
             userKey,           // 🔑 Key: "refresh_token:123"
             tokenInfo,         // 📦 Value: RefreshTokenInfo 객체 (JSON으로 자동 변환)
-            ttlInfo.value,     // ⏰ TTL: 1209600 (초)
-            ttlInfo.unit       // 🕒 Unit: TimeUnit.SECONDS
+            ttlInfo.value,     // ⏰ TTL: 14 (숫자)
+            ttlInfo.unit       // 🕒 Unit: TimeUnit.DAYS
         );
         
         // 🔄 **2단계: 역방향 매핑 테이블 저장** (토큰 → 사용자 ID)
@@ -133,8 +114,8 @@ public class RedisRefreshTokenService {
         redisTemplate.opsForValue().set(
             tokenKey,          // 🔑 Key: "token_mapping:abc-def-ghi" 
             userId,            // 📦 Value: 123 (Long 타입, JSON으로 자동 변환)
-            ttlInfo.value,     // ⏰ TTL: 메인 토큰과 동일 (초)
-            ttlInfo.unit       // 🕒 Unit: TimeUnit.SECONDS
+            ttlInfo.value,     // ⏰ TTL: 14 (메인 토큰과 동일)
+            ttlInfo.unit       // 🕒 Unit: TimeUnit.DAYS
         );
         
         log.info("🎫 사용자 {}의 새 Refresh Token 생성됨: {}", userId, refreshToken.substring(0, 8) + "...");
@@ -173,15 +154,6 @@ public class RedisRefreshTokenService {
         // 🚨 1단계: 재사용 탐지 - 가장 중요한 보안 검사!
         Long usedTokenUserId = getUsedTokenUserId(refreshToken);
         if (usedTokenUserId != null) {
-            // ⏳ 유예 시간 안의 재요청이면 판단을 회전 스크립트에 맡긴다.
-            // 💡 스크립트가 유예 토큰이 아직 현재 토큰인지 원자적으로 확인하고,
-            //    유예가 안 되면 rotateRefreshToken()에서 전체 무효화한다.
-            if (Boolean.TRUE.equals(redisTemplate.hasKey(ROTATION_GRACE_PREFIX + refreshToken))) {
-                log.info("⏳ 회전 유예 시간 내 재요청: {} (사용자: {})",
-                    refreshToken.substring(0, 8) + "...", usedTokenUserId);
-                return usedTokenUserId;
-            }
-
             // 🚨 경보 발생! 이미 사용된 토큰으로 재접근 시도 감지!
             log.warn("⚠️ 🚨 토큰 재사용 공격 감지! 토큰: {} (원 소유자: {})", 
                 refreshToken.substring(0, 8) + "...", usedTokenUserId);
@@ -211,12 +183,11 @@ public class RedisRefreshTokenService {
      * │      ├─ ❌ 무효 → null 반환 (회전 실패)                     │
      * │      └─ ✅ 유효 → 2단계 진행                                │
      * │           ↓                                                │
-     * │ 2️⃣ Lua 스크립트(rotate_refresh_token.lua)로 원자 실행      │
-     * │      ├─ OK      → 사용됨 표시 + 매핑 교체 + 새 토큰 저장    │
-     * │      │            + rotation_grace:{old} 기록               │
-     * │      ├─ GRACE   → 유예 시간 내 재요청, 직전 새 토큰 반환     │
-     * │      ├─ REUSED  → 유예 불가 재사용 → 전체 무효화            │
-     * │      └─ INVALID → 매핑 없음/소유자 불일치                    │
+     * │ 2️⃣ 기존 토큰을 used_token 블랙리스트에 추가                │
+     * │      └─ 🏷️ markTokenAsUsed() 호출                          │
+     * │           ↓                                                │
+     * │ 3️⃣ 완전히 새로운 토큰 생성                                  │
+     * │      └─ 🎫 createRefreshToken() 호출                       │
      * │           ↓                                                │
      * │ 4️⃣ **결과: 기존 토큰 재사용 시 공격자 즉시 탐지됨!**        │
      * └─────────────────────────────────────────────────────────────┘
@@ -229,73 +200,23 @@ public class RedisRefreshTokenService {
      * @return 새로 발급된 토큰, 실패 시 null
      */
     public String rotateRefreshToken(String oldToken) {
-        // 🔍 1단계: 기존 토큰의 소유자 확인 (KEYS[4]를 만들기 위해 필요, 스크립트 안에서 다시 검증함)
-        // 💡 이미 회전된 토큰은 매핑이 지워졌으므로 used_token에서 소유자를 찾는다 (유예 판단용).
+        // 🔍 1단계: 기존 토큰이 유효한 토큰인지 확인
         Long userId = getUserIdFromMapping(oldToken);
-        if (userId == null) {
-            userId = getUsedTokenUserId(oldToken);
-        }
         if (userId == null) {
             log.warn("❌ 유효하지 않은 토큰으로 회전 시도: {}", oldToken.substring(0, 8) + "...");
             return null;
         }
-
-        String newToken = UUID.randomUUID().toString();
-        RefreshTokenInfo tokenInfo = RefreshTokenInfo.builder()
-            .userId(userId)
-            .token(newToken)
-            .createdAt(System.currentTimeMillis())
-            .usedCount(0)
-            .build();
-
-        // 🔒 2단계: 사용됨 표시 + 이전 매핑 삭제 + 새 토큰 저장을 Lua로 원자 실행
-        // 💡 값은 RedisTemplate의 값 직렬화기로 미리 직렬화해 넘기므로,
-        //    스크립트가 저장한 값도 기존 opsForValue().get()으로 그대로 읽힌다.
-        byte[] ttl = ascii(getRefreshTokenTTL().value);
-        String result = redisTemplate.execute(
-            ROTATE_SCRIPT,
-            RedisSerializer.byteArray(),
-            RedisSerializer.string(),
-            List.of(
-                USED_TOKEN_PREFIX + oldToken,
-                TOKEN_MAPPING_PREFIX + oldToken,
-                TOKEN_MAPPING_PREFIX + newToken,
-                REFRESH_TOKEN_PREFIX + userId,
-                ROTATION_GRACE_PREFIX + oldToken
-            ),
-            serializeValue(userId),
-            serializeValue(tokenInfo),
-            ttl,
-            ttl,
-            newToken.getBytes(StandardCharsets.UTF_8),
-            ascii(getGracePeriodMs())
-        );
-
-        if ("OK".equals(result)) {
-            log.info("🔄 사용자 {}의 토큰 회전 완료: {} → {}",
-                userId, oldToken.substring(0, 8) + "...", newToken.substring(0, 8) + "...");
-            return newToken;
-        }
-
-        if (result != null && result.startsWith(GRACE_RESULT_PREFIX)) {
-            // ⏳ 유예: 동시 요청·재시도로 같은 토큰이 다시 옴 → 먼저 발급한 토큰을 그대로 돌려준다
-            String issuedToken = result.substring(GRACE_RESULT_PREFIX.length());
-            log.info("⏳ 회전 유예 적용 - 사용자 {}: {} → 기존 발급 토큰 {} 재사용",
-                userId, oldToken.substring(0, 8) + "...", issuedToken.substring(0, 8) + "...");
-            return issuedToken;
-        }
-
-        if ("REUSED".equals(result)) {
-            // 🚨 유예 시간이 지났거나, 유예 토큰이 이미 다시 회전/무효화됨 → 재사용 공격으로 간주
-            log.warn("⚠️ 🚨 토큰 재사용 공격 감지 (유예 불가)! 토큰: {} (원 소유자: {})",
-                oldToken.substring(0, 8) + "...", userId);
-            revokeAllTokensForUser(userId);
-            return null;
-        }
-
-        // INVALID: 스크립트 실행 직전에 매핑이 사라짐 (만료/로그아웃/무효화) 또는 소유자 불일치
-        log.warn("❌ 토큰 회전 실패 (result={}): {}", result, oldToken.substring(0, 8) + "...");
-        return null;
+        
+        // 🏷️ 2단계: 기존 토큰을 "사용됨" 블랙리스트에 추가 (능동 대응의 핵심!)
+        // 💡 이제 이 토큰을 누군가 다시 사용하려고 하면 바로 감지됨!
+        markTokenAsUsed(oldToken);
+        
+        // 🎫 3단계: 완전히 새로운 토큰 생성 및 발급
+        String newToken = createRefreshToken(userId);
+        log.info("🔄 사용자 {}의 토큰 회전 완료: {} → {}", 
+            userId, oldToken.substring(0, 8) + "...", newToken.substring(0, 8) + "...");
+        
+        return newToken;
     }
 
     /**
@@ -310,8 +231,8 @@ public class RedisRefreshTokenService {
      * 
      * ✨ 무효화 과정:
      * 1️⃣ 현재 활성 토큰 조회
-     * 2️⃣ 블랙리스트에 추가 (재사용 감지용)
-     * 3️⃣ 토큰 매핑 테이블에서 삭제 (더 이상 조회 안됨)
+     * 2️⃣ 토큰 매핑 테이블에서 삭제 (더 이상 조회 안됨)
+     * 3️⃣ 블랙리스트에 추가 (재사용 감지용)
      * 4️⃣ 사용자 토큰 정보 완전 삭제
      * 
      * 🔥 결과: 해당 사용자는 **모든 디바이스에서 강제 로그아웃**됨
@@ -324,14 +245,13 @@ public class RedisRefreshTokenService {
         RefreshTokenInfo tokenInfo = (RefreshTokenInfo) redisTemplate.opsForValue().get(userKey);
         
         if (tokenInfo != null) {
-            // 🏷️ 2단계: 블랙리스트에 추가 (혹시 누군가 이 토큰을 재사용하려 하면 감지됨)
-            // 💡 userId를 직접 넘기므로 매핑 삭제 순서와 무관하게 항상 기록된다.
-            markTokenAsUsed(tokenInfo.getToken(), userId);
-
-            // 🗑️ 3단계: 토큰 매핑 삭제 (더 이상 이 토큰으로 조회 안됨)
+            // 🗑️ 2단계: 토큰 매핑 삭제 (더 이상 이 토큰으로 조회 안됨)
             String tokenKey = TOKEN_MAPPING_PREFIX + tokenInfo.getToken();
             redisTemplate.delete(tokenKey);
-
+            
+            // 🏷️ 3단계: 블랙리스트에 추가 (혹시 누군가 이 토큰을 재사용하려 하면 감지됨)
+            markTokenAsUsed(tokenInfo.getToken());
+            
             log.debug("🔥 토큰 매핑 및 블랙리스트 처리 완료: {}", tokenInfo.getToken().substring(0, 8) + "...");
         }
         
@@ -425,7 +345,7 @@ public class RedisRefreshTokenService {
      * ✨ 작동 원리:
      * 1️⃣ Redis에 `used_token:토큰값` 키로 저장
      * 2️⃣ 값으로는 원래 소유자의 userId를 저장 (중요!)
-     * 3️⃣ Refresh Token TTL만큼 보관 (토큰이 살아 있을 수 있는 기간 전체)
+     * 3️⃣ 7일간 보관 (토큰 완전 만료까지 충분한 기간)
      * 
      * 🚨 왜 userId를 함께 저장하나요?
      * - 나중에 이 토큰이 재사용되면, 누구의 토큰이었는지 알아야
@@ -433,29 +353,18 @@ public class RedisRefreshTokenService {
      * 
      * @param refreshToken 블랙리스트에 추가할 토큰
      */
-    private void markTokenAsUsed(String refreshToken, Long userId) {
-        String usedTokenKey = USED_TOKEN_PREFIX + refreshToken;  // "used_token:abc-123-def..."
-
-        // 💾 소유자 ID를 저장 (재사용 탐지 시 전체 무효화용)
-        // ⏰ TTL은 Refresh Token과 동일 → 토큰이 살아 있을 수 있는 기간 내내 재사용 탐지 가능
-        TTLInfo ttlInfo = getRefreshTokenTTL();
-        redisTemplate.opsForValue().set(usedTokenKey, userId, ttlInfo.value, ttlInfo.unit);
-
-        log.debug("🏷️ 토큰을 사용됨으로 표시: {} (사용자: {})", refreshToken.substring(0, 8) + "...", userId);
-    }
-
-    private long getGracePeriodMs() {
-        Long gracePeriod = jwtProperties.getRefreshTokenGracePeriod();
-        return gracePeriod == null ? 0L : Math.max(0L, gracePeriod);
-    }
-
-    private static byte[] ascii(long value) {
-        return String.valueOf(value).getBytes(StandardCharsets.UTF_8);
-    }
-
-    @SuppressWarnings("unchecked")
-    private byte[] serializeValue(Object value) {
-        return ((RedisSerializer<Object>) redisTemplate.getValueSerializer()).serialize(value);
+    private void markTokenAsUsed(String refreshToken) {
+        // 🔍 1단계: 이 토큰의 원래 주인이 누구인지 조회
+        Long userId = getUserIdFromMapping(refreshToken);
+        if (userId != null) {
+            // 🗂️ 2단계: Redis 블랙리스트에 추가
+            String usedTokenKey = USED_TOKEN_PREFIX + refreshToken;  // "used_token:abc-123-def..."
+            
+            // 💾 3단계: 토큰과 함께 소유자 ID도 저장 (재사용 탐지 시 전체 무효화용)
+            redisTemplate.opsForValue().set(usedTokenKey, userId.toString(), 7L, TimeUnit.DAYS);
+            
+            log.debug("🏷️ 토큰을 사용됨으로 표시: {} (사용자: {})", refreshToken.substring(0, 8) + "...", userId);
+        }
     }
 
     /**
@@ -525,7 +434,9 @@ public class RedisRefreshTokenService {
      * │    └─ refresh-token-expiration: 1209600000 (14일)          │
      * │                                                             │
      * │ 2️⃣ Redis TTL로 자동 변환                                   │
-     * │    └─ 14일 = 1209600 (SECONDS 단위)                         │
+     * │    ├─ 14일 = 14 (DAYS 단위)                                │
+     * │    ├─ 2시간 = 2 (HOURS 단위)                               │
+     * │    └─ 30분 = 30 (MINUTES 단위)                             │
      * │                                                             │
      * │ 3️⃣ Redis가 자동 관리                                       │
      * │    └─ 시간 만료 시 데이터 자동 삭제                          │
@@ -534,11 +445,34 @@ public class RedisRefreshTokenService {
      * @return TTL 값과 시간 단위를 담은 TTL 정보 객체
      */
     private TTLInfo getRefreshTokenTTL() {
-        // 📋 application.yml의 만료 시간(ms)을 초 단위로 변환 (최소 1초)
-        // 💡 Lua 스크립트(EX)와 Java 경로가 같은 값을 쓰도록 초 단위로 통일한다.
+        // 📋 1단계: application.yml에서 만료 시간 가져오기
+        // 💡 예: 1209600000ms = 14일
         long expirationMs = jwtProperties.getRefreshTokenExpiration();
-        long seconds = Math.max(1, TimeUnit.MILLISECONDS.toSeconds(expirationMs));
-        return new TTLInfo(seconds, TimeUnit.SECONDS);
+        
+        // 🧮 2단계: 밀리초를 적절한 단위로 변환 (성능과 정확성 고려)
+        // 💡 Redis는 DAYS, HOURS, MINUTES 등 단위별로 최적화됨
+        
+        if (expirationMs >= TimeUnit.DAYS.toMillis(1)) {
+            // 📅 1일 이상이면 일(day) 단위 사용
+            // 💡 14일 = 14 DAYS (메모리 효율적)
+            long days = TimeUnit.MILLISECONDS.toDays(expirationMs);
+            log.debug("⏰ Refresh Token TTL 계산: {}ms = {}일", expirationMs, days);
+            return new TTLInfo(days, TimeUnit.DAYS);
+            
+        } else if (expirationMs >= TimeUnit.HOURS.toMillis(1)) {
+            // 🕐 1시간 이상이면 시간(hour) 단위 사용
+            // 💡 2시간 = 2 HOURS
+            long hours = TimeUnit.MILLISECONDS.toHours(expirationMs);
+            log.debug("⏰ Refresh Token TTL 계산: {}ms = {}시간", expirationMs, hours);
+            return new TTLInfo(hours, TimeUnit.HOURS);
+            
+        } else {
+            // ⏱️ 그 외는 분(minute) 단위 사용
+            // 💡 30분 = 30 MINUTES (최소 1분 보장)
+            long minutes = TimeUnit.MILLISECONDS.toMinutes(expirationMs);
+            log.debug("⏰ Refresh Token TTL 계산: {}ms = {}분", expirationMs, minutes);
+            return new TTLInfo(Math.max(1, minutes), TimeUnit.MINUTES); // 최소 1분 보장
+        }
     }
 
     /**
